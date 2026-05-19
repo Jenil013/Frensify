@@ -1,0 +1,6 @@
+{
+  "name": "Frensify",
+  "description": "Frensify is a premium French exam preparation platform for TEF and TCF, offering customized vocabulary builders, interactive reading/listening drills, timing-aware mock tests, analytics, and AI-powered speaking & writing corrections.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

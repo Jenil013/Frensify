@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #FAFAF9;
+    color: #37352F;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, th, .font-serif {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  }
+}
+
+/* Custom scrollbar for Notion/Attio aesthetic */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 15, 15, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 15, 15, 0.25);
+}
+
+/* Notion/Attio Minimalist Border-based designs */
+.shadow-premium {
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.05);
+}
+
+.shadow-premium-lg {
+  box-shadow: 0 2px 4px rgba(15, 15, 15, 0.05), 0 4px 12px rgba(15, 15, 15, 0.03);
+}
+
+.shadow-premium-xl {
+  box-shadow: 0 4px 12px rgba(15, 15, 15, 0.08), 0 8px 32px rgba(15, 15, 15, 0.04);
+}
