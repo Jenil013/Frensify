@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Sparkles, Calendar, ClipboardList, CheckSquare, ShieldAlert, Award, ArrowRight, Loader2, Info } from "lucide-react";
 import { UserProfile, StudyPlanResponse } from "../types";
 import { generateStudyPlan } from "../api";
+import { TEF_TARGET_OPTIONS, parseCefrTarget, CefrLevel } from "../tefConstants";
 
 interface StudyPlanTabProps {
   profile: UserProfile;
@@ -17,8 +18,12 @@ export default function StudyPlanTab({
   // Plan creation parameters
   const [weeksCount, setWeeksCount] = useState(4);
   const [dailyMinutes, setDailyMinutes] = useState(30);
-  const [targetScore, setTargetScore] = useState("CLB 7 (B2)");
-  const [selectedProficiency, setSelectedProficiency] = useState("B1");
+  const [targetScore, setTargetScore] = useState<CefrLevel>(
+    parseCefrTarget(profile.targetScore)
+  );
+  const [selectedProficiency, setSelectedProficiency] = useState<CefrLevel>(
+    parseCefrTarget(profile.currentLevel)
+  );
 
   // Output study plan data
   const [studyPlanResult, setStudyPlanResult] = useState<StudyPlanResponse | null>(null);
@@ -109,27 +114,29 @@ export default function StudyPlanTab({
                 <label className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] block mb-1.5">Current CEFR Rank</label>
                 <select
                   value={selectedProficiency}
-                  onChange={(e) => setSelectedProficiency(e.target.value)}
+                  onChange={(e) => setSelectedProficiency(e.target.value as CefrLevel)}
                   className="w-full px-3 py-1.5 border border-[#E9E9E7] rounded-lg text-xs font-bold bg-[#FAFAF9] text-[#37352F] outline-none cursor-pointer focus:bg-white"
                 >
-                  <option value="A2">A2 (Elementary)</option>
-                  <option value="B1">B1 (Intermediate)</option>
-                  <option value="B2">B2 (Upper Intermediate)</option>
-                  <option value="C1">C1 (Advanced)</option>
+                  {TEF_TARGET_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] block mb-1.5">Immigration Target</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] block mb-1.5">Desired CEFR Target</label>
                 <select
                   value={targetScore}
-                  onChange={(e) => setTargetScore(e.target.value)}
+                  onChange={(e) => setTargetScore(e.target.value as CefrLevel)}
                   className="w-full px-3 py-1.5 border border-[#E9E9E7] rounded-lg text-xs font-bold bg-[#FAFAF9] text-[#37352F] outline-none cursor-pointer focus:bg-white"
                 >
-                  <option value="CLB 5 (A2/B1 equivalent)">CLB 5 (Moderate)</option>
-                  <option value="CLB 7 (B2 equivalent)">CLB 7 (Trilingual Route)</option>
-                  <option value="CLB 9 (C1 equivalent)">CLB 9 (Express Entry Max)</option>
-                  <option value="CLB 10 (C2 equivalent)">CLB 10 (Mastery)</option>
+                  {TEF_TARGET_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 

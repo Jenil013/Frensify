@@ -1,6 +1,10 @@
 // Frensify Types & Interfaces
 
+import type { CefrLevel } from "./tefConstants";
+
 export type ExamPathway = "TEF" | "TCF";
+
+export type { CefrLevel };
 
 export type SkillType = "listening" | "reading" | "speaking" | "writing";
 
@@ -36,8 +40,8 @@ export interface UserProfile {
   name: string;
   email: string;
   targetExam: ExamPathway;
-  targetScore: string; // e.g. "CLB 7 (B2)", "CLB 9 (C1)"
-  currentLevel: string; // "A1" | "A2" | "B1" | "B2" | "C1" | "C2"
+  targetScore: CefrLevel; // CEFR target (A1–C2) for TEF/TCF analytics
+  currentLevel: CefrLevel;
   streakDays: number;
   lastActiveDate: string; // YYYY-MM-DD
   tier: UserSubscriptionTier;

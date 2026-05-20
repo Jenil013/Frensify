@@ -1,6 +1,14 @@
-import React, { useState } from "react";
-import { User, Shield, Compass, Calendar, Target, CheckCircle2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { UserProfile, ExamPathway } from "../types";
+import {
+  CefrLevel,
+  TEF_TARGET_OPTIONS,
+  parseCefrTarget,
+  getTefTargetLabel,
+} from "../tefConstants";
+import TefGradingScheme from "./tef/TefGradingScheme";
+import TefScoreEquivalenceTable from "./tef/TefScoreEquivalenceTable";
 
 interface AccountTabProps {
   profile: UserProfile;
@@ -14,8 +22,16 @@ export default function AccountTab({
   const [name, setName] = useState(profile.name);
   const [preferredExam, setPreferredExam] = useState<ExamPathway>(profile.targetExam);
   const [motivation, setMotivation] = useState("Canada Immigration (Express Entry)");
-  const [targetLevel, setTargetLevel] = useState(profile.targetScore);
+  const [targetLevel, setTargetLevel] = useState<CefrLevel>(
+    parseCefrTarget(profile.targetScore)
+  );
   const [showToast, setShowToast] = useState(false);
+
+  useEffect(() => {
+    setTargetLevel(parseCefrTarget(profile.targetScore));
+  }, [profile.targetScore]);
+
+  const selectedTargetMeta = TEF_TARGET_OPTIONS.find((o) => o.value === targetLevel);
 
   const handleSave = () => {
     onUpdateProfile({
@@ -35,7 +51,6 @@ export default function AccountTab({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Profile Card editing */}
         <div className="lg:col-span-8 bg-white border border-[#E9E9E7] rounded-xl p-5 md:p-6 shadow-premium space-y-5">
           <h3 className="font-bold text-xs uppercase tracking-wider text-[#7A7A78] pb-1 border-b border-[#F1F1EF]">Candidate Specifications</h3>
           
@@ -85,21 +100,40 @@ export default function AccountTab({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] block">Desired Score Target</label>
-              <input
-                type="text"
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] block">
+                Desired Score Target
+              </label>
+              <select
+                id="select-target-cefr"
                 value={targetLevel}
-                onChange={(e) => setTargetLevel(e.target.value)}
-                placeholder="Ex: C1 (CLB 9 equivalent)"
-                className="w-full text-xs px-3 py-2 bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg outline-none focus:border-[#1A73E8] focus:bg-white text-[#37352F]"
-              />
+                onChange={(e) => setTargetLevel(e.target.value as CefrLevel)}
+                className="w-full text-xs px-3 py-2 bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg text-[#37352F] font-bold outline-none cursor-pointer focus:border-[#1A73E8] focus:bg-white"
+              >
+                {TEF_TARGET_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {selectedTargetMeta && (
+                <p className="text-[10px] text-[#7A7A78] leading-relaxed">
+                  {selectedTargetMeta.subtitle}
+                  {selectedTargetMeta.canadaNote && (
+                    <span className="block text-[#1D74B4] mt-0.5">
+                      🇨🇦 {selectedTargetMeta.canadaNote}
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
           {showToast && (
             <div className="bg-[#EAF5F1] border border-[#D1EBE1] text-xs p-3.5 rounded-lg text-[#2D6A53] flex gap-2 items-center animate-fade-in font-mono">
               <CheckCircle2 className="w-4 h-4" />
-              <p>Candidate metrics synchronized across active academic diagnostic databases.</p>
+              <p>
+                Target set to {getTefTargetLabel(targetLevel)} — synced for analytics & NCLC tracking.
+              </p>
             </div>
           )}
 
@@ -112,10 +146,8 @@ export default function AccountTab({
               Save Profile Configuration
             </button>
           </div>
-
         </div>
 
-        {/* Account subscription status sidepanel */}
         <div className="lg:col-span-4 bg-white border border-[#E9E9E7] rounded-xl p-5 shadow-premium flex flex-col justify-between space-y-5">
           <div className="space-y-4">
             <h3 className="font-bold text-xs uppercase tracking-wider text-[#7A7A78] pb-1 border-b border-[#F1F1EF]">Subscription Status</h3>
@@ -129,7 +161,7 @@ export default function AccountTab({
               <div className="text-xs text-[#5F5E5B] leading-relaxed font-mono space-y-1">
                 <p><strong>Candidate:</strong> {profile.email}</p>
                 <p><strong>Examiner Locale:</strong> FR Paris GMT+1</p>
-                <p><strong>Active Diagnostic:</strong> B2 Operational</p>
+                <p><strong>CEFR Target:</strong> {getTefTargetLabel(parseCefrTarget(profile.targetScore))}</p>
               </div>
             </div>
           </div>
@@ -140,9 +172,18 @@ export default function AccountTab({
               Frensify protects your diagnostic logs and audio transcripts using secure sandboxing protocols.
             </p>
           </div>
-
         </div>
       </div>
+
+      {preferredExam === "TEF" && (
+        <div className="space-y-6 bg-white border border-[#E9E9E7] rounded-xl p-5 md:p-6 shadow-premium">
+          <h3 className="font-bold text-xs uppercase tracking-wider text-[#7A7A78] pb-1 border-b border-[#F1F1EF]">
+            TEF Official Grading Reference
+          </h3>
+          <TefScoreEquivalenceTable targetCefr={targetLevel} showSample />
+          <TefGradingScheme highlightLevel={targetLevel} />
+        </div>
+      )}
     </div>
   );
 }
