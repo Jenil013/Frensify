@@ -1,9 +1,14 @@
-import { McqItem, TcfModuleDefinition, TcfModuleId } from "../types";
+import { McqItem, TcfModuleDefinition, TcfModuleId, TefModuleDefinition, TefModuleId } from "../types";
 import {
   PLACEHOLDER_LISTENING_QUESTIONS,
   PLACEHOLDER_READING_QUESTIONS,
   TCF_MODULE_REGISTRY,
 } from "../tcfConstants";
+import {
+  TEF_MODULE_REGISTRY,
+  TEF_PLACEHOLDER_LISTENING_QUESTIONS,
+  TEF_PLACEHOLDER_READING_QUESTIONS,
+} from "../tefConstants";
 
 /**
  * Supabase table mapping (when you connect your question bank):
@@ -64,4 +69,25 @@ export function mergeModuleQuestions(
   questions: McqItem[]
 ): TcfModuleDefinition {
   return { ...module, questions };
+}
+
+function attachTefMcqQuestions(
+  moduleId: TefModuleId,
+  questions: McqItem[]
+): TefModuleDefinition {
+  const base = TEF_MODULE_REGISTRY[moduleId];
+  return { ...base, questions };
+}
+
+export async function loadTefModule(
+  moduleId: TefModuleId
+): Promise<TefModuleDefinition> {
+  switch (moduleId) {
+    case "comprehension-ecrite":
+      return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_READING_QUESTIONS);
+    case "comprehension-orale":
+      return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_LISTENING_QUESTIONS);
+    default:
+      return { ...TEF_MODULE_REGISTRY[moduleId] };
+  }
 }

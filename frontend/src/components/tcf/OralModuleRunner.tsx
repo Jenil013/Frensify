@@ -5,6 +5,7 @@ import { evaluateSpeaking } from "../../api";
 import {
   ExamPathway,
   OralModuleResult,
+  OralSectionResult,
   TcfModuleDefinition,
 } from "../../types";
 
@@ -16,6 +17,8 @@ interface OralModuleRunnerProps {
   examMode?: boolean;
 }
 
+const TASK_IDS = ["1", "2", "3"] as const;
+
 export default function OralModuleRunner({
   module,
   examType,
@@ -23,32 +26,30 @@ export default function OralModuleRunner({
   onAbort,
   examMode = true,
 }: OralModuleRunnerProps) {
-  const sections = module.meta.sections!;
-  const sectionA = module.sections!.A;
-  const sectionB = module.sections!.B;
-  const metaA = sections.find((s) => s.id === "A")!;
-  const metaB = sections.find((s) => s.id === "B")!;
+  const sectionsMeta = module.meta.sections!;
+  const sectionContent = module.sections!;
 
-  const [currentSection, setCurrentSection] = useState<"A" | "B">("A");
-  const [transcriptA, setTranscriptA] = useState("");
-  const [transcriptB, setTranscriptB] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(metaA.durationMinutes * 60);
+  const [currentTask, setCurrentTask] = useState(0);
+  const [transcripts, setTranscripts] = useState<string[]>(["", "", ""]);
+  const [secondsLeft, setSecondsLeft] = useState(
+    sectionsMeta[0].durationMinutes * 60
+  );
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [resultA, setResultA] = useState<OralModuleResult["sections"][0] | null>(null);
+  const [completedResults, setCompletedResults] = useState<OralSectionResult[]>([]);
 
-  const activeMeta = currentSection === "A" ? metaA : metaB;
-  const activeContent = currentSection === "A" ? sectionA : sectionB;
-  const activeTranscript = currentSection === "A" ? transcriptA : transcriptB;
-  const setActiveTranscript = currentSection === "A" ? setTranscriptA : setTranscriptB;
-  const maxRecordingSec = activeMeta.durationMinutes * 60;
+  const taskId = TASK_IDS[currentTask];
+  const meta = sectionsMeta[currentTask];
+  const content = sectionContent[taskId];
+  const activeTranscript = transcripts[currentTask];
+  const maxRecordingSec = meta.durationMinutes * 60;
 
   useEffect(() => {
-    setSecondsLeft(activeMeta.durationMinutes * 60);
+    setSecondsLeft(sectionsMeta[currentTask].durationMinutes * 60);
     setIsRecording(false);
     setRecordingSeconds(0);
-  }, [currentSection, activeMeta.durationMinutes]);
+  }, [currentTask, sectionsMeta]);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -70,127 +71,79 @@ export default function OralModuleRunner({
     return () => clearInterval(t);
   }, [isRecording, maxRecordingSec]);
 
-  const submitSectionA = useCallback(async () => {
-    if (!transcriptA.trim()) return;
+  const updateTranscript = (value: string) => {
+    setTranscripts((prev) => {
+      const next = [...prev];
+      next[currentTask] = value;
+      return next;
+    });
+  };
+
+  const submitCurrentTask = useCallback(async () => {
+    if (!activeTranscript.trim()) return;
     setLoading(true);
     try {
       const feedback = await evaluateSpeaking(
-        sectionA.prompt,
-        transcriptA,
+        content.prompt,
+        activeTranscript,
         0,
-        recordingSeconds || metaA.durationMinutes * 60,
+        recordingSeconds || meta.durationMinutes * 60,
         examType,
-        "A"
+        taskId
       );
-      setResultA({
-        sectionId: "A",
-        transcript: transcriptA,
+      const sectionResult: OralSectionResult = {
+        sectionId: taskId,
+        transcript: activeTranscript,
         durationSeconds: recordingSeconds,
         feedback,
-      });
-      setCurrentSection("B");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    transcriptA,
-    recordingSeconds,
-    metaA.durationMinutes,
-    sectionA.prompt,
-    examType,
-  ]);
+      };
+      const nextResults = [...completedResults, sectionResult];
+      setCompletedResults(nextResults);
 
-  const finishModule = useCallback(async () => {
-    if (!transcriptB.trim()) return;
-    setLoading(true);
-    try {
-      const feedbackB = await evaluateSpeaking(
-        sectionB.prompt,
-        transcriptB,
-        0,
-        recordingSeconds || metaB.durationMinutes * 60,
-        examType,
-        "B"
-      );
-      const sectionsOut: OralModuleResult["sections"] = [
-        resultA ?? {
-          sectionId: "A",
-          transcript: transcriptA,
-          durationSeconds: 0,
-        },
-        {
-          sectionId: "B",
-          transcript: transcriptB,
-          durationSeconds: recordingSeconds,
-          feedback: feedbackB,
-        },
-      ];
-      if (!resultA && transcriptA.trim()) {
-        const feedbackA = await evaluateSpeaking(
-          sectionA.prompt,
-          transcriptA,
-          0,
-          metaA.durationMinutes * 60,
-          examType,
-          "A"
-        );
-        sectionsOut[0] = {
-          sectionId: "A",
-          transcript: transcriptA,
-          durationSeconds: metaA.durationMinutes * 60,
-          feedback: feedbackA,
-        };
+      if (currentTask < 2) {
+        setCurrentTask((t) => t + 1);
+      } else {
+        onComplete({ sections: nextResults });
       }
-      onComplete({ sections: sectionsOut });
     } finally {
       setLoading(false);
     }
   }, [
-    transcriptB,
+    activeTranscript,
+    content.prompt,
     recordingSeconds,
-    metaB.durationMinutes,
-    sectionB.prompt,
+    meta.durationMinutes,
     examType,
-    resultA,
-    transcriptA,
-    sectionA.prompt,
-    metaA.durationMinutes,
+    taskId,
+    completedResults,
+    currentTask,
     onComplete,
   ]);
 
+  const isLastTask = currentTask === 2;
+
   const footer = (
     <div className="flex justify-end">
-      {currentSection === "A" ? (
-        <button
-          type="button"
-          disabled={loading || !transcriptA.trim()}
-          onClick={submitSectionA}
-          className="px-4 py-2 bg-[#37352F] text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-        >
-          {loading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <>
-              Complete Section A <ChevronRight className="w-4 h-4" />
-            </>
-          )}
-        </button>
-      ) : (
-        <button
-          type="button"
-          disabled={loading || !transcriptB.trim()}
-          onClick={finishModule}
-          className="px-4 py-2 bg-[#2D6A53] text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-        >
-          {loading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <>
-              <Sparkles className="w-3.5 h-3.5" /> Submit module
-            </>
-          )}
-        </button>
-      )}
+      <button
+        type="button"
+        disabled={loading || !activeTranscript.trim()}
+        onClick={submitCurrentTask}
+        className={`px-4 py-2 text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer ${
+          isLastTask ? "bg-[#2D6A53]" : "bg-[#37352F]"
+        }`}
+      >
+        {loading ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : isLastTask ? (
+          <>
+            <Sparkles className="w-3.5 h-3.5" /> Submit module
+          </>
+        ) : (
+          <>
+            Complete Task {currentTask + 1} <ChevronRight className="w-4 h-4" />
+          </>
+        )}
+      </button>
     </div>
   );
 
@@ -199,22 +152,35 @@ export default function OralModuleRunner({
       title={module.meta.labelFr}
       objective={module.meta.objective}
       secondsRemaining={secondsLeft}
-      currentSection={currentSection}
-      sectionLabels={{
-        A: `A · ${metaA.durationMinutes} min`,
-        B: `B · ${metaB.durationMinutes} min`,
-      }}
+      progressLabel={`Task ${currentTask + 1}/3`}
       onAbort={onAbort}
       footer={footer}
     >
       <div className="space-y-3">
-        <p className="text-xs font-bold text-[#37352F]">{activeMeta.label}</p>
-        {activeContent.stimulus && (
+        <div className="flex gap-1 p-1 bg-[#F1F1EF] border border-[#E9E9E7] rounded-lg">
+          {TASK_IDS.map((id, idx) => (
+            <div
+              key={id}
+              className={`flex-1 px-3 py-1.5 rounded-md text-xs text-center ${
+                idx === currentTask
+                  ? "bg-white font-bold border border-[#E9E9E7] shadow-sm text-[#37352F]"
+                  : idx < currentTask
+                  ? "text-[#2D6A53] font-medium"
+                  : "text-[#7B7B79]"
+              }`}
+            >
+              {sectionsMeta[idx].label.split("—")[0].trim()}
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs font-bold text-[#37352F]">{meta.label}</p>
+        {content.stimulus && (
           <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-3 text-xs">
-            {activeContent.stimulus}
+            {content.stimulus}
           </div>
         )}
-        <p className="text-xs text-[#5F5E5B]">{activeContent.prompt}</p>
+        <p className="text-xs text-[#5F5E5B]">{content.prompt}</p>
 
         <div className="flex items-center gap-2">
           {!isRecording ? (
@@ -226,7 +192,7 @@ export default function OralModuleRunner({
               }}
               className="px-3 py-1.5 bg-[#FCECF0] border border-[#F8D4DE] text-[#B83E5C] text-xs font-bold rounded-lg cursor-pointer"
             >
-              Start recording ({activeMeta.durationMinutes} min max)
+              Start recording ({meta.durationMinutes} min max)
             </button>
           ) : (
             <button
@@ -241,7 +207,7 @@ export default function OralModuleRunner({
 
         <textarea
           value={activeTranscript}
-          onChange={(e) => setActiveTranscript(e.target.value)}
+          onChange={(e) => updateTranscript(e.target.value)}
           rows={5}
           placeholder={
             examMode

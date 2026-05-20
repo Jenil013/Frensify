@@ -59,10 +59,11 @@ export type TcfModuleId =
   | "expression-orale";
 
 export interface TcfSectionMeta {
-  id: "A" | "B";
+  id: string;
   label: string;
   durationMinutes: number;
   minWords?: number;
+  maxWords?: number;
   taskType: "mcq" | "essay" | "oral-response";
 }
 
@@ -97,10 +98,7 @@ export interface TcfExpressionSection {
 export interface TcfModuleDefinition {
   meta: TcfModuleMeta;
   questions?: McqItem[];
-  sections?: {
-    A: TcfExpressionSection;
-    B: TcfExpressionSection;
-  };
+  sections?: Record<string, TcfExpressionSection>;
 }
 
 export interface McqModuleResult {
@@ -110,7 +108,7 @@ export interface McqModuleResult {
 }
 
 export interface WritingSectionResult {
-  sectionId: "A" | "B";
+  sectionId: string;
   text: string;
   wordCount: number;
   feedback?: AIWritingCorrection;
@@ -121,7 +119,7 @@ export interface WritingModuleResult {
 }
 
 export interface OralSectionResult {
-  sectionId: "A" | "B";
+  sectionId: string;
   transcript: string;
   durationSeconds: number;
   feedback?: AISpeakingSuggestion;
@@ -194,6 +192,61 @@ export interface AISpeakingSuggestion {
     context: string;
   }[];
   modelSpokenDraft: string;
+}
+
+// --- TEF official module structure ---
+
+export type TefModuleId =
+  | "comprehension-orale"
+  | "comprehension-ecrite"
+  | "expression-ecrite"
+  | "expression-orale";
+
+export interface TefSectionMeta {
+  id: string;
+  label: string;
+  durationMinutes: number;
+  minWords?: number;
+  maxWords?: number;
+  taskType: "mcq" | "essay" | "oral-response";
+}
+
+export interface TefModuleMeta {
+  id: TefModuleId;
+  labelFr: string;
+  labelEn: string;
+  objective: string;
+  durationMinutes: number;
+  questionCount?: number;
+  format: "mcq" | "sections";
+  scoring: "+1/0" | "ai-rubric";
+  sections?: TefSectionMeta[];
+}
+
+export interface TefExpressionSection {
+  prompt: string;
+  stimulus?: string;
+}
+
+export interface TefModuleDefinition {
+  meta: TefModuleMeta;
+  questions?: McqItem[];
+  sections?: Record<string, TefExpressionSection>;
+}
+
+export interface TefModuleCompletionResult {
+  type: "mcq" | "writing" | "oral";
+  moduleId: TefModuleId;
+  result: McqModuleResult | WritingModuleResult | OralModuleResult;
+}
+
+export interface TefMockModuleResult {
+  moduleId: TefModuleId;
+  moduleLabel: string;
+  rawScore?: number;
+  maxScore?: number;
+  scorePct?: number;
+  sectionCefr?: Record<string, string | undefined>;
 }
 
 export interface StudyPlanDay {

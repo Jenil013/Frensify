@@ -7,7 +7,7 @@ import {
   CefrLevel,
   CEFR_LEVEL_COLORS,
   TefSkillId,
-} from "../../tefConstants";
+} from "../../tefConstants";  
 
 const SKILL_ICONS: Record<TefSkillId, React.ReactNode> = {
   "comprehension-orale": <Headphones className="w-4 h-4" />,
