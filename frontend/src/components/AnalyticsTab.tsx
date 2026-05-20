@@ -1,6 +1,7 @@
 import React from "react";
 import { BarChart, Compass, Award, Sparkles, ShieldAlert } from "lucide-react";
 import { UserProfile } from "../types";
+import { getModuleLabel } from "../tcfConstants";
 
 interface AnalyticsTabProps {
   profile: UserProfile;
@@ -65,6 +66,28 @@ export default function AnalyticsTab({
             </div>
           </div>
 
+          {(profile.moduleScores?.length ?? 0) > 0 && (
+            <div className="bg-white border border-[#E9E9E7] rounded-xl p-5 shadow-premium">
+              <h3 className="text-xs font-bold uppercase text-[#7A7A78] mb-3">
+                Recent TCF module scores (+1/0 comprehension)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {profile.moduleScores!.slice(0, 4).map((m, i) => (
+                  <div
+                    key={`${m.moduleId}-${m.date}-${i}`}
+                    className="text-xs border rounded-lg p-2.5 bg-[#FAFAF9]"
+                  >
+                    <span className="font-bold">{getModuleLabel(m.moduleId)}</span>
+                    <p className="text-[#2D6A53] font-mono mt-0.5">
+                      {m.rawScore}/{m.maxScore}
+                    </p>
+                    <p className="text-[10px] text-[#9B9A97]">{m.date}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Advice panel */}
             <div className="lg:col-span-8 bg-white border border-[#E9E9E7] rounded-xl p-5 md:p-6 shadow-premium space-y-5">
@@ -74,9 +97,9 @@ export default function AnalyticsTab({
                 <div className="bg-[#EAF5F1] border border-[#D1EBE1] rounded-lg p-3.5 flex gap-3 items-start">
                   <Sparkles className="w-4 h-4 text-[#2D6A53] shrink-0 mt-0.5" />
                   <div className="text-xs space-y-1">
-                    <p className="font-bold text-[#2D6A53]">Primary Skill Strengths: Reading Comprehension</p>
+                    <p className="font-bold text-[#2D6A53]">Primary Skill Strengths: Compréhension écrite</p>
                     <p className="text-[#37352F] leading-relaxed">
-                      Your answer transcripts indicate a superior command of abstract journalistic arguments and complex connector parsing. Daily velocity is excellent (Current: B2/C1 range) with comfortable text comprehension.
+                      Track performance on the official 40-question / 60-minute reading module (+1/0). Scores appear here after each full module or mock simulation.
                     </p>
                   </div>
                 </div>

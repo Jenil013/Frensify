@@ -6,6 +6,32 @@ export type SkillType = "listening" | "reading" | "speaking" | "writing";
 
 export type UserSubscriptionTier = "Free" | "Pro" | "Max";
 
+export interface MockTestScore {
+  examId: string;
+  examName: string;
+  date: string;
+  scorePct: number;
+  cefr: string;
+  moduleBreakdown?: TcfMockModuleResult[];
+}
+
+export interface TcfMockModuleResult {
+  moduleId: TcfModuleId;
+  moduleLabel: string;
+  rawScore?: number;
+  maxScore?: number;
+  scorePct?: number;
+  sectionCefr?: { A?: string; B?: string };
+}
+
+export interface ModuleScoreRecord {
+  moduleId: TcfModuleId;
+  rawScore: number;
+  maxScore: number;
+  date: string;
+  examContext?: string;
+}
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -16,8 +42,95 @@ export interface UserProfile {
   lastActiveDate: string; // YYYY-MM-DD
   tier: UserSubscriptionTier;
   completedActivities: string[]; // ids of exercises completed
-  mockTestScores: { examId: string; examName: string; date: string; scorePct: number; cefr: string }[];
+  mockTestScores: MockTestScore[];
+  moduleScores?: ModuleScoreRecord[];
 }
+
+// --- TCF official module structure (Supabase-ready) ---
+
+export type TcfModuleId =
+  | "comprehension-ecrite"
+  | "comprehension-orale"
+  | "expression-ecrite"
+  | "expression-orale";
+
+export interface TcfSectionMeta {
+  id: "A" | "B";
+  label: string;
+  durationMinutes: number;
+  minWords?: number;
+  taskType: "mcq" | "essay" | "oral-response";
+}
+
+export interface TcfModuleMeta {
+  id: TcfModuleId;
+  labelFr: string;
+  labelEn: string;
+  objective: string;
+  durationMinutes: number;
+  questionCount?: number;
+  format: "mcq" | "sections";
+  scoring: "+1/0" | "ai-rubric";
+  sections?: TcfSectionMeta[];
+}
+
+export interface McqItem {
+  id: string;
+  prompt: string;
+  passage?: string;
+  audioUrl?: string;
+  transcript?: string;
+  choices: string[];
+  correctChoiceIndex: number;
+  explanation?: string;
+}
+
+export interface TcfExpressionSection {
+  prompt: string;
+  stimulus?: string;
+}
+
+export interface TcfModuleDefinition {
+  meta: TcfModuleMeta;
+  questions?: McqItem[];
+  sections?: {
+    A: TcfExpressionSection;
+    B: TcfExpressionSection;
+  };
+}
+
+export interface McqModuleResult {
+  rawScore: number;
+  maxScore: number;
+  answers: (number | null)[];
+}
+
+export interface WritingSectionResult {
+  sectionId: "A" | "B";
+  text: string;
+  wordCount: number;
+  feedback?: AIWritingCorrection;
+}
+
+export interface WritingModuleResult {
+  sections: WritingSectionResult[];
+}
+
+export interface OralSectionResult {
+  sectionId: "A" | "B";
+  transcript: string;
+  durationSeconds: number;
+  feedback?: AISpeakingSuggestion;
+}
+
+export interface OralModuleResult {
+  sections: OralSectionResult[];
+}
+
+export type TcfModuleCompletionResult =
+  | { type: "mcq"; result: McqModuleResult }
+  | { type: "writing"; result: WritingModuleResult }
+  | { type: "oral"; result: OralModuleResult };
 
 export interface VocabularyCard {
   id: string;

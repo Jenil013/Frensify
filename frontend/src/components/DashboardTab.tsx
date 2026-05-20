@@ -25,10 +25,10 @@ export default function DashboardTab({
     : 84;
 
   const skillData = [
-    { name: "Listening Skills", score: "C1 Elite", pct: 90, tagColor: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]", barColor: "bg-[#2D6A53]", barBg: "bg-[#EAF5F1]" },
-    { name: "Reading Analysis", score: "B2 Upper", pct: 72, tagColor: "bg-[#FDF3E7] text-[#9A5013] border-[#FCE1CA]", barColor: "bg-[#9A5013]", barBg: "bg-[#FDF3E7]" },
-    { name: "Writing Argument", score: "C1 Draft", pct: 85, tagColor: "bg-[#E8F3FC] text-[#1D74B4] border-[#D2E7F6]", barColor: "bg-[#1D74B4]", barBg: "bg-[#E8F3FC]" },
-    { name: "Speaking Fluency", score: "B1 Active", pct: 60, tagColor: "bg-[#FCECF0] text-[#B83E5C] border-[#F8D4DE]", barColor: "bg-[#B83E5C]", barBg: "bg-[#FCECF0]" },
+    { name: "Compréhension orale (40 Q)", score: "C1 Elite", pct: 90, tagColor: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]", barColor: "bg-[#2D6A53]", barBg: "bg-[#EAF5F1]" },
+    { name: "Compréhension écrite (40 Q)", score: "B2 Upper", pct: 72, tagColor: "bg-[#FDF3E7] text-[#9A5013] border-[#FCE1CA]", barColor: "bg-[#9A5013]", barBg: "bg-[#FDF3E7]" },
+    { name: "Expression écrite (A+B)", score: "C1 Draft", pct: 85, tagColor: "bg-[#E8F3FC] text-[#1D74B4] border-[#D2E7F6]", barColor: "bg-[#1D74B4]", barBg: "bg-[#E8F3FC]" },
+    { name: "Expression orale (A+B)", score: "B1 Active", pct: 60, tagColor: "bg-[#FCECF0] text-[#B83E5C] border-[#F8D4DE]", barColor: "bg-[#B83E5C]", barBg: "bg-[#FCECF0]" },
   ];
 
   return (
@@ -54,8 +54,8 @@ export default function DashboardTab({
             </h2>
             <p className="text-[#3B4C7C] text-xs leading-relaxed max-w-xl">
               {recommendedExercise.skill === "speaking" 
-                ? "Improve oral grade bands with complex structures. Try writing simulated argument summaries using formal tools."
-                : "A rigorous timed reading simulation. Secure your Canadian Express Entry benchmarks using instant LLM diagnostics."}
+                ? "TCF oral module: Section A (5 min, obtain info) and Section B (10 min, convince). Practice full 15-minute format."
+                : "TCF reading module: 40 MCQs in 60 minutes with +1/0 scoring. Run a full module from Practice or Simulations."}
             </p>
           </div>
           

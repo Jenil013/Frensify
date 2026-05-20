@@ -44,7 +44,7 @@ export default function PricingTab({
       cta: "Promote to Pro",
       features: [
         "Include all Free essentials",
-        "2 fully timed TEF/TCF Mock Exams",
+        "2 full-length TCF simulations (~175 min, 4 modules)",
         "AI Writing Correction & grading analysis",
         "Interactive analytics and readiness tracking",
         "Personalized AI study plans customized daily",
@@ -80,7 +80,7 @@ export default function PricingTab({
     <div id="pricing-tab" className="space-y-6 animate-fade-in text-[#37352F]">
       <div className="text-center max-w-xl mx-auto space-y-1.5">
         <h2 className="text-xl font-bold tracking-tight text-[#37352F]">Subscription Pricing</h2>
-        <p className="text-xs text-[#7A7A78]">Select the optimal coach tier to secure your Express Entry or university certification marks.</p>
+        <p className="text-xs text-[#7A7A78]">Select the optimal coach tier to secure the Frensify future.</p>
         
         {/* Active state warning tip */}
         <div className="pt-2">

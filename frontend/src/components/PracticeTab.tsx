@@ -3,8 +3,18 @@ import {
   BookOpen, Headphones, PenTool, Mic, Lock, ArrowRight, Sparkles, AlertCircle, ChevronRight, 
   Play, Pause, RotateCcw, Volume2, Check, X, CheckCircle, Info, Loader2, RefreshCw
 } from "lucide-react";
-import { UserProfile, ExerciseItem, SkillType, AIWritingCorrection, AISpeakingSuggestion } from "../types";
+import {
+  UserProfile,
+  ExerciseItem,
+  SkillType,
+  AIWritingCorrection,
+  AISpeakingSuggestion,
+  TcfModuleCompletionResult,
+  TcfModuleId,
+} from "../types";
 import { evaluateWriting, evaluateSpeaking } from "../api";
+import { TCF_MODULE_REGISTRY } from "../tcfConstants";
+import TcfModuleSession from "./tcf/TcfModuleSession";
 
 interface PracticeTabProps {
   profile: UserProfile;
@@ -48,6 +58,21 @@ export default function PracticeTab({
 
   // General error
   const [apiError, setApiError] = useState<string | null>(null);
+  const [activeTcfModule, setActiveTcfModule] = useState<TcfModuleId | null>(null);
+  const [moduleCompleteMsg, setModuleCompleteMsg] = useState<string | null>(null);
+
+  const skillToTcfModule: Record<SkillType, TcfModuleId> = {
+    reading: "comprehension-ecrite",
+    listening: "comprehension-orale",
+    writing: "expression-ecrite",
+    speaking: "expression-orale",
+  };
+
+  const getWritingMinWords = (ex: ExerciseItem): number => {
+    if (ex.id === "w1") return 200;
+    if (ex.id === "w2") return 250;
+    return 200;
+  };
 
   // Timer effects
   useEffect(() => {
@@ -184,6 +209,39 @@ export default function PracticeTab({
     ex => ex.examType === profile.targetExam && ex.skill === activeSkill
   );
 
+  const handleTcfModuleComplete = (result: TcfModuleCompletionResult) => {
+    if (result.type === "mcq") {
+      setModuleCompleteMsg(
+        `Module complete: ${result.result.rawScore}/${result.result.maxScore} (+1/0)`
+      );
+    } else if (result.type === "writing") {
+      const a = result.result.sections[0]?.feedback?.cefrScore ?? "—";
+      const b = result.result.sections[1]?.feedback?.cefrScore ?? "—";
+      setModuleCompleteMsg(`Writing module complete — Section A: ${a}, B: ${b}`);
+    } else {
+      const a = result.result.sections[0]?.feedback?.cefrLevel ?? "—";
+      const b = result.result.sections[1]?.feedback?.cefrLevel ?? "—";
+      setModuleCompleteMsg(`Oral module complete — Section A: ${a}, B: ${b}`);
+    }
+    setActiveTcfModule(null);
+  };
+
+  if (activeTcfModule) {
+    return (
+      <div id="practice-tab" className="space-y-4 animate-fade-in text-[#37352F]">
+        <TcfModuleSession
+          moduleId={activeTcfModule}
+          examType={profile.targetExam}
+          examMode={false}
+          onAbort={() => setActiveTcfModule(null)}
+          onComplete={handleTcfModuleComplete}
+        />
+      </div>
+    );
+  }
+
+  const tcfModuleMeta = TCF_MODULE_REGISTRY[skillToTcfModule[activeSkill]];
+
   return (
     <div id="practice-tab" className="space-y-6 animate-fade-in text-[#37352F]">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -222,8 +280,54 @@ export default function PracticeTab({
         </div>
       </div>
 
+      {moduleCompleteMsg && (
+        <div className="bg-[#EAF5F1] border border-[#D1EBE1] rounded-lg p-3 text-xs text-[#2D6A53] font-medium">
+          {moduleCompleteMsg}
+          <button
+            type="button"
+            onClick={() => setModuleCompleteMsg(null)}
+            className="ml-2 text-[#1D74B4] font-bold hover:underline cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {profile.targetExam === "TCF" && !selectedExercise && (
+        <div className="bg-[#EBF3FC] border border-[#D2E7F6] rounded-xl p-5 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+          <div>
+            <p className="text-[10px] font-bold uppercase text-[#1D74B4] tracking-wide">
+              Full TCF module
+            </p>
+            <h3 className="text-sm font-bold text-[#1E3A8A] mt-1">
+              {tcfModuleMeta.meta.labelFr}
+            </h3>
+            <p className="text-xs text-[#3B4C7C] mt-1 max-w-xl">
+              {tcfModuleMeta.meta.objective} — {tcfModuleMeta.meta.durationMinutes}{" "}
+              min
+              {tcfModuleMeta.meta.questionCount
+                ? ` · ${tcfModuleMeta.meta.questionCount} questions (+1/0)`
+                : " · Sections A & B"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (profile.tier === "Free") {
+                onNavigateToPricing();
+                return;
+              }
+              setActiveTcfModule(skillToTcfModule[activeSkill]);
+              setModuleCompleteMsg(null);
+            }}
+            className="px-4 py-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white text-xs font-bold rounded-lg cursor-pointer shrink-0"
+          >
+            Start full module
+          </button>
+        </div>
+      )}
+
       {!selectedExercise ? (
-        /* Exercises Listing Grid - Notion Database Gallery View style */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredExercises.map((ex) => {
             const locked = isExerciseLocked(ex);
@@ -382,7 +486,7 @@ export default function PracticeTab({
                   className="w-full text-xs md:text-sm p-4 border border-[#E9E9E7] rounded-xl outline-none focus:border-[#1A73E8] bg-[#FAFAF9] focus:bg-white transition-all text-[#37352F] font-mono leading-relaxed"
                 ></textarea>
                 <div className="flex justify-between text-[11px] text-[#7A7A78] font-mono">
-                  <span>Words: <strong className={writtenEssay.split(/\s+/).filter(Boolean).length >= 150 ? "text-[#10B981]" : ""}>{writtenEssay.split(/\s+/).filter(Boolean).length}</strong> / 200 min</span>
+                  <span>Words: <strong className={writtenEssay.split(/\s+/).filter(Boolean).length >= getWritingMinWords(selectedExercise) ? "text-[#10B981]" : ""}>{writtenEssay.split(/\s+/).filter(Boolean).length}</strong> / {getWritingMinWords(selectedExercise)} min</span>
                   <span>Letters: {writtenEssay.length}</span>
                 </div>
               </div>

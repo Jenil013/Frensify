@@ -239,13 +239,14 @@ export const MOCK_EXAMS_DB = [
   {
     id: "exam-tcf-1",
     examType: "TCF" as const,
-    name: "Frensify Ultra High-Stakes Prep TCF",
-    description: "Rigorous diagnostic exam for retakers and high-intent immigration applicants. Targets B2/C1 minimum standards across all interactive modules.",
-    estimatedDurationMin: 90,
-    readingsCount: 1,
-    listeningsCount: 1,
-    writingCount: 1,
-    speakingCount: 1,
+    name: "Frensify Official-Format TCF Simulation",
+    description:
+      "Full TCF: 40 reading MCQs (60 min), 40 listening MCQs (40 min), written expression A+B (60 min), oral expression A+B (15 min). +1/0 comprehension scoring.",
+    estimatedDurationMin: 175,
+    readingsCount: 40,
+    listeningsCount: 40,
+    writingCount: 2,
+    speakingCount: 2,
     premiumOnly: true
   },
   {

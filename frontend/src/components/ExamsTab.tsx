@@ -1,47 +1,96 @@
-import React, { useState, useEffect } from "react";
-import { Lock, FileText, ChevronRight, Play, Award, Timer, ChevronLeft, Info, HelpCircle } from "lucide-react";
-import { UserProfile, ExamPathway } from "../types";
+import React, { useState } from "react";
+import { Lock, Play, Award } from "lucide-react";
+import {
+  UserProfile,
+  TcfMockModuleResult,
+  TcfModuleCompletionResult,
+  TcfModuleId,
+} from "../types";
 import { MOCK_EXAMS_DB } from "../constants";
+import { TCF_MODULE_ORDER, getModuleLabel } from "../tcfConstants";
+import TcfModuleSession from "./tcf/TcfModuleSession";
 
 interface ExamsTabProps {
   profile: UserProfile;
   onNavigateToPricing: () => void;
-  onSaveMockScore: (examId: string, name: string, scorePct: number, cefr: string) => void;
+  onSaveMockScore: (
+    examId: string,
+    name: string,
+    scorePct: number,
+    cefr: string,
+    moduleBreakdown?: TcfMockModuleResult[]
+  ) => void;
+  onSaveModuleScore?: (
+    moduleId: TcfModuleId,
+    rawScore: number,
+    maxScore: number,
+    examContext: string
+  ) => void;
+}
+
+type ModuleResultsMap = Partial<Record<TcfModuleId, TcfModuleCompletionResult>>;
+
+function buildModuleBreakdown(
+  results: ModuleResultsMap
+): TcfMockModuleResult[] {
+  return TCF_MODULE_ORDER.map((moduleId) => {
+    const label = getModuleLabel(moduleId);
+    const r = results[moduleId];
+    if (!r) return { moduleId, moduleLabel: label };
+
+    if (r.type === "mcq") {
+      const pct = Math.round((r.result.rawScore / r.result.maxScore) * 100);
+      return {
+        moduleId,
+        moduleLabel: label,
+        rawScore: r.result.rawScore,
+        maxScore: r.result.maxScore,
+        scorePct: pct,
+      };
+    }
+    if (r.type === "writing") {
+      return {
+        moduleId,
+        moduleLabel: label,
+        sectionCefr: {
+          A: r.result.sections[0]?.feedback?.cefrScore,
+          B: r.result.sections[1]?.feedback?.cefrScore,
+        },
+      };
+    }
+    return {
+      moduleId,
+      moduleLabel: label,
+      sectionCefr: {
+        A: r.result.sections[0]?.feedback?.cefrLevel,
+        B: r.result.sections[1]?.feedback?.cefrLevel,
+      },
+    };
+  });
+}
+
+function aggregateScorePct(breakdown: TcfMockModuleResult[]): number {
+  const mcq = breakdown.filter((b) => b.maxScore != null && b.rawScore != null);
+  if (mcq.length === 0) return 0;
+  const totalRaw = mcq.reduce((a, b) => a + (b.rawScore ?? 0), 0);
+  const totalMax = mcq.reduce((a, b) => a + (b.maxScore ?? 0), 0);
+  return totalMax > 0 ? Math.round((totalRaw / totalMax) * 100) : 0;
 }
 
 export default function ExamsTab({
   profile,
   onNavigateToPricing,
   onSaveMockScore,
+  onSaveModuleScore,
 }: ExamsTabProps) {
-  const [activeSessionExam, setActiveSessionExam] = useState<typeof MOCK_EXAMS_DB[0] | null>(null);
-  const [currentStep, setCurrentStep] = useState(0); // 0: intro, 1: Reading, 2: Listening, 3: Writing, 4: Finished
+  const [activeSessionExam, setActiveSessionExam] = useState<
+    (typeof MOCK_EXAMS_DB)[0] | null
+  >(null);
+  const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
+  const [moduleResults, setModuleResults] = useState<ModuleResultsMap>({});
+  const [showResults, setShowResults] = useState(false);
 
-  // Exam responses
-  const [readingAns, setReadingAns] = useState<number | null>(null);
-  const [listeningAns, setListeningAns] = useState<number | null>(null);
-  const [writingText, setWritingText] = useState("");
-
-  // Timing
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const [isExamCompleted, setIsExamCompleted] = useState(false);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (activeSessionExam && secondsLeft > 0 && currentStep > 0 && currentStep < 4) {
-      interval = setInterval(() => {
-        setSecondsLeft(prev => prev - 1);
-      }, 1000);
-    } else if (activeSessionExam && secondsLeft === 0 && currentStep > 0 && currentStep < 4) {
-      // Auto submit when times out
-      setCurrentStep(4);
-      handleFinishExam();
-    }
-    return () => clearInterval(interval);
-  }, [activeSessionExam, secondsLeft, currentStep]);
-
-  const handleStartExam = (exam: typeof MOCK_EXAMS_DB[0]) => {
-    // Check Gate logic
+  const handleStartExam = (exam: (typeof MOCK_EXAMS_DB)[0]) => {
     if (profile.tier === "Free") {
       onNavigateToPricing();
       return;
@@ -50,73 +99,92 @@ export default function ExamsTab({
       onNavigateToPricing();
       return;
     }
+    if (exam.examType !== "TCF") {
+      window.alert(
+        "Full 4-module TCF simulation is available for TCF pathway. Switch your target exam in Settings."
+      );
+      return;
+    }
 
     setActiveSessionExam(exam);
-    setCurrentStep(1); // Go straight into Section 1 (Reading)
-    setSecondsLeft(exam.estimatedDurationMin * 60);
-    setReadingAns(null);
-    setListeningAns(null);
-    setWritingText("");
-    setIsExamCompleted(false);
+    setCurrentModuleIndex(0);
+    setModuleResults({});
+    setShowResults(false);
   };
 
-  const handleFinishExam = () => {
-    if (!activeSessionExam) return;
+  const handleModuleComplete = (result: TcfModuleCompletionResult) => {
+    const moduleId = TCF_MODULE_ORDER[currentModuleIndex];
+    const nextResults = { ...moduleResults, [moduleId]: result };
+    setModuleResults(nextResults);
 
-    // Evaluate answers
-    let correctCount = 0;
-    if (readingAns === 1) correctCount++; // r1 correct was 1
-    if (listeningAns === 1) correctCount++; // l1 correct was 1
+    if (result.type === "mcq" && onSaveModuleScore) {
+      onSaveModuleScore(
+        moduleId,
+        result.result.rawScore,
+        result.result.maxScore,
+        activeSessionExam?.name ?? "TCF module"
+      );
+    }
 
-    const correctPct = Math.round((correctCount / 2) * 100);
-    let estimatedCEFR = "B1";
-    if (correctPct === 100) estimatedCEFR = "C1";
-    else if (correctPct === 50) estimatedCEFR = "B2";
+    if (currentModuleIndex < TCF_MODULE_ORDER.length - 1) {
+      setCurrentModuleIndex((i) => i + 1);
+      return;
+    }
 
-    // Save mock test score to profile
-    onSaveMockScore(
-      activeSessionExam.id,
-      activeSessionExam.name,
-      correctPct,
-      estimatedCEFR
-    );
-    
-    setIsExamCompleted(true);
-    setCurrentStep(4); // Finished panel
+    const breakdown = buildModuleBreakdown(nextResults);
+    const scorePct = aggregateScorePct(breakdown);
+    const cefr =
+      scorePct >= 85 ? "C1" : scorePct >= 70 ? "B2" : scorePct >= 50 ? "B1" : "A2";
+
+    if (activeSessionExam) {
+      onSaveMockScore(
+        activeSessionExam.id,
+        activeSessionExam.name,
+        scorePct,
+        cefr,
+        breakdown
+      );
+    }
+    setShowResults(true);
   };
 
-  const formatTime = (secs: number) => {
-    const min = Math.floor(secs / 60);
-    const sec = secs % 60;
-    return `${min}:${sec < 10 ? "0" : ""}${sec}`;
-  };
+  const matchedExams = MOCK_EXAMS_DB.filter(
+    (ex) => ex.examType === profile.targetExam
+  );
 
-  // Filter exams matching pathway
-  const matchedExams = MOCK_EXAMS_DB.filter(ex => ex.examType === profile.targetExam);
+  const activeModuleId = TCF_MODULE_ORDER[currentModuleIndex];
 
   return (
     <div id="exams-tab" className="space-y-6 animate-fade-in text-[#37352F]">
       {!activeSessionExam ? (
-        /* Exams Index */
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-[#37352F]">Exam Simulations</h2>
-            <p className="text-xs text-[#7A7A78]">Complete chronological multi-section models replicating target test centers.</p>
+            <h2 className="text-xl font-bold tracking-tight text-[#37352F]">
+              Exam Simulations
+            </h2>
+            <p className="text-xs text-[#7A7A78]">
+              Official-format TCF modules: 40+40 MCQs, written A/B, oral A/B (~175
+              min total).
+            </p>
           </div>
 
           {profile.tier === "Free" && (
-            <div className="bg-[#FDF3E7] border border-[#FCE1CA] rounded-xl p-5 flex flex-col md:flex-row gap-5 justify-between items-start md:items-center shadow-premium">
+            <div className="bg-[#FDF3E7] border border-[#FCE1CA] rounded-xl p-5 flex flex-col md:flex-row gap-5 justify-between items-start md:items-center">
               <div className="space-y-1">
-                <h4 className="font-bold text-[#9A5013] text-sm uppercase tracking-wide">Locked Simulation Simulator Access Enabled For Pro</h4>
+                <h4 className="font-bold text-[#9A5013] text-sm uppercase tracking-wide">
+                  Pro required for full simulations
+                </h4>
                 <p className="text-xs text-[#9A5013] leading-relaxed max-w-xl">
-                  Free tiers are bounded to vocabulary catalogs. Unlock full timing simulators, structured multi-grid scoring diagnostics, and comprehensive CEFR reports.
+                  Unlock timed TCF modules with +1/0 comprehension scoring and AI
+                  rubrics for expression sections.
                 </p>
               </div>
-              <button 
+              <button
+                type="button"
                 onClick={onNavigateToPricing}
-                className="px-4 py-2 bg-[#9A5013] hover:bg-[#834310] text-white text-xs font-bold rounded-lg shrink-0 cursor-pointer"
+                className="px-4 py-2 bg-[#9A5013] hover:bg-[#834310] text-white text-xs font-bold rounded-lg cursor-pointer"
               >
-                Inspect Lifetime Tiers
+                View plans
               </button>
             </div>
           )}
@@ -128,46 +196,42 @@ export default function ExamsTab({
               const locked = normalLocked || maxLocked;
 
               return (
-                <div 
+                <div
                   key={exam.id}
-                  className="bg-white border border-[#E9E9E7] rounded-xl p-5 shadow-premium hover:shadow-premium-lg transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+                  className="bg-white border border-[#E9E9E7] rounded-xl p-5 shadow-premium flex flex-col md:flex-row justify-between gap-6"
                 >
                   <div className="space-y-1.5 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-bold text-[#5F5E5B] tracking-wider uppercase bg-[#F1F1EF] px-2 py-0.5 rounded border border-[#E9E9E7]">
-                        {exam.examType} PRO SIMULATION
-                      </span>
-                      {exam.isMaxOnly && (
-                        <span className="text-[9px] font-bold bg-[#EEEFFC] text-[#4A55A2] border border-[#DDE0FA] px-2 py-0.5 rounded">
-                          MAX TIER
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-sm font-bold text-[#37352F]">{exam.name}</h3>
-                    <p className="text-xs text-[#7A7A78] leading-relaxed max-w-2xl">{exam.description}</p>
-                    <div className="flex items-center gap-3 text-[10px] text-[#9B9A97] font-mono pt-1">
-                      <span>⏱️ {exam.estimatedDurationMin} minutes</span>
-                      <span>•</span>
-                      <span>📖 {exam.readingsCount} Comprehension Passage</span>
-                      <span>•</span>
-                      <span>🎧 {exam.listeningsCount} Listening Audio Feed</span>
+                    <span className="text-[9px] font-bold uppercase bg-[#F1F1EF] px-2 py-0.5 rounded border">
+                      {exam.examType}
+                    </span>
+                    <h3 className="text-sm font-bold">{exam.name}</h3>
+                    <p className="text-xs text-[#7A7A78] leading-relaxed">
+                      {exam.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-[10px] text-[#9B9A97] font-mono pt-1">
+                      <span>⏱️ {exam.estimatedDurationMin} min</span>
+                      <span>📖 {exam.readingsCount} reading</span>
+                      <span>🎧 {exam.listeningsCount} listening</span>
+                      <span>✍️ {exam.writingCount} writing sections</span>
+                      <span>🎤 {exam.speakingCount} oral sections</span>
                     </div>
                   </div>
-
-                  <div className="shrink-0 w-full md:w-auto">
+                  <div className="shrink-0">
                     {locked ? (
-                      <button 
+                      <button
+                        type="button"
                         onClick={onNavigateToPricing}
-                        className="w-full md:w-auto px-4 py-2 bg-[#FAFAF9] hover:bg-[#F1F1EF]/60 border border-[#E9E9E7] rounded-lg text-xs font-bold text-[#7B7B79] flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="px-4 py-2 border rounded-lg text-xs font-bold text-[#7B7B79] flex items-center gap-1.5 cursor-pointer"
                       >
-                        <Lock className="w-3.5 h-3.5" /> Unlock Test
+                        <Lock className="w-3.5 h-3.5" /> Unlock
                       </button>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => handleStartExam(exam)}
-                        className="w-full md:w-auto px-4 py-2 bg-[#2D6A53] hover:bg-[#204E3C] text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="px-4 py-2 bg-[#2D6A53] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                       >
-                        <Play className="w-3 h-3 fill-white" /> Start Simulation
+                        <Play className="w-3 h-3 fill-white" /> Start TCF mock
                       </button>
                     )}
                   </div>
@@ -176,226 +240,117 @@ export default function ExamsTab({
             })}
           </div>
         </div>
+      ) : showResults ? (
+        <ResultsPanel
+          breakdown={buildModuleBreakdown(moduleResults)}
+          examName={activeSessionExam.name}
+          onClose={() => setActiveSessionExam(null)}
+        />
       ) : (
-        /* Inside Active Exam Workspace UI */
-        <div className="bg-white border border-[#E9E9E7] rounded-xl p-5 md:p-6 shadow-premium-xl space-y-5">
-          
-          {/* Header metadata inside simulator */}
-          <div className="flex justify-between items-center pb-3 border-b border-[#F1F1EF]">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-[#37352F] uppercase bg-[#F1F1EF] px-2 py-0.5 rounded border border-[#E9E9E7]">{activeSessionExam.name}</span>
-              <div className="flex items-center gap-1 bg-[#FCECF0] border border-[#F8D4DE] px-2.5 py-0.5 rounded-lg text-xs text-[#B83E5C] font-bold">
-                <Timer className="w-3.5 h-3.5" />
-                <span className="font-mono">Time Left: {formatTime(secondsLeft)}</span>
-              </div>
-            </div>
-
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold">{activeSessionExam.name}</span>
+            <span className="text-[#7A7A78]">
+              Module {currentModuleIndex + 1}/{TCF_MODULE_ORDER.length}:{" "}
+              {getModuleLabel(activeModuleId)}
+            </span>
             <button
+              type="button"
               onClick={() => {
-                if (window.confirm("Abort this simulation? Your active transcript metrics will be discarded.")) {
+                if (
+                  window.confirm("Abort simulation? Progress will be lost.")
+                ) {
                   setActiveSessionExam(null);
                 }
               }}
-              className="text-xs text-[#B83E5C] font-semibold hover:underline cursor-pointer"
+              className="text-[#B83E5C] font-semibold hover:underline cursor-pointer"
             >
-              Abort Test ×
+              Abort
             </button>
           </div>
 
-          {/* Stepper Navigation */}
-          <div className="flex items-center gap-1 p-1 bg-[#F1F1EF] border border-[#E9E9E7] rounded-lg overflow-x-auto justify-start sm:justify-start">
-            {[1, 2, 3].map((step) => {
-              let stepLabel = step === 1 ? "Compréhension Écrite" : step === 2 ? "Compréhension Orale" : "Expression Écrite";
-              let tabBg = "text-[#7B7B79] hover:text-[#37352F]";
-              
-              if (currentStep === step) {
-                tabBg = "bg-white text-[#37352F] font-bold border border-[#E9E9E7] shadow-sm";
-              } else if (currentStep > step) {
-                tabBg = "bg-[#EAF5F1]/80 text-[#2D6A53] border border-[#D1EBE1]/40";
-              }
-
-              return (
-                <button
-                  key={step}
-                  onClick={() => setCurrentStep(step)}
-                  className={`px-3 py-1.5 rounded-md text-xs transition-all tracking-tight shrink-0 flex items-center gap-1 font-medium ${tabBg}`}
-                >
-                  <span>Sec {step}:</span>
-                  <span>{stepLabel}</span>
-                </button>
-              );
-            })}
+          <div className="flex gap-1 p-1 bg-[#F1F1EF] rounded-lg overflow-x-auto">
+            {TCF_MODULE_ORDER.map((id, idx) => (
+              <div
+                key={id}
+                className={`px-2 py-1 rounded text-[10px] shrink-0 ${
+                  idx === currentModuleIndex
+                    ? "bg-white font-bold border shadow-sm"
+                    : idx < currentModuleIndex
+                    ? "text-[#2D6A53]"
+                    : "text-[#9B9A97]"
+                }`}
+              >
+                {getModuleLabel(id)}
+              </div>
+            ))}
           </div>
 
-          {/* STEP 1: READING SECTION */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <div className="bg-[#FAFAF9] border border-[#E9E9E7] p-5 rounded-lg space-y-4">
-                <h4 className="font-bold text-[#37352F] text-xs uppercase tracking-wider">Compréhension Écrite (Reading passage simulation)</h4>
-                <p className="text-xs text-[#5F5E5B] leading-relaxed italic border-l-2 border-[#1A73E8] pl-3">
-                  "L'ère post-pandémique a propulsé le travail à distance au rang de norme opérationnelle. Néanmoins, cette flexibilité tant louée s'avère être une lame à double tranchant..."
-                </p>
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-[#7A7A78] uppercase">Question 1: Quelle est la position principale défendue dans l'analyse ?</p>
-                  {[
-                    "A) Interdire complètement le télétravail.",
-                    "B) Encadrer législativement le modèle hybride.",
-                    "C) Encourager les salariés à quitter l'entreprise.",
-                    "D) Supprimer la cohésion sociale."
-                  ].map((choice, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setReadingAns(i)}
-                      className={`w-full text-left p-3 rounded-lg border text-xs transition-all cursor-pointer ${
-                        readingAns === i ? "bg-[#EBF3FC] border-[#1A73E8] font-bold text-[#1D74B4]" : "bg-white border-[#E9E9E7] hover:bg-[#FAFAF9]"
-                      }`}
-                    >
-                      {choice}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-between pt-2">
-                <span></span>
-                <button
-                  onClick={() => setCurrentStep(2)}
-                  className="px-4 py-2 bg-[#37352F] hover:bg-black text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
-                >
-                  Save & Proceed <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2: LISTENING SECTION */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="bg-[#FAFAF9] border border-[#E9E9E7] p-5 rounded-lg space-y-4">
-                <h4 className="font-bold text-[#37352F] text-xs uppercase tracking-wider">Compréhension Orale (Listening feedback simulation)</h4>
-                <div className="p-3 bg-white border border-[#E9E9E7] rounded-lg flex items-center justify-between">
-                  <span className="text-xs text-[#37352F] font-bold">🔊 Audio Transmit Feed #232</span>
-                  <span className="text-[10px] text-[#7A7A78]">Playback simulated active</span>
-                </div>
-                <p className="text-xs text-[#5F5E5B] italic leading-relaxed">"Bonjour, c'est Alain de la réception technique. Je vous contacte au sujet du dysfonctionnement du système de climatisation..."</p>
-                
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-[#7A7A78] uppercase">Question 2: Que réclame l'ingénieur à l'auditeur ?</p>
-                  {[
-                    "A) De lui louer un système de ventilation portatif.",
-                    "B) De dégager la porte d'accès au boîtier ou compteur principal.",
-                    "C) D'envoyer un chèque de caution.",
-                    "D) De fermer les volets du bureau."
-                  ].map((choice, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setListeningAns(i)}
-                      className={`w-full text-left p-3 rounded-lg border text-xs transition-all cursor-pointer ${
-                        listeningAns === i ? "bg-[#EBF3FC] border-[#1A73E8] font-bold text-[#1D74B4]" : "bg-white border-[#E9E9E7] hover:bg-[#FAFAF9]"
-                      }`}
-                    >
-                      {choice}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-between pt-2">
-                <button
-                  onClick={() => setCurrentStep(1)}
-                  className="px-3.5 py-1.5 border border-[#E9E9E7] text-[#5F5E5B] hover:text-[#37352F] hover:bg-[#F1F1EF] text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" /> Previous Section
-                </button>
-                <button
-                  onClick={() => setCurrentStep(3)}
-                  className="px-4 py-2 bg-[#37352F] hover:bg-black text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
-                >
-                  Save & Proceed <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: WRITING PROMPT */}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="bg-[#FAFAF9] border border-[#E9E9E7] p-5 rounded-lg space-y-3">
-                <h4 className="font-bold text-[#37352F] text-xs uppercase tracking-wider">Expression Écrite (Task argument essay)</h4>
-                <p className="text-xs text-[#5F5E5B] leading-relaxed">
-                  <strong>Sujet :</strong> Rédigez un court courrier des lecteurs s'opposant gentiment au bannissement radical des automobiles urbaines au profit de pistes cyclables. Proposez des mesures combinatoires. (200 mots requis).
-                </p>
-
-                <textarea
-                  value={writingText}
-                  onChange={(e) => setWritingText(e.target.value)}
-                  placeholder="Écrivez votre argumentation en français ici..."
-                  rows={6}
-                  className="w-full text-xs p-3.5 outline-none border border-[#E9E9E7] rounded-lg bg-white text-[#37352F] font-mono leading-relaxed focus:border-[#1A73E8]"
-                ></textarea>
-                <p className="text-[10px] text-right text-[#7A7A78] font-mono">Word Count: {writingText.split(/\s+/).filter(Boolean).length} / 200</p>
-              </div>
-
-              <div className="flex justify-between pt-2">
-                <button
-                  onClick={() => setCurrentStep(2)}
-                  className="px-3.5 py-1.5 border border-[#E9E9E7] text-[#5F5E5B] hover:text-[#37352F] hover:bg-[#F1F1EF] text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" /> Previous Section
-                </button>
-                <button
-                  onClick={handleFinishExam}
-                  className="px-4 py-2 bg-[#2D6A53] hover:bg-[#204E3C] text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow-sm cursor-pointer"
-                >
-                  Submit Simulation Exam
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: FINISHED OVERVIEW PANEL */}
-          {currentStep === 4 && (
-            <div className="text-center py-6 space-y-5 animate-fade-in text-[#37352F]">
-              <div className="w-12 h-12 bg-[#EAF5F1] text-[#2D6A53] border border-[#D1EBE1] rounded-full flex items-center justify-center mx-auto mb-2">
-                <Award className="w-6 h-6" />
-              </div>
-              <h4 className="text-lg font-bold">Academic Simulation Registered!</h4>
-              <p className="text-xs text-[#7A7A78] max-w-sm mx-auto leading-relaxed">
-                Congratulations on completing this diagnostic model. Your results have been compiled in your diagnostic trends workspace database.
-              </p>
-
-              <div className="border border-[#E9E9E7] rounded-xl p-4 max-w-xs mx-auto bg-[#FAFAF9]">
-                <p className="text-[10px] uppercase font-bold text-[#7A7A78] tracking-wider mb-2">Score Matrix Evaluation</p>
-                <div className="flex justify-around items-center pt-1">
-                  <div>
-                    <p className="text-[10px] text-[#7A7A78]">Comprehension</p>
-                    <p className="text-base font-extrabold text-[#2D6A53]">
-                      {((readingAns === 1 ? 1 : 0) + (listeningAns === 1 ? 1 : 0)) * 50}%
-                    </p>
-                  </div>
-                  <div className="h-6 w-[1px] bg-[#E9E9E7]" />
-                  <div>
-                    <p className="text-[10px] text-[#7A7A78]">CEFR Rating</p>
-                    <p className="text-base font-extrabold text-[#2D6A53]">
-                      {((readingAns === 1 ? 1 : 0) + (listeningAns === 1 ? 1 : 0)) === 2 ? "C1" : "B2"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => setActiveSessionExam(null)}
-                  className="px-4 py-2 bg-[#37352F] hover:bg-black text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
-                >
-                  Back to Simulations Dashboard
-                </button>
-              </div>
-            </div>
-          )}
-
+          <TcfModuleSession
+            key={activeModuleId}
+            moduleId={activeModuleId}
+            examType="TCF"
+            examMode
+            onAbort={() => setActiveSessionExam(null)}
+            onComplete={handleModuleComplete}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+function ResultsPanel({
+  breakdown,
+  examName,
+  onClose,
+}: {
+  breakdown: TcfMockModuleResult[];
+  examName: string;
+  onClose: () => void;
+}) {
+  const scorePct = aggregateScorePct(breakdown);
+
+  return (
+    <div className="bg-white border rounded-xl p-6 text-center space-y-5 shadow-premium">
+      <Award className="w-10 h-10 text-[#2D6A53] mx-auto" />
+      <h4 className="text-lg font-bold">{examName} — Complete</h4>
+      <p className="text-xs text-[#7A7A78]">
+        Comprehension modules use +1/0 scoring. Expression modules use AI CEFR
+        estimates per section.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg mx-auto">
+        {breakdown.map((row) => (
+          <div
+            key={row.moduleId}
+            className="border rounded-lg p-3 bg-[#FAFAF9] text-xs"
+          >
+            <p className="font-bold text-[#37352F]">{row.moduleLabel}</p>
+            {row.rawScore != null && row.maxScore != null ? (
+              <p className="text-[#2D6A53] font-extrabold mt-1">
+                {row.rawScore}/{row.maxScore} ({row.scorePct}%)
+              </p>
+            ) : row.sectionCefr ? (
+              <p className="text-[#5F5E5B] mt-1">
+                A: {row.sectionCefr.A ?? "—"} · B: {row.sectionCefr.B ?? "—"}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      <p className="text-sm font-bold">
+        Comprehension aggregate: {scorePct}%
+      </p>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="px-4 py-2 bg-[#37352F] text-white text-xs font-bold rounded-lg cursor-pointer"
+      >
+        Back to simulations
+      </button>
     </div>
   );
 }

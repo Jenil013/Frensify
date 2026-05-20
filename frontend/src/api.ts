@@ -54,9 +54,12 @@ export async function evaluateWriting(
   prompt: string,
   essay: string,
   taskType: string,
-  examType: "TEF" | "TCF"
+  examType: "TEF" | "TCF",
+  sectionId?: "A" | "B"
 ): Promise<AIWritingCorrection> {
-  console.log(`[FastAPI Prep] Requesting writing evaluation for ${examType} section...`);
+  console.log(
+    `[FastAPI Prep] Requesting writing evaluation for ${examType}${sectionId ? ` section ${sectionId}` : ""}...`
+  );
   
   // Simulated latent load to match official cloud processing
   await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -109,9 +112,12 @@ export async function evaluateSpeaking(
   transcriptText: string,
   preparationTimeSec: number,
   speakingDurationSec: number,
-  examType: "TEF" | "TCF"
+  examType: "TEF" | "TCF",
+  sectionId?: "A" | "B"
 ): Promise<AISpeakingSuggestion> {
-  console.log(`[FastAPI Prep] Requesting voice/transcript diagnostic advice for ${examType}...`);
+  console.log(
+    `[FastAPI Prep] Requesting voice/transcript diagnostic for ${examType}${sectionId ? ` section ${sectionId}` : ""}...`
+  );
 
   await new Promise((resolve) => setTimeout(resolve, 1500));
 

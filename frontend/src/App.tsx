@@ -4,7 +4,14 @@ import {
   Settings, CreditCard, Shield, Sparkles, User, GraduationCap, Flame, Star, Zap 
 } from "lucide-react";
 
-import { UserProfile, UserSubscriptionTier, VocabularyCard, ExerciseItem } from "./types";
+import {
+  UserProfile,
+  UserSubscriptionTier,
+  VocabularyCard,
+  ExerciseItem,
+  TcfMockModuleResult,
+  TcfModuleId,
+} from "./types";
 import { INITIAL_VOCABULARY, SAMPLE_EXERCISES } from "./constants";
 
 // Import tabs
@@ -35,7 +42,8 @@ export default function App() {
     mockTestScores: [
       { examId: "diag-1", examName: "Initial Oral Diagnostic Quiz", date: "2026-05-10", scorePct: 70, cefr: "B1" },
       { examId: "diag-2", examName: "Reading Quick Placement", date: "2026-05-12", scorePct: 76, cefr: "B2" }
-    ]
+    ],
+    moduleScores: [],
   });
 
   // Dynamic state for vocabulary
@@ -68,18 +76,41 @@ export default function App() {
     }));
   };
 
-  const handleSaveMockScore = (examId: string, examName: string, scorePct: number, cefr: string) => {
+  const handleSaveMockScore = (
+    examId: string,
+    examName: string,
+    scorePct: number,
+    cefr: string,
+    moduleBreakdown?: TcfMockModuleResult[]
+  ) => {
     const todayStr = new Date().toISOString().split("T")[0];
     const newScore = {
       examId,
       examName,
       date: todayStr,
       scorePct,
-      cefr
+      cefr,
+      moduleBreakdown,
     };
     setProfile(prev => ({
       ...prev,
       mockTestScores: [newScore, ...prev.mockTestScores]
+    }));
+  };
+
+  const handleSaveModuleScore = (
+    moduleId: TcfModuleId,
+    rawScore: number,
+    maxScore: number,
+    examContext: string
+  ) => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    setProfile(prev => ({
+      ...prev,
+      moduleScores: [
+        { moduleId, rawScore, maxScore, date: todayStr, examContext },
+        ...(prev.moduleScores ?? []),
+      ],
     }));
   };
 
@@ -280,6 +311,7 @@ export default function App() {
               profile={profile}
               onNavigateToPricing={() => setActiveTab("pricing")}
               onSaveMockScore={handleSaveMockScore}
+              onSaveModuleScore={handleSaveModuleScore}
             />
           )}
 
