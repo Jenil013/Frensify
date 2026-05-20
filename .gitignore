@@ -1,3 +1,7 @@
 confidential.txt
 media/
 .env
+.cursor/
+frontend/node_modules/
+
+
