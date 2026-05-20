@@ -227,21 +227,9 @@ export const MOCK_EXAMS_DB = [
   {
     id: "exam-tef-1",
     examType: "TEF" as const,
-    name: "Standard Simulation Express (Simulation #1)",
-    description: "Official structured simulation covering core components: logical connectors, general reading under speed barriers, writing argument section, and auditory attention traps.",
-    estimatedDurationMin: 60,
-    readingsCount: 1,
-    listeningsCount: 1,
-    writingCount: 1,
-    speakingCount: 1,
-    premiumOnly: true
-  },
-  {
-    id: "exam-tcf-1",
-    examType: "TCF" as const,
-    name: "Frensify Official-Format TCF Simulation",
+    name: "Frensify Official-Format TEF Simulation",
     description:
-      "Full TCF: 40 reading MCQs (60 min), 40 listening MCQs (40 min), written expression A+B (60 min), oral expression A+B (15 min). +1/0 comprehension scoring.",
+      "Full TEF: 40 reading MCQs (60 min), 40 listening MCQs (40 min), written expression A+B (60 min), oral expression A+B (15 min). Scored /699 (reading & listening) and /450 (writing & oral) → CLB/NCLC.",
     estimatedDurationMin: 175,
     readingsCount: 40,
     listeningsCount: 40,
@@ -250,15 +238,28 @@ export const MOCK_EXAMS_DB = [
     premiumOnly: true
   },
   {
+    id: "exam-tcf-1",
+    examType: "TCF" as const,
+    name: "Frensify Official-Format TCF Simulation",
+    description:
+      "Full TCF: 39 listening MCQs (35 min), 39 reading MCQs (60 min), 3 written expression tasks (60 min), 3 oral expression tasks (12 min). Scores on 0–699 scale mapped to CEFR levels.",
+    estimatedDurationMin: 167,
+    readingsCount: 39,
+    listeningsCount: 39,
+    writingCount: 3,
+    speakingCount: 3,
+    premiumOnly: true
+  },
+  {
     id: "exam-tef-max-2",
     examType: "TEF" as const,
-    name: "TEF Marathon Ultimate Section Simulator (Simulation #2)",
-    description: "Unlimited style mock containing extreme grammar traps, colloquial audios, and heavy argumentative text sections. Designed for maximum preparedness.",
-    estimatedDurationMin: 120,
-    readingsCount: 1,
-    listeningsCount: 1,
-    writingCount: 1,
-    speakingCount: 1,
+    name: "TEF Marathon — Advanced Section Simulator",
+    description: "Full 4-module TEF mock with advanced grammar traps, colloquial audio scenarios, and heavy argumentative writing sections A+B. Designed for C1/C2 target preparation.",
+    estimatedDurationMin: 175,
+    readingsCount: 40,
+    listeningsCount: 40,
+    writingCount: 2,
+    speakingCount: 2,
     premiumOnly: true,
     isMaxOnly: true
   }

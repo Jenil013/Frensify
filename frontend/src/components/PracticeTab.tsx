@@ -11,10 +11,15 @@ import {
   AISpeakingSuggestion,
   TcfModuleCompletionResult,
   TcfModuleId,
+  TefModuleCompletionResult,
+  TefModuleId,
+  McqModuleResult,
 } from "../types";
 import { evaluateWriting, evaluateSpeaking } from "../api";
 import { TCF_MODULE_REGISTRY } from "../tcfConstants";
+import { TEF_MODULE_REGISTRY } from "../tefConstants";
 import TcfModuleSession from "./tcf/TcfModuleSession";
+import TefModuleSession from "./tef/TefModuleSession";
 
 interface PracticeTabProps {
   profile: UserProfile;
@@ -59,11 +64,19 @@ export default function PracticeTab({
   // General error
   const [apiError, setApiError] = useState<string | null>(null);
   const [activeTcfModule, setActiveTcfModule] = useState<TcfModuleId | null>(null);
+  const [activeTefModule, setActiveTefModule] = useState<TefModuleId | null>(null);
   const [moduleCompleteMsg, setModuleCompleteMsg] = useState<string | null>(null);
 
   const skillToTcfModule: Record<SkillType, TcfModuleId> = {
     reading: "comprehension-ecrite",
     listening: "comprehension-orale",
+    writing: "expression-ecrite",
+    speaking: "expression-orale",
+  };
+
+  const skillToTefModule: Record<SkillType, TefModuleId> = {
+    listening: "comprehension-orale",
+    reading: "comprehension-ecrite",
     writing: "expression-ecrite",
     speaking: "expression-orale",
   };
@@ -215,15 +228,37 @@ export default function PracticeTab({
         `Module complete: ${result.result.rawScore}/${result.result.maxScore} (+1/0)`
       );
     } else if (result.type === "writing") {
-      const a = result.result.sections[0]?.feedback?.cefrScore ?? "—";
-      const b = result.result.sections[1]?.feedback?.cefrScore ?? "—";
-      setModuleCompleteMsg(`Writing module complete — Section A: ${a}, B: ${b}`);
+      const tasks = result.result.sections.map(
+        (s, i) => `T${i + 1}: ${s.feedback?.cefrScore ?? "—"}`
+      );
+      setModuleCompleteMsg(`Writing module complete — ${tasks.join(", ")}`);
     } else {
-      const a = result.result.sections[0]?.feedback?.cefrLevel ?? "—";
-      const b = result.result.sections[1]?.feedback?.cefrLevel ?? "—";
-      setModuleCompleteMsg(`Oral module complete — Section A: ${a}, B: ${b}`);
+      const tasks = result.result.sections.map(
+        (s, i) => `T${i + 1}: ${s.feedback?.cefrLevel ?? "—"}`
+      );
+      setModuleCompleteMsg(`Oral module complete — ${tasks.join(", ")}`);
     }
     setActiveTcfModule(null);
+  };
+
+  const handleTefModuleComplete = (result: TefModuleCompletionResult) => {
+    if (result.type === "mcq") {
+      const mcq = result.result as McqModuleResult;
+      setModuleCompleteMsg(
+        `TEF module complete: ${mcq.rawScore}/${mcq.maxScore} (+1/0)`
+      );
+    } else if (result.type === "writing") {
+      const writing = result.result as import("../types").WritingModuleResult;
+      const a = writing.sections[0]?.feedback?.cefrScore ?? "—";
+      const b = writing.sections[1]?.feedback?.cefrScore ?? "—";
+      setModuleCompleteMsg(`TEF writing complete — Section A: ${a}, B: ${b}`);
+    } else {
+      const oral = result.result as import("../types").OralModuleResult;
+      const a = oral.sections[0]?.feedback?.cefrLevel ?? "—";
+      const b = oral.sections[1]?.feedback?.cefrLevel ?? "—";
+      setModuleCompleteMsg(`TEF oral complete — Section A: ${a}, B: ${b}`);
+    }
+    setActiveTefModule(null);
   };
 
   if (activeTcfModule) {
@@ -240,7 +275,21 @@ export default function PracticeTab({
     );
   }
 
+  if (activeTefModule) {
+    return (
+      <div id="practice-tab" className="space-y-4 animate-fade-in text-[#37352F]">
+        <TefModuleSession
+          moduleId={activeTefModule}
+          examMode={false}
+          onAbort={() => setActiveTefModule(null)}
+          onComplete={handleTefModuleComplete}
+        />
+      </div>
+    );
+  }
+
   const tcfModuleMeta = TCF_MODULE_REGISTRY[skillToTcfModule[activeSkill]];
+  const tefModuleMeta = TEF_MODULE_REGISTRY[skillToTefModule[activeSkill]];
 
   return (
     <div id="practice-tab" className="space-y-6 animate-fade-in text-[#37352F]">
@@ -307,7 +356,9 @@ export default function PracticeTab({
               min
               {tcfModuleMeta.meta.questionCount
                 ? ` · ${tcfModuleMeta.meta.questionCount} questions (+1/0)`
-                : " · Sections A & B"}
+                : tcfModuleMeta.meta.sections
+                ? ` · ${tcfModuleMeta.meta.sections.length} tasks`
+                : ""}
             </p>
           </div>
           <button
@@ -321,6 +372,40 @@ export default function PracticeTab({
               setModuleCompleteMsg(null);
             }}
             className="px-4 py-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white text-xs font-bold rounded-lg cursor-pointer shrink-0"
+          >
+            Start full module
+          </button>
+        </div>
+      )}
+
+      {profile.targetExam === "TEF" && !selectedExercise && (
+        <div className="bg-[#EEEFFC] border border-[#DDE0FA] rounded-xl p-5 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+          <div>
+            <p className="text-[10px] font-bold uppercase text-[#4A55A2] tracking-wide">
+              Full TEF module
+            </p>
+            <h3 className="text-sm font-bold text-[#3D4A8C] mt-1">
+              {tefModuleMeta.meta.labelFr}
+            </h3>
+            <p className="text-xs text-[#5A6199] mt-1 max-w-xl">
+              {tefModuleMeta.meta.objective} — {tefModuleMeta.meta.durationMinutes}{" "}
+              min
+              {tefModuleMeta.meta.questionCount
+                ? ` · ${tefModuleMeta.meta.questionCount} questions (+1/0)`
+                : " · Sections A & B"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (profile.tier === "Free") {
+                onNavigateToPricing();
+                return;
+              }
+              setActiveTefModule(skillToTefModule[activeSkill]);
+              setModuleCompleteMsg(null);
+            }}
+            className="px-4 py-2 bg-[#4A55A2] hover:bg-[#3D4A8C] text-white text-xs font-bold rounded-lg cursor-pointer shrink-0"
           >
             Start full module
           </button>

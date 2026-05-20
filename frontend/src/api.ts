@@ -55,7 +55,7 @@ export async function evaluateWriting(
   essay: string,
   taskType: string,
   examType: "TEF" | "TCF",
-  sectionId?: "A" | "B"
+  sectionId?: string
 ): Promise<AIWritingCorrection> {
   console.log(
     `[FastAPI Prep] Requesting writing evaluation for ${examType}${sectionId ? ` section ${sectionId}` : ""}...`
@@ -113,7 +113,7 @@ export async function evaluateSpeaking(
   preparationTimeSec: number,
   speakingDurationSec: number,
   examType: "TEF" | "TCF",
-  sectionId?: "A" | "B"
+  sectionId?: string
 ): Promise<AISpeakingSuggestion> {
   console.log(
     `[FastAPI Prep] Requesting voice/transcript diagnostic for ${examType}${sectionId ? ` section ${sectionId}` : ""}...`

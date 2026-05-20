@@ -308,6 +308,221 @@ export function getSkillLabel(skillId: TefSkillId): string {
   return TEF_SKILLS.find((s) => s.id === skillId)?.labelFr ?? skillId;
 }
 
+// --- TEF Module Registry & Question Bank ---
+
+import type { McqItem, TefModuleDefinition, TefModuleId } from "./types";
+
+export const TEF_MODULE_REGISTRY: Record<TefModuleId, TefModuleDefinition> = {
+  "comprehension-ecrite": {
+    meta: {
+      id: "comprehension-ecrite",
+      labelFr: "Compréhension écrite",
+      labelEn: "Reading comprehension",
+      objective:
+        "Understand everyday documents, articles, emails, and notices. Navigate freely between questions.",
+      durationMinutes: 60,
+      questionCount: 40,
+      format: "mcq",
+      scoring: "+1/0",
+    },
+  },
+  "comprehension-orale": {
+    meta: {
+      id: "comprehension-orale",
+      labelFr: "Compréhension orale",
+      labelEn: "Listening comprehension",
+      objective:
+        "Listen to conversations, news, and interviews and select the correct answer. Some longer clips are played twice.",
+      durationMinutes: 40,
+      questionCount: 40,
+      format: "mcq",
+      scoring: "+1/0",
+    },
+  },
+  "expression-ecrite": {
+    meta: {
+      id: "expression-ecrite",
+      labelFr: "Expression écrite",
+      labelEn: "Written expression",
+      objective: "Two writing tasks testing article continuation and argumentation skills.",
+      durationMinutes: 60,
+      format: "sections",
+      scoring: "ai-rubric",
+      sections: [
+        {
+          id: "A",
+          label: "Section A — Article continuation",
+          durationMinutes: 25,
+          minWords: 80,
+          taskType: "essay",
+        },
+        {
+          id: "B",
+          label: "Section B — Express and justify a viewpoint",
+          durationMinutes: 35,
+          minWords: 200,
+          taskType: "essay",
+        },
+      ],
+    },
+    sections: {
+      A: {
+        prompt:
+          "Write the continuation of the article below. (80 words minimum)",
+        stimulus:
+          "Les villes canadiennes investissent massivement dans les transports en commun. Néanmoins, la voiture demeure le mode de déplacement dominant dans de nombreux quartiers périphériques...",
+      },
+      B: {
+        prompt:
+          "Express and justify your point of view on the topic below. (200 words minimum)",
+        stimulus:
+          "Sujet : Faut-il interdire les voitures individuelles dans les centres-villes au profit exclusif des pistes cyclables ?",
+      },
+    },
+  },
+  "expression-orale": {
+    meta: {
+      id: "expression-orale",
+      labelFr: "Expression orale",
+      labelEn: "Oral expression",
+      objective:
+        "Two role-play situations with an examiner: information gathering and persuasion.",
+      durationMinutes: 15,
+      format: "sections",
+      scoring: "ai-rubric",
+      sections: [
+        {
+          id: "A",
+          label: "Section A — Information gathering (5 min)",
+          durationMinutes: 5,
+          taskType: "oral-response",
+        },
+        {
+          id: "B",
+          label: "Section B — Persuasion/convincing (10 min)",
+          durationMinutes: 10,
+          taskType: "oral-response",
+        },
+      ],
+    },
+    sections: {
+      A: {
+        prompt:
+          "You read an advertisement for evening pottery classes. Call the organizer to obtain key information (prices, schedule, materials, experience required, etc.).",
+        stimulus:
+          "Annonce : Cours de poterie et sculpture — mardi et jeudi 19h–21h. Matériel fourni. Débutants bienvenus.",
+      },
+      B: {
+        prompt:
+          "Your friend refuses to use the neighborhood book-sharing library. Convince them to participate and deposit three books by the end of the month.",
+        stimulus:
+          "Contexte : Une bibliothèque de rue gratuite a ouvert dans votre quartier.",
+      },
+    },
+  },
+};
+
+const TEF_READING_TEMPLATES: Omit<McqItem, "id">[] = [
+  {
+    prompt: "Quel est le message principal de cette affiche ?",
+    passage:
+      "SOLDES D'ÉTÉ — Jusqu'à -50% sur toute la collection printemps-été. Offre valable du 25 juin au 19 juillet. Conditions en magasin.",
+    choices: [
+      "A) Le magasin ferme définitivement.",
+      "B) Une réduction est proposée sur les articles de saison.",
+      "C) Les soldes commencent en hiver.",
+      "D) Les achats en ligne sont interdits.",
+    ],
+    correctChoiceIndex: 1,
+    explanation:
+      "L'affiche annonce des soldes d'été avec des réductions sur la collection printemps-été.",
+  },
+  {
+    prompt:
+      "Selon l'article, quel défi principal accompagne l'expansion des véhicules électriques ?",
+    passage:
+      "L'essor des voitures électriques est indéniable. Cependant, le réseau de bornes de recharge reste insuffisant dans les zones rurales, freinant l'adoption massive de cette technologie par les ménages éloignés des grands centres urbains.",
+    choices: [
+      "A) Le prix des véhicules électriques augmente.",
+      "B) L'infrastructure de recharge est inadéquate en milieu rural.",
+      "C) Les constructeurs cessent la production.",
+      "D) Les consommateurs préfèrent les transports en commun.",
+    ],
+    correctChoiceIndex: 1,
+    explanation:
+      "Le texte souligne l'insuffisance du réseau de bornes de recharge en zone rurale.",
+  },
+];
+
+const TEF_LISTENING_TEMPLATES: Omit<McqItem, "id">[] = [
+  {
+    prompt: "Pourquoi cette annonce est-elle diffusée ?",
+    transcript:
+      "Mesdames et messieurs, en raison d'un incident technique sur la ligne 4, le trafic est interrompu entre les stations Châtelet et Gare du Nord. Des bus de remplacement sont mis à votre disposition à la sortie de la station.",
+    choices: [
+      "A) Pour annoncer un nouveau service de bus.",
+      "B) Pour informer d'une interruption de trafic sur le métro.",
+      "C) Pour signaler la fermeture définitive d'une station.",
+      "D) Pour promouvoir un abonnement de transport.",
+    ],
+    correctChoiceIndex: 1,
+    explanation:
+      "L'annonce informe les usagers d'une interruption de trafic due à un incident technique.",
+  },
+  {
+    prompt: "Que recommande le médecin dans cet extrait ?",
+    transcript:
+      "Docteur Leroy : Je vous conseille de réduire votre consommation de sel et de pratiquer une activité physique régulière, au moins trente minutes par jour. Cela aura un effet positif sur votre tension artérielle.",
+    choices: [
+      "A) Manger plus de sel pour l'énergie.",
+      "B) Réduire le sel et faire de l'exercice.",
+      "C) Prendre des médicaments immédiatement.",
+      "D) Arrêter de travailler pendant un mois.",
+    ],
+    correctChoiceIndex: 1,
+    explanation:
+      "Le médecin recommande de réduire le sel et de faire du sport régulièrement.",
+  },
+];
+
+function expandTefMcqBank(
+  templates: Omit<McqItem, "id">[],
+  prefix: string,
+  count: number
+): McqItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const t = templates[i % templates.length];
+    return {
+      ...t,
+      id: `${prefix}-q${i + 1}`,
+      prompt: `[Question ${i + 1}/${count}] ${t.prompt}`,
+    };
+  });
+}
+
+export const TEF_PLACEHOLDER_READING_QUESTIONS = expandTefMcqBank(
+  TEF_READING_TEMPLATES,
+  "tef-reading",
+  40
+);
+
+export const TEF_PLACEHOLDER_LISTENING_QUESTIONS = expandTefMcqBank(
+  TEF_LISTENING_TEMPLATES,
+  "tef-listening",
+  40
+);
+
+export const TEF_MODULE_ORDER: TefModuleId[] = [
+  "comprehension-ecrite",
+  "comprehension-orale",
+  "expression-ecrite",
+  "expression-orale",
+];
+
+export function getTefModuleLabel(moduleId: TefModuleId): string {
+  return TEF_MODULE_REGISTRY[moduleId].meta.labelFr;
+}
+
 /** Sample attestation row (from official TEF Canada result document). */
 export const TEF_SAMPLE_ATTESTATION = [
   {
