@@ -1,7 +1,17 @@
 import React from "react";
-import { BarChart, Compass, Award, Sparkles, ShieldAlert } from "lucide-react";
+import { BarChart, Compass, Sparkles } from "lucide-react";
 import { UserProfile } from "../types";
 import { getModuleLabel } from "../tcfConstants";
+import {
+  parseCefrTarget,
+  getTefTargetLabel,
+  cefrProgressPercent,
+  TEF_CEFR_SKILL_TARGETS,
+  TEF_SKILLS,
+  getSkillLabel,
+  CefrLevel,
+} from "../tefConstants";
+import TefGradingScheme from "./tef/TefGradingScheme";
 
 interface AnalyticsTabProps {
   profile: UserProfile;
@@ -16,8 +26,11 @@ export default function AnalyticsTab({
     ? Math.round(profile.mockTestScores.reduce((acc, curr) => acc + curr.scorePct, 0) / profile.mockTestScores.length)
     : 81;
 
-  const currentLevelLabel = profile.currentLevel || "B1";
-  const targetLevelLabel = profile.targetScore || "C1";
+  const currentLevelLabel = parseCefrTarget(profile.currentLevel) as CefrLevel;
+  const targetLevelLabel = parseCefrTarget(profile.targetScore);
+  const trajectoryPct = cefrProgressPercent(currentLevelLabel, targetLevelLabel);
+  const skillTargets = TEF_CEFR_SKILL_TARGETS[targetLevelLabel];
+  const isTef = profile.targetExam === "TEF";
 
   return (
     <div id="analytics-tab" className="space-y-6 animate-fade-in text-[#37352F]">
@@ -152,12 +165,18 @@ export default function AnalyticsTab({
 
                   <div className="space-y-1">
                     <div className="flex justify-between items-center text-[#1D74B4]">
-                      <span className="font-bold">Week 4 (Syllabus Target Milestone)</span>
+                      <span className="font-bold">Target milestone ({getTefTargetLabel(targetLevelLabel)})</span>
                       <span className="font-bold">{targetLevelLabel}</span>
                     </div>
                     <div className="h-2 w-full bg-[#E9E9E7] rounded-full">
-                      <div className="h-full bg-[#1A73E8] w-[95%] rounded-full animate-pulse"></div>
+                      <div
+                        className="h-full bg-[#1A73E8] rounded-full transition-all"
+                        style={{ width: `${Math.min(trajectoryPct, 100)}%` }}
+                      />
                     </div>
+                    <p className="text-[9px] text-[#7A7A78]">
+                      {trajectoryPct}% of CEFR span from {currentLevelLabel} → {targetLevelLabel}
+                    </p>
                   </div>
 
                 </div>
@@ -165,35 +184,69 @@ export default function AnalyticsTab({
 
             </div>
 
-            {/* Right scorecard overview */}
             <div className="lg:col-span-4 bg-white border border-[#E9E9E7] rounded-xl p-5 shadow-premium flex flex-col justify-between space-y-4">
               <div className="space-y-3.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] block">CEFR Proficiency Index Target</span>
                 <div className="p-4 bg-[#FAFAF9] rounded-lg border border-[#E9E9E7] text-center">
                   <p className="text-[10px] uppercase font-bold text-[#7A7A78] tracking-widest mb-1">Target level goal</p>
                   <p className="text-3xl font-extrabold text-[#37352F]">{targetLevelLabel}</p>
+                  <p className="text-[10px] text-[#7A7A78] mt-1">{getTefTargetLabel(targetLevelLabel)}</p>
                 </div>
 
-                <div className="space-y-2 text-xs text-[#5F5E5B] leading-relaxed">
-                  <p className="font-bold text-[#37352F]">Requirements to cross into {targetLevelLabel}:</p>
-                  <ul className="list-disc pl-4 space-y-1">
-                    <li>Synthesize technical transcripts smoothly</li>
-                    <li>Sustain spontaneous argumentation for 4 min</li>
-                    <li>Compose nuanced written layouts</li>
-                    <li>Avoid subjontif mood agreement errors</li>
-                  </ul>
-                </div>
+                {isTef ? (
+                  <div className="space-y-2 text-xs text-[#5F5E5B] leading-relaxed">
+                    <p className="font-bold text-[#37352F]">
+                      TEF Canada score floors for {targetLevelLabel}:
+                    </p>
+                    <ul className="space-y-1.5">
+                      {TEF_SKILLS.map((skill) => (
+                        <li
+                          key={skill.id}
+                          className="flex justify-between items-center border border-[#E9E9E7] rounded-md px-2 py-1.5 bg-[#FAFAF9]"
+                        >
+                          <span className="text-[10px] truncate pr-1">
+                            {getSkillLabel(skill.id)}
+                          </span>
+                          <span className="font-mono font-bold text-[#1D74B4] shrink-0">
+                            ≥{skillTargets[skill.id].scoreMin}
+                            <span className="text-[#2D6A53] text-[9px] ml-1">
+                              NCLC{skillTargets[skill.id].nclc}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-xs text-[#5F5E5B] leading-relaxed">
+                    <p className="font-bold text-[#37352F]">Requirements to reach {targetLevelLabel}:</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                      <li>Synthesize technical transcripts smoothly</li>
+                      <li>Sustain spontaneous argumentation for 4 min</li>
+                      <li>Compose nuanced written layouts</li>
+                      <li>Avoid subjunctif mood agreement errors</li>
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <div className="bg-[#EEEFFC] p-4 rounded-lg border border-[#DDE0FA]">
                 <p className="text-[10px] uppercase font-bold text-[#4A55A2] mb-1">Canada Immigration Equivalent</p>
                 <p className="text-xs text-[#5C649E] leading-relaxed">
-                  B2 equivalence delivers +50 extra CRS points on Canada Express Entry pathways! Max tier prep leverages key advantages.
+                  {targetLevelLabel === "B2" || targetLevelLabel === "C1" || targetLevelLabel === "C2"
+                    ? `${targetLevelLabel} on TEF Canada unlocks NCLC 7+ and up to +50 CRS French bonus on Express Entry.`
+                    : `Raise your target to B2+ for Express Entry French language points (NCLC 7).`}
                 </p>
               </div>
 
             </div>
           </div>
+
+          {isTef && (
+            <div className="bg-white border border-[#E9E9E7] rounded-xl p-5 md:p-6 shadow-premium">
+              <TefGradingScheme highlightLevel={targetLevelLabel} compact />
+            </div>
+          )}
         </div>
       )}
     </div>

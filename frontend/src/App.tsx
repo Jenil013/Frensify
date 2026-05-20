@@ -33,7 +33,7 @@ export default function App() {
     name: "Claire",
     email: "claire.duval@gmail.com",
     targetExam: "TEF",
-    targetScore: "CLB 9 (C1 equivalent)",
+    targetScore: "C1",
     currentLevel: "B1",
     streakDays: 12,
     lastActiveDate: "2026-05-19",
