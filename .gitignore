@@ -3,5 +3,6 @@ media/
 .env
 .cursor/
 frontend/node_modules/
+Claude.md
 
 
