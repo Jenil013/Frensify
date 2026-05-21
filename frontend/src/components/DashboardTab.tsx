@@ -1,6 +1,65 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles, Trophy, Flame, ChevronRight, BookOpen, Headphones, PenTool, Mic, TrendingUp, Calendar, ArrowUpRight } from "lucide-react";
 import { UserProfile, ExerciseItem } from "../types";
+import { TCF_MODULE_REGISTRY } from "../tcfConstants";
+import { TEF_MODULE_REGISTRY } from "../tefConstants";
+
+const MODULE_ORDER = [
+  "comprehension-orale",
+  "comprehension-ecrite",
+  "expression-ecrite",
+  "expression-orale",
+] as const;
+
+type ModuleKey = (typeof MODULE_ORDER)[number];
+
+const SKILL_STYLE: Record<ModuleKey, {
+  pct: number;
+  cefr: string;
+  badgeClass: string;
+  barFrom: string;
+  barTo: string;
+  glow: string;
+}> = {
+  "comprehension-orale": {
+    pct: 90, cefr: "C1",
+    badgeClass: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]",
+    barFrom: "#2D6A53", barTo: "#4CAF82",
+    glow: "rgba(45,106,83,0.35)",
+  },
+  "comprehension-ecrite": {
+    pct: 72, cefr: "B2",
+    badgeClass: "bg-[#FDF3E7] text-[#9A5013] border-[#FCE1CA]",
+    barFrom: "#9A5013", barTo: "#D4873C",
+    glow: "rgba(154,80,19,0.35)",
+  },
+  "expression-ecrite": {
+    pct: 85, cefr: "C1",
+    badgeClass: "bg-[#E8F3FC] text-[#1D74B4] border-[#D2E7F6]",
+    barFrom: "#1D74B4", barTo: "#4AAEE0",
+    glow: "rgba(29,116,180,0.35)",
+  },
+  "expression-orale": {
+    pct: 60, cefr: "B1",
+    badgeClass: "bg-[#FCECF0] text-[#B83E5C] border-[#F8D4DE]",
+    barFrom: "#B83E5C", barTo: "#E07090",
+    glow: "rgba(184,62,92,0.35)",
+  },
+};
+
+type RegistryMeta = {
+  labelFr: string;
+  format: string;
+  questionCount?: number;
+  objective: string;
+  sections?: { id: string }[];
+};
+
+function getModuleSuffix(meta: RegistryMeta): string {
+  if (meta.format === "mcq") return `(${meta.questionCount} Q)`;
+  const count = meta.sections?.length ?? 0;
+  return count === 2 ? "(A+B)" : `(${count} tâches)`;
+}
 
 interface DashboardTabProps {
   profile: UserProfile;
@@ -24,12 +83,33 @@ export default function DashboardTab({
     ? Math.round(profile.mockTestScores.reduce((acc, curr) => acc + curr.scorePct, 0) / profile.mockTestScores.length)
     : 84;
 
-  const skillData = [
-    { name: "Compréhension orale (40 Q)", score: "C1 Elite", pct: 90, tagColor: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]", barColor: "bg-[#2D6A53]", barBg: "bg-[#EAF5F1]" },
-    { name: "Compréhension écrite (40 Q)", score: "B2 Upper", pct: 72, tagColor: "bg-[#FDF3E7] text-[#9A5013] border-[#FCE1CA]", barColor: "bg-[#9A5013]", barBg: "bg-[#FDF3E7]" },
-    { name: "Expression écrite (A+B)", score: "C1 Draft", pct: 85, tagColor: "bg-[#E8F3FC] text-[#1D74B4] border-[#D2E7F6]", barColor: "bg-[#1D74B4]", barBg: "bg-[#E8F3FC]" },
-    { name: "Expression orale (A+B)", score: "B1 Active", pct: 60, tagColor: "bg-[#FCECF0] text-[#B83E5C] border-[#F8D4DE]", barColor: "bg-[#B83E5C]", barBg: "bg-[#FCECF0]" },
-  ];
+  const [animated, setAnimated] = useState(false);
+
+  useEffect(() => {
+    setAnimated(false);
+    const t = setTimeout(() => setAnimated(true), 50);
+    return () => clearTimeout(t);
+  }, [profile.targetExam]);
+
+  const registry = (
+    profile.targetExam === "TEF" ? TEF_MODULE_REGISTRY : TCF_MODULE_REGISTRY
+  ) as Record<string, { meta: RegistryMeta }>;
+
+  const skillData = MODULE_ORDER.map((id) => {
+    const mod = registry[id];
+    const style = SKILL_STYLE[id];
+    return {
+      id,
+      name: `${mod.meta.labelFr} ${getModuleSuffix(mod.meta)}`,
+      description: mod.meta.objective,
+      cefr: style.cefr,
+      pct: style.pct,
+      badgeClass: style.badgeClass,
+      barFrom: style.barFrom,
+      barTo: style.barTo,
+      glow: style.glow,
+    };
+  });
 
   return (
     <div id="dashboard-tab" className="space-y-6 animate-fade-in text-[#37352F]">
@@ -123,28 +203,40 @@ export default function DashboardTab({
 
       </div>
 
-      {/* Attio/Notion dynamic Metric cards */}
+      {/* Module skill cards — dynamic TEF/TCF */}
       <div id="skills-grid" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {skillData.map((skill) => (
-          <div key={skill.name} className="bg-white p-5 rounded-xl border border-[#E9E9E7] shadow-premium hover:border-[#D4D4D2] transition-all">
-            <div className="flex justify-between items-center mb-2.5">
-              <span className="text-[11px] font-semibold text-[#7A7A78] uppercase tracking-wide">{skill.name}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${skill.tagColor}`}>
-                {skill.score}
+          <div
+            key={skill.id}
+            className="skill-card bg-white p-5 rounded-2xl border border-[#E9E9E7] shadow-premium hover:-translate-y-1 hover:shadow-[0_6px_24px_rgba(15,15,15,0.10),0_12px_40px_rgba(15,15,15,0.05)] hover:border-[#D4D4D2] transition-all duration-200 cursor-default"
+          >
+            <div className="flex justify-between items-start gap-2 mb-1.5">
+              <span className="text-[10px] font-bold text-[#37352F] uppercase tracking-[0.07em] leading-snug">
+                {skill.name}
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border shrink-0 ${skill.badgeClass}`}>
+                {skill.cefr}
               </span>
             </div>
-            
-            <div className="flex items-baseline gap-1.5 mb-2">
-              <span className="text-xl font-bold text-[#37352F]">{skill.pct}%</span>
-              <span className="text-[9px] text-[#A1A1AA] uppercase font-bold">Accuracy</span>
+
+            <p className="text-[10px] text-[#9B9A97] leading-relaxed mb-3 line-clamp-2">
+              {skill.description}
+            </p>
+
+            <div className="flex items-baseline gap-1.5 mb-2.5">
+              <span className="text-2xl font-extrabold text-[#37352F] leading-none">{skill.pct}%</span>
+              <span className="text-[9px] text-[#B0B0AE] uppercase font-bold tracking-wide">Accuracy</span>
             </div>
 
-            {/* Simple mini bar progress style from Attio chart */}
-            <div className={`h-2 w-full ${skill.barBg} rounded overflow-hidden`}>
-              <div 
-                className={`h-full ${skill.barColor} rounded transition-all duration-1000`} 
-                style={{ width: `${skill.pct}%` }}
-              ></div>
+            <div className="h-[7px] w-full bg-[#F1F1EF] rounded-full overflow-hidden">
+              <div
+                className="skill-bar-fill h-full rounded-full transition-all duration-[900ms] ease-out"
+                style={{
+                  width: animated ? `${skill.pct}%` : "0%",
+                  background: `linear-gradient(90deg, ${skill.barFrom} 0%, ${skill.barTo} 100%)`,
+                  boxShadow: `0 0 8px ${skill.glow}`,
+                }}
+              />
             </div>
           </div>
         ))}
