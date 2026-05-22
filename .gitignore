@@ -1,9 +1,26 @@
 confidential.txt
 media/
-.env
 .cursor/
-frontend/node_modules/
 .superpowers/
 CLAUDE.md
 docs/
+frontend/node_modules/
 
+# Environment files (secrets)
+.env
+.env.local
+.env*.local
+.env.production
+.env.development
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Seed output (regenerable)
+supabase/seed/*.json
