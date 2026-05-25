@@ -1,0 +1,48 @@
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    supabase_url: str
+    supabase_service_role_key: str
+    supabase_jwt_secret: str
+    gemini_api_key_eval: str
+    gemini_eval_model: str
+    gemini_api_key_utils: str
+    gemini_utils_model: str
+    fastapi_port: int = 8000
+
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+
+settings = Settings()
+
+GEMINI_EVAL_MODEL = settings.gemini_eval_model
+GEMINI_UTILS_MODEL = settings.gemini_utils_model
+
+
+TIER_CAPS: dict[str, dict[str, int]] = {
+    "Free": {
+        "writing_eval":  0,
+        "speaking_eval": 0,
+        "study_plan":    1,
+        "vocab_explain": 3,
+    },
+    "Pro": {
+        "writing_eval":  2,
+        "speaking_eval": 2,
+        "study_plan":    2,
+        "vocab_explain": 20,
+    },
+    "Max": {
+        "writing_eval":  4,
+        "speaking_eval": 4,
+        "study_plan":    3,
+        "vocab_explain": 30,
+    },
+}
+
+MOCK_CAPS: dict[str, int] = {
+    "Free": 0,
+    "Pro":  2,
+    "Max":  4,
+}

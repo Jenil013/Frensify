@@ -1,2 +1,8 @@
-def get_db():
-    raise RuntimeError("Database not configured — see Task 2")
+from functools import lru_cache
+from supabase import create_client, Client
+from config import settings
+
+
+@lru_cache(maxsize=1)
+def get_db() -> Client:
+    return create_client(settings.supabase_url, settings.supabase_service_role_key)
