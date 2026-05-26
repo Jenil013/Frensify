@@ -12,7 +12,7 @@ Frensify is a tiered SaaS that helps students prepare for TEF and TCF exams thro
 graph TD
     Browser["🌐 Browser"]
 
-    subgraph Frontend["Next.js Frontend"]
+    subgraph Frontend["React Frontend"]
         Pages["Dashboard · Practice · Mock Tests · Vocabulary · Analytics"]
     end
 
@@ -45,7 +45,7 @@ graph TD
 
 | Decision                           | Rationale                                                                                   |
 | ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| FastAPI owns all business logic    | Keeps the Next.js frontend thin and presentation-only                                       |
+| FastAPI owns all business logic    | Keeps the React frontend thin and presentation-only                                       |
 | Supabase JWT validated locally     | No round-trip to Supabase on every request; `python-jose` with HS256                        |
 | Two Gemini API keys                | Separate billing/rate-limit pools for eval (writing/speaking) vs. utils (study plan, vocab) |
 | `@lru_cache` Supabase client       | Single connection instance per worker process                                               |
@@ -61,7 +61,7 @@ graph TD
 
 | Layer         | Technology                                           |
 | ------------- | ---------------------------------------------------- |
-| Frontend      | Next.js (App Router)                                 |
+| Frontend      | React (App Router)                                 |
 | Backend API   | FastAPI 0.115+                                       |
 | Auth          | Supabase Auth (JWT, HS256)                           |
 | Database      | Supabase Postgres                                    |
@@ -78,7 +78,7 @@ graph TD
 
 ```
 Frensify/
-├── frontend/                  # Next.js frontend (App Router)
+├── frontend/                  # React frontend (App Router)
 │   └── src/
 ├── backend/
 │   ├── main.py                # FastAPI app, CORS, router registration
