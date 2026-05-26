@@ -1,0 +1,56 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+
+jobs:
+  test:
+    name: pytest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          # pydantic-settings validates these at import time.
+          # Tests mock all I/O — these values are never used in real calls.
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          SUPABASE_JWT_SECRET: placeholder-jwt-secret-for-ci-only
+          GEMINI_API_KEY_EVAL: placeholder-gemini-eval-key
+          GEMINI_EVAL_MODEL: gemini-2.0-flash
+          GEMINI_API_KEY_UTILS: placeholder-gemini-utils-key
+          GEMINI_UTILS_MODEL: gemini-2.0-flash
+          # Ensure backend/ is on the Python path so bare imports resolve.
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: pytest tests/ -v --tb=short
