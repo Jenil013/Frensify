@@ -22,7 +22,6 @@ async def update_profile(
         db.table("profiles")
         .update(patch_data)
         .eq("id", profile["id"])
-        .select("*")
         .execute()
     )
     if not result.data:
