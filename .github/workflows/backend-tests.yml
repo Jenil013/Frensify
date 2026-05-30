@@ -51,6 +51,11 @@ jobs:
           GEMINI_EVAL_MODEL: gemini-2.0-flash
           GEMINI_API_KEY_UTILS: placeholder-gemini-utils-key
           GEMINI_UTILS_MODEL: gemini-2.0-flash
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_placeholder
+          STRIPE_PRICE_ID_PRO: price_test_pro
+          STRIPE_PRICE_ID_MAX: price_test_max
+          FRONTEND_URL: http://localhost:3000
           # Ensure backend/ is on the Python path so bare imports resolve.
           PYTHONPATH: ${{ github.workspace }}/backend
         run: pytest tests/ -v --tb=short

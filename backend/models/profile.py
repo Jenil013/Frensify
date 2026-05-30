@@ -11,6 +11,9 @@ class UserProfile(BaseModel):
     streak_days: int
     last_active_date: Optional[str] = None
     tier: str
+    stripe_customer_id: Optional[str] = None
+    stripe_subscription_id: Optional[str] = None
+    subscription_status: Optional[str] = None
     created_at: str
 
 

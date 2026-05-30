@@ -42,11 +42,12 @@ function getInitials(name: string): string {
 export default function App() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { profile: apiProfile, loading: profileLoading, error: profileError } =
+  const { profile: apiProfile, loading: profileLoading, error: profileError, refresh } =
     useApiProfile();
 
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
   const [vocabList, setVocabList] = useState<VocabularyCard[]>(INITIAL_VOCABULARY);
   const [activeExerciseToLaunch, setActiveExerciseToLaunch] =
     useState<ExerciseItem | null>(null);
@@ -61,6 +62,28 @@ export default function App() {
       })
     );
   }, [apiProfile, user?.email]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    if (!checkout) return;
+
+    if (checkout === "success") {
+      void refresh().then(() => {
+        setCheckoutNotice(
+          "Payment received — your plan will update shortly once confirmed."
+        );
+        setActiveTab("pricing");
+      });
+    } else if (checkout === "cancel") {
+      setActiveTab("pricing");
+    }
+
+    params.delete("checkout");
+    params.delete("session_id");
+    const next = params.toString();
+    navigate(`/app${next ? `?${next}` : ""}`, { replace: true });
+  }, [navigate, refresh]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -388,9 +411,10 @@ export default function App() {
           )}
 
           {activeTab === "pricing" && (
-            <PricingTab 
+            <PricingTab
               profile={profile}
-              onUpdateTier={handleUpdateTier}
+              checkoutNotice={checkoutNotice}
+              onClearCheckoutNotice={() => setCheckoutNotice(null)}
             />
           )}
 

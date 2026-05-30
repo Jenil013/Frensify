@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     gemini_api_key_utils: str
     gemini_utils_model: str
     fastapi_port: int = 8000
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id_pro: str = ""
+    stripe_price_id_max: str = ""
+    frontend_url: str = "http://localhost:3000"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
@@ -45,4 +50,14 @@ MOCK_CAPS: dict[str, int] = {
     "Free": 0,
     "Pro":  2,
     "Max":  4,
+}
+
+TIER_TO_PRICE: dict[str, str] = {
+    "Pro": settings.stripe_price_id_pro,
+    "Max": settings.stripe_price_id_max,
+}
+
+PRICE_TO_TIER: dict[str, str] = {
+    settings.stripe_price_id_pro: "Pro",
+    settings.stripe_price_id_max: "Max",
 }

@@ -24,6 +24,8 @@ def _register_routers():
     from routers.vocabulary import router as vocabulary_router
     from routers.ai import router as ai_router
     from routers.analytics import router as analytics_router
+    from routers.billing import router as billing_router
+    from routers.stripe_webhook import router as stripe_webhook_router
 
     app.include_router(profile_router, prefix="/api/v1")
     app.include_router(practice_router, prefix="/api/v1")
@@ -31,6 +33,8 @@ def _register_routers():
     app.include_router(vocabulary_router, prefix="/api/v1")
     app.include_router(ai_router, prefix="/api/v1")
     app.include_router(analytics_router, prefix="/api/v1")
+    app.include_router(billing_router, prefix="/api/v1")
+    app.include_router(stripe_webhook_router, prefix="/api/v1")
 
 
 _register_routers()

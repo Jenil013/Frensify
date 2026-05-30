@@ -14,6 +14,9 @@ export interface ApiProfile {
   streak_days: number;
   last_active_date: string | null;
   tier: string;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: string | null;
   created_at: string;
 }
 
@@ -73,6 +76,21 @@ export async function updateProfile(
   return apiFetch<ApiProfile>("/api/v1/profile", {
     method: "PATCH",
     body: JSON.stringify(patch),
+  });
+}
+
+export async function createCheckoutSession(
+  tier: Extract<UserSubscriptionTier, "Pro" | "Max">
+): Promise<{ url: string }> {
+  return apiFetch<{ url: string }>("/api/v1/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ tier }),
+  });
+}
+
+export async function openBillingPortal(): Promise<{ url: string }> {
+  return apiFetch<{ url: string }>("/api/v1/billing/portal", {
+    method: "POST",
   });
 }
 
