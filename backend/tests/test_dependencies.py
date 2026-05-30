@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
 
-@patch("dependencies.jwt.decode")
+@patch("dependencies.decode_supabase_access_token")
 def test_get_current_user_valid_token(mock_decode):
     from dependencies import get_current_user
 
@@ -16,12 +16,12 @@ def test_get_current_user_valid_token(mock_decode):
     assert result["sub"] == "user-uuid-123"
 
 
-@patch("dependencies.jwt.decode")
+@patch("dependencies.decode_supabase_access_token")
 def test_get_current_user_expired_token(mock_decode):
     from dependencies import get_current_user
-    from jose import ExpiredSignatureError
+    import jwt as pyjwt
 
-    mock_decode.side_effect = ExpiredSignatureError("expired")
+    mock_decode.side_effect = pyjwt.ExpiredSignatureError("expired")
     creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="expired-token")
 
     with pytest.raises(HTTPException) as exc_info:
@@ -29,12 +29,12 @@ def test_get_current_user_expired_token(mock_decode):
     assert exc_info.value.status_code == 401
 
 
-@patch("dependencies.jwt.decode")
+@patch("dependencies.decode_supabase_access_token")
 def test_get_current_user_invalid_token(mock_decode):
     from dependencies import get_current_user
-    from jose import JWTError
+    import jwt as pyjwt
 
-    mock_decode.side_effect = JWTError("invalid")
+    mock_decode.side_effect = pyjwt.InvalidTokenError("invalid")
     creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="garbage")
 
     with pytest.raises(HTTPException) as exc_info:

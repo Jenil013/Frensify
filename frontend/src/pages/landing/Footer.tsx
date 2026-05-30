@@ -30,7 +30,7 @@ export default function Footer() {
                 (item) => (
                   <li key={item}>
                     <Link
-                      to="/app"
+                      to="/auth"
                       className="text-xs text-white/60 hover:text-white transition-colors"
                     >
                       {item}

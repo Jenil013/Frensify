@@ -45,7 +45,7 @@ export default function FinalCTA() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <Link
-            to="/app"
+            to="/auth?mode=signup"
             className="inline-flex items-center gap-2 bg-[#002D62] hover:bg-[#001D42] text-white rounded-xl px-8 py-3.5 text-sm font-bold shadow-premium-lg transition-all hover:shadow-premium-xl"
           >
             Get Started Free

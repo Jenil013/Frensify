@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Trophy, BookOpen, Headphones, PenTool, Mic, TrendingUp, Calendar, 
-  Settings, CreditCard, Shield, Sparkles, User, GraduationCap, Flame, Star, Zap 
+  Settings, CreditCard, Shield, Sparkles, User, GraduationCap, Flame, Star, Zap, LogOut
 } from "lucide-react";
 
 import {
@@ -13,6 +14,10 @@ import {
   TcfModuleId,
 } from "./types";
 import { INITIAL_VOCABULARY, SAMPLE_EXERCISES } from "./constants";
+import { useAuth } from "./contexts/AuthContext";
+import { useApiProfile } from "./hooks/useApiProfile";
+import { mapApiProfileToUser } from "./lib/apiClient";
+import AuthLoadingScreen from "./components/auth/AuthLoadingScreen";
 
 // Import tabs
 import DashboardTab from "./components/DashboardTab";
@@ -25,29 +30,65 @@ import PricingTab from "./components/PricingTab";
 import AccountTab from "./components/AccountTab";
 import FrensifyLogo from "./components/FrensifyLogo";
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (
+    parts[0].charAt(0) + parts[parts.length - 1].charAt(0)
+  ).toUpperCase();
+}
+
 export default function App() {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { profile: apiProfile, loading: profileLoading, error: profileError } =
+    useApiProfile();
+
   const [activeTab, setActiveTab] = useState<string>("dashboard");
-
-  // Main client-persisted or memory reactive profile state
-  const [profile, setProfile] = useState<UserProfile>({
-    name: "Claire",
-    email: "claire.duval@gmail.com",
-    targetExam: "TEF",
-    targetScore: "C1",
-    currentLevel: "B1",
-    streakDays: 12,
-    lastActiveDate: "2026-05-19",
-    tier: "Free", // Initially "Free" so the user can see state gates
-    completedActivities: [],
-    mockTestScores: [
-      { examId: "diag-1", examName: "Initial Oral Diagnostic Quiz", date: "2026-05-10", scorePct: 70, cefr: "B1" },
-      { examId: "diag-2", examName: "Reading Quick Placement", date: "2026-05-12", scorePct: 76, cefr: "B2" }
-    ],
-    moduleScores: [],
-  });
-
-  // Dynamic state for vocabulary
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [vocabList, setVocabList] = useState<VocabularyCard[]>(INITIAL_VOCABULARY);
+  const [activeExerciseToLaunch, setActiveExerciseToLaunch] =
+    useState<ExerciseItem | null>(null);
+
+  useEffect(() => {
+    if (!apiProfile || !user?.email) return;
+    setProfile((prev) =>
+      mapApiProfileToUser(apiProfile, user.email!, {
+        completedActivities: prev?.completedActivities ?? [],
+        mockTestScores: prev?.mockTestScores ?? [],
+        moduleScores: prev?.moduleScores ?? [],
+      })
+    );
+  }, [apiProfile, user?.email]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth", { replace: true });
+  };
+
+  if (profileLoading) {
+    return <AuthLoadingScreen message="Loading your workspace…" />;
+  }
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF9] flex flex-col items-center justify-center gap-4 p-6">
+        <p className="text-sm text-red-600 text-center max-w-md">{profileError}</p>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="text-sm font-medium text-[#002D62] hover:underline"
+        >
+          Sign out and try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return <AuthLoadingScreen message="Loading your workspace…" />;
+  }
 
   // Recommended next exercise
   const recommendedExercise = SAMPLE_EXERCISES.find(
@@ -143,8 +184,6 @@ export default function App() {
     }));
   };
 
-  // Select recommended exercise item and load it inside Practice tab
-  const [activeExerciseToLaunch, setActiveExerciseToLaunch] = useState<ExerciseItem | null>(null);
   const handleStartExerciseInPracticeTab = (ex: ExerciseItem) => {
     setActiveTab("practice");
     // Wait a brief tick to load Practice view state, then force-select exercise
@@ -278,9 +317,18 @@ export default function App() {
 
             <div className="w-10 h-10 bg-white rounded-full border border-[#E9E9E7] flex items-center justify-center shadow-sm shrink-0">
               <div className="w-7 h-7 bg-[#EAF5F1] rounded-full flex items-center justify-center text-[#2D6A53] text-xs font-semibold uppercase">
-                {profile.name.slice(0, 2)}
+                {getInitials(profile.name)}
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              title="Sign out"
+              className="p-2 text-[#7A7A78] hover:text-[#37352F] hover:bg-[#F1F1EF] rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </header>
 

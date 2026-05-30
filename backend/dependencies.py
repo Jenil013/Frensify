@@ -1,7 +1,8 @@
 from datetime import date, timedelta
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError, ExpiredSignatureError
+import jwt as pyjwt
+from auth_jwt import decode_supabase_access_token
 from config import settings, TIER_CAPS, MOCK_CAPS
 from database import get_db
 
@@ -12,16 +13,10 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ) -> dict:
     try:
-        payload = jwt.decode(
-            credentials.credentials,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-        return payload
-    except ExpiredSignatureError:
+        return decode_supabase_access_token(credentials.credentials)
+    except pyjwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired.")
-    except JWTError:
+    except pyjwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token.")
 
 

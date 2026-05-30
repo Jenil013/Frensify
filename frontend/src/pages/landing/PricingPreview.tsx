@@ -76,7 +76,7 @@ export default function PricingPreview() {
               </ul>
 
               <Link
-                to="/app"
+                to="/auth?mode=signup"
                 className={`block w-full text-center py-2.5 rounded-lg text-xs font-semibold transition-all ${
                   tier.highlighted
                     ? "bg-[#002D62] hover:bg-[#001D42] text-white shadow-premium"

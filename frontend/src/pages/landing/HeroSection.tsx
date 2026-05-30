@@ -51,7 +51,7 @@ export default function HeroSection() {
             className="flex flex-wrap gap-3"
           >
             <Link
-              to="/app"
+              to="/auth?mode=signup"
               className="inline-flex items-center gap-2 bg-[#002D62] hover:bg-[#001D42] text-white rounded-xl px-7 py-3.5 text-sm font-bold shadow-premium-lg transition-all hover:shadow-premium-xl"
             >
               Start Free Practice

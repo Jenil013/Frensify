@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from database import get_db
 from dependencies import get_profile
 from models.profile import UserProfile, ProfileUpdate
@@ -22,6 +22,9 @@ async def update_profile(
         db.table("profiles")
         .update(patch_data)
         .eq("id", profile["id"])
+        .select("*")
         .execute()
     )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Profile not found.")
     return result.data[0]

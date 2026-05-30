@@ -53,13 +53,13 @@ export default function Navbar() {
           ))}
           <div className="flex items-center gap-3 ml-4">
             <Link
-              to="/app"
+              to="/auth"
               className="text-sm font-medium text-[#37352F] hover:text-[#0F47AF] transition-colors"
             >
               Sign In
             </Link>
             <Link
-              to="/app"
+              to="/auth?mode=signup"
               className="bg-[#002D62] hover:bg-[#001D42] text-white rounded-lg px-5 py-2 text-sm font-semibold transition-all shadow-premium"
             >
               Get Started
@@ -92,14 +92,14 @@ export default function Navbar() {
           ))}
           <div className="flex flex-col gap-2 pt-2 border-t border-[#E9E9E7]">
             <Link
-              to="/app"
+              to="/auth"
               className="text-sm font-medium text-[#37352F] py-2"
               onClick={() => setMobileOpen(false)}
             >
               Sign In
             </Link>
             <Link
-              to="/app"
+              to="/auth?mode=signup"
               className="bg-[#002D62] text-white rounded-lg px-5 py-2.5 text-sm font-semibold text-center"
               onClick={() => setMobileOpen(false)}
             >
