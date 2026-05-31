@@ -20,8 +20,15 @@ type ProfileContextValue = {
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
+/** Messages thrown by apiClient when the session/token is no longer valid. */
+const AUTH_ERROR_MESSAGES = new Set([
+  "Not authenticated.",
+  "Token expired.",
+  "Invalid token.",
+]);
+
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const { session, loading: authLoading } = useAuth();
+  const { session, loading: authLoading, signOut } = useAuth();
   const [profile, setProfileState] = useState<ApiProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,13 +48,18 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "Failed to load profile.";
+      // A dead/invalid session can't be recovered by a route change — clear it
+      // so the user re-authenticates instead of getting bounced to /onboarding.
+      if (AUTH_ERROR_MESSAGES.has(message)) {
+        await signOut();
+      }
       setError(message);
       setProfileState(null);
       return null;
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, signOut]);
 
   const setProfile = useCallback((next: ApiProfile) => {
     setProfileState(next);
@@ -65,15 +77,21 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [session, authLoading, refresh]);
 
+  // Treat the context as loading whenever a session exists but its profile
+  // has not been fetched yet. The refresh effect runs after commit, so without
+  // this guard route guards would briefly see `profile === null` for a
+  // signed-in user and wrongly redirect to /onboarding.
+  const profilePending = Boolean(session) && !profile && !error;
+
   const value = useMemo<ProfileContextValue>(
     () => ({
       profile,
-      loading: authLoading || loading,
+      loading: authLoading || loading || profilePending,
       error,
       refresh,
       setProfile,
     }),
-    [profile, authLoading, loading, error, refresh, setProfile]
+    [profile, authLoading, loading, profilePending, error, refresh, setProfile]
   );
 
   return (

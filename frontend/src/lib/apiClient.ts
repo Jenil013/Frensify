@@ -27,9 +27,48 @@ export interface ProfileUpdatePayload {
   current_level?: CefrLevel;
 }
 
-async function getAccessToken(): Promise<string | null> {
+/** Refresh slightly before expiry so we never send an effectively-expired token. */
+const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
+
+/**
+ * Return a valid Supabase access token, refreshing it first if the stored
+ * session is expired or about to expire. `getSession()` can hand back a stale
+ * token straight after a page reload (before the client auto-refreshes), which
+ * the backend rejects with 401 — guarding on `expires_at` avoids that.
+ */
+async function getAccessToken(forceRefresh = false): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
+  const session = data.session;
+  if (!session) {
+    return null;
+  }
+
+  const expiresAt = session.expires_at ?? 0;
+  const expiringSoon =
+    expiresAt > 0 &&
+    expiresAt * 1000 <= Date.now() + TOKEN_EXPIRY_BUFFER_SECONDS * 1000;
+
+  if (forceRefresh || expiringSoon) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    return refreshed.session?.access_token ?? session.access_token ?? null;
+  }
+
+  return session.access_token ?? null;
+}
+
+async function doFetch(
+  path: string,
+  options: RequestInit,
+  token: string
+): Promise<Response> {
+  return fetch(`${FASTAPI_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
 }
 
 export async function apiFetch<T>(
@@ -41,14 +80,16 @@ export async function apiFetch<T>(
     throw new Error("Not authenticated.");
   }
 
-  const response = await fetch(`${FASTAPI_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
+  let response = await doFetch(path, options, token);
+
+  // A 401 means the token was rejected (e.g. expired between fetch and use).
+  // Force a refresh and retry once before surfacing an error.
+  if (response.status === 401) {
+    const refreshedToken = await getAccessToken(true);
+    if (refreshedToken) {
+      response = await doFetch(path, options, refreshedToken);
+    }
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
