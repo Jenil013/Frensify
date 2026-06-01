@@ -5,6 +5,7 @@ media/
 CLAUDE.md
 docs/
 frontend/node_modules/
+.claude/
 
 # Environment files (secrets)
 .env
