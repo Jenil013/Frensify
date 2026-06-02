@@ -52,6 +52,12 @@ MOCK_CAPS: dict[str, int] = {
     "Max":  4,
 }
 
+DEFAULT_QUESTION_LIMIT = 40
+
+FREE_READING_LISTENING_CAP = 15
+
+CAPPED_FREE_MODULE_IDS = {"comprehension-ecrite", "comprehension-orale"}
+
 TIER_TO_PRICE: dict[str, str] = {
     "Pro": settings.stripe_price_id_pro,
     "Max": settings.stripe_price_id_max,

@@ -6,3 +6,8 @@
 .env.keys
 .env.local
 .env.*.local
+
+#helpers
+seed/
+question_bank/
+migrations/

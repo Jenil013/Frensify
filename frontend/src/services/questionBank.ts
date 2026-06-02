@@ -9,6 +9,9 @@ import {
   TEF_PLACEHOLDER_LISTENING_QUESTIONS,
   TEF_PLACEHOLDER_READING_QUESTIONS,
 } from "../tefConstants";
+import { fetchQuestions } from "../lib/apiClient";
+
+const TEF_READING_QUESTION_TARGET = 40;
 
 /**
  * Supabase table mapping (when you connect your question bank):
@@ -83,8 +86,26 @@ export async function loadTefModule(
   moduleId: TefModuleId
 ): Promise<TefModuleDefinition> {
   switch (moduleId) {
-    case "comprehension-ecrite":
+    case "comprehension-ecrite": {
+      if (isSupabaseConfigured()) {
+        try {
+          const questions = await fetchQuestions(
+            "TEF",
+            moduleId,
+            TEF_READING_QUESTION_TARGET
+          );
+          if (questions.length > 0) {
+            return attachTefMcqQuestions(moduleId, questions);
+          }
+        } catch (err) {
+          console.warn(
+            `[questionBank] Backend load failed for TEF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
+      }
       return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_READING_QUESTIONS);
+    }
     case "comprehension-orale":
       return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_LISTENING_QUESTIONS);
     default:

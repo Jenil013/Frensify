@@ -20,6 +20,7 @@ def health():
 def _register_routers():
     from routers.profile import router as profile_router
     from routers.practice import router as practice_router
+    from routers.questions import router as questions_router
     from routers.exams import router as exams_router
     from routers.vocabulary import router as vocabulary_router
     from routers.ai import router as ai_router
@@ -29,6 +30,7 @@ def _register_routers():
 
     app.include_router(profile_router, prefix="/api/v1")
     app.include_router(practice_router, prefix="/api/v1")
+    app.include_router(questions_router, prefix="/api/v1")
     app.include_router(exams_router, prefix="/api/v1")
     app.include_router(vocabulary_router, prefix="/api/v1")
     app.include_router(ai_router, prefix="/api/v1")

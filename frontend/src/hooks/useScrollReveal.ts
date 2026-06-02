@@ -1,7 +1,9 @@
 import { useRef } from "react";
-import { useInView } from "motion/react";
+import { useInView, type UseInViewOptions } from "motion/react";
 
-export function useScrollReveal(margin: string = "-80px 0px") {
+type ScrollRevealMargin = NonNullable<UseInViewOptions["margin"]>;
+
+export function useScrollReveal(margin: ScrollRevealMargin = "-80px 0px") {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin });
   return { ref, isInView };

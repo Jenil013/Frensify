@@ -1,5 +1,10 @@
 import { supabase } from "./supabaseClient";
-import type { ExamPathway, UserProfile, UserSubscriptionTier } from "../types";
+import type {
+  ExamPathway,
+  McqItem,
+  UserProfile,
+  UserSubscriptionTier,
+} from "../types";
 import type { CefrLevel } from "../tefConstants";
 
 const FASTAPI_BASE_URL =
@@ -133,6 +138,21 @@ export async function openBillingPortal(): Promise<{ url: string }> {
   return apiFetch<{ url: string }>("/api/v1/billing/portal", {
     method: "POST",
   });
+}
+
+export async function fetchQuestions(
+  examType: string,
+  moduleId: string,
+  limit?: number
+): Promise<McqItem[]> {
+  const params = new URLSearchParams({
+    exam_type: examType,
+    module_id: moduleId,
+  });
+  if (limit != null) {
+    params.set("limit", String(limit));
+  }
+  return apiFetch<McqItem[]>(`/api/v1/questions?${params.toString()}`);
 }
 
 export function isOnboardingComplete(profile: ApiProfile | null): boolean {
