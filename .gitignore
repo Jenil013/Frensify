@@ -25,3 +25,11 @@ __pycache__/
 
 # Seed output (regenerable)
 supabase/seed/*.json
+
+
+#docker
+docker-compose.yml
+frontend/Dockerfile
+frontend/.dockerignore
+backend/.dockerignore
+backend/Dockerfile

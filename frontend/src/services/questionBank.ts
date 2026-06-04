@@ -12,6 +12,8 @@ import {
 import { fetchQuestions } from "../lib/apiClient";
 
 const TEF_READING_QUESTION_TARGET = 40;
+const TCF_READING_QUESTION_TARGET = 39;
+const TCF_LISTENING_QUESTION_TARGET = 39;
 
 /**
  * Supabase table mapping (when you connect your question bank):
@@ -39,32 +41,50 @@ function attachMcqQuestions(
 export async function loadTcfModule(
   moduleId: TcfModuleId
 ): Promise<TcfModuleDefinition> {
-  if (isSupabaseConfigured()) {
-    try {
-      const fromDb = await fetchModuleFromSupabase(moduleId);
-      if (fromDb) return fromDb;
-    } catch (err) {
-      console.warn(
-        `[questionBank] Supabase load failed for ${moduleId}, using placeholders.`,
-        err
-      );
-    }
-  }
-
   switch (moduleId) {
-    case "comprehension-ecrite":
-      return attachMcqQuestions(moduleId, PLACEHOLDER_READING_QUESTIONS);
-    case "comprehension-orale":
+    case "comprehension-orale": {
+      if (isSupabaseConfigured()) {
+        try {
+          const questions = await fetchQuestions(
+            "TCF",
+            moduleId,
+            TCF_LISTENING_QUESTION_TARGET
+          );
+          if (questions.length > 0) {
+            return attachMcqQuestions(moduleId, questions);
+          }
+        } catch (err) {
+          console.warn(
+            `[questionBank] Backend load failed for TCF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
+      }
       return attachMcqQuestions(moduleId, PLACEHOLDER_LISTENING_QUESTIONS);
+    }
+    case "comprehension-ecrite": {
+      if (isSupabaseConfigured()) {
+        try {
+          const questions = await fetchQuestions(
+            "TCF",
+            moduleId,
+            TCF_READING_QUESTION_TARGET
+          );
+          if (questions.length > 0) {
+            return attachMcqQuestions(moduleId, questions);
+          }
+        } catch (err) {
+          console.warn(
+            `[questionBank] Backend load failed for TCF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
+      }
+      return attachMcqQuestions(moduleId, PLACEHOLDER_READING_QUESTIONS);
+    }
     default:
       return { ...TCF_MODULE_REGISTRY[moduleId] };
   }
-}
-
-async function fetchModuleFromSupabase(
-  _moduleId: TcfModuleId
-): Promise<TcfModuleDefinition | null> {
-  return null;
 }
 
 export function mergeModuleQuestions(

@@ -9,16 +9,21 @@ _ZERO_ROW = {
 }
 
 
-def get_or_create_week(db, user_id: str, week_start: date) -> dict:
+def get_weekly_usage(db, user_id: str, week_start: date) -> dict:
+    """Return this week's usage row, or zero counts if none exists yet."""
     result = (
         db.table("weekly_usage")
         .select("*")
         .eq("user_id", user_id)
         .eq("week_start", week_start.isoformat())
-        .single()
         .execute()
     )
-    return result.data if result.data else dict(_ZERO_ROW)
+    rows = result.data or []
+    return rows[0] if rows else dict(_ZERO_ROW)
+
+
+def get_or_create_week(db, user_id: str, week_start: date) -> dict:
+    return get_weekly_usage(db, user_id, week_start)
 
 
 def increment(db, user_id: str, week_start: date, endpoint: str) -> None:

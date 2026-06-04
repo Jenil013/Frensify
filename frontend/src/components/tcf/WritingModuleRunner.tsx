@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Sparkles, Loader2, ChevronRight } from "lucide-react";
 import ModuleSessionShell from "./ModuleSessionShell";
-import { evaluateWriting } from "../../api";
+import WritingFeedbackModal from "../WritingFeedbackModal";
+import { evaluateWritingModule } from "../../api";
 import {
   ExamPathway,
   TcfModuleDefinition,
   WritingModuleResult,
-  WritingSectionResult,
 } from "../../types";
 
 interface WritingModuleRunnerProps {
   module: TcfModuleDefinition;
   examType: ExamPathway;
+  examMode?: boolean;
   onComplete: (result: WritingModuleResult) => void;
   onAbort?: () => void;
 }
@@ -25,6 +26,7 @@ const TASK_IDS = ["1", "2", "3"] as const;
 export default function WritingModuleRunner({
   module,
   examType,
+  examMode = true,
   onComplete,
   onAbort,
 }: WritingModuleRunnerProps) {
@@ -37,7 +39,8 @@ export default function WritingModuleRunner({
     sectionsMeta[0].durationMinutes * 60
   );
   const [loading, setLoading] = useState(false);
-  const [completedResults, setCompletedResults] = useState<WritingSectionResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingResult, setPendingResult] = useState<WritingModuleResult | null>(null);
 
   const taskId = TASK_IDS[currentTask];
   const meta = sectionsMeta[currentTask];
@@ -64,45 +67,59 @@ export default function WritingModuleRunner({
     });
   };
 
-  const submitCurrentTask = useCallback(async () => {
-    if (words < minWords) return;
+  const submitModule = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const feedback = await evaluateWriting(
-        content.prompt,
-        activeText,
-        `expression-ecrite-${taskId}`,
+      const sections = TASK_IDS.map((id, idx) => ({
+        section_id: id,
+        prompt: sectionContent[id].prompt,
+        essay_text: texts[idx],
+        word_count: wordCount(texts[idx]),
+        task_number: `${examType} ${sectionsMeta[idx].label}`,
+        min_words: sectionsMeta[idx].minWords ?? 0,
+      }));
+      const sectionResults = await evaluateWritingModule(
+        "expression-ecrite",
         examType,
-        taskId
+        sections,
+        examMode ? "mock" : "practice"
       );
-      const sectionResult: WritingSectionResult = {
-        sectionId: taskId,
-        text: activeText,
-        wordCount: words,
-        feedback,
-      };
-      const nextResults = [...completedResults, sectionResult];
-      setCompletedResults(nextResults);
-
-      if (currentTask < 2) {
-        setCurrentTask((t) => t + 1);
-      } else {
-        onComplete({ sections: nextResults });
-      }
+      setPendingResult({ sections: sectionResults });
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Writing evaluation failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
-  }, [
-    words,
-    minWords,
-    content.prompt,
-    activeText,
-    taskId,
-    examType,
-    completedResults,
-    currentTask,
-    onComplete,
-  ]);
+  }, [sectionContent, texts, examType, examMode]);
+
+  const dismissFeedback = useCallback(() => {
+    if (pendingResult) {
+      onComplete(pendingResult);
+      setPendingResult(null);
+    }
+  }, [pendingResult, onComplete]);
+
+  const feedbackSections =
+    pendingResult?.sections
+      .filter((s) => s.feedback)
+      .map((s, idx) => ({
+        label: sectionsMeta[idx]?.label.split("—")[0].trim() ?? `Task ${idx + 1}`,
+        feedback: s.feedback!,
+      })) ?? [];
+
+  const advanceOrSubmit = useCallback(async () => {
+    if (words < minWords) return;
+    if (currentTask < 2) {
+      setCurrentTask((t) => t + 1);
+      return;
+    }
+    await submitModule();
+  }, [words, minWords, currentTask, submitModule]);
 
   const isLastTask = currentTask === 2;
 
@@ -111,7 +128,7 @@ export default function WritingModuleRunner({
       <button
         type="button"
         disabled={loading || words < minWords}
-        onClick={submitCurrentTask}
+        onClick={advanceOrSubmit}
         className={`px-4 py-2 text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer ${
           isLastTask ? "bg-[#2D6A53]" : "bg-[#37352F]"
         }`}
@@ -132,7 +149,16 @@ export default function WritingModuleRunner({
   );
 
   return (
-    <ModuleSessionShell
+    <>
+      <WritingFeedbackModal
+        open={pendingResult !== null && feedbackSections.length > 0}
+        onClose={dismissFeedback}
+        title="Expression écrite — your results"
+        sections={feedbackSections}
+        continueLabel={examMode ? "Continue mock test" : "Back to practice"}
+      />
+
+      <ModuleSessionShell
       title={module.meta.labelFr}
       objective={module.meta.objective}
       secondsRemaining={secondsLeft}
@@ -141,6 +167,12 @@ export default function WritingModuleRunner({
       footer={footer}
     >
       <div className="space-y-3">
+        {error && (
+          <p className="text-xs text-[#B83E5C] bg-[#FDF2F4] border border-[#F5D0D6] rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+
         <div className="flex gap-1 p-1 bg-[#F1F1EF] border border-[#E9E9E7] rounded-lg">
           {TASK_IDS.map((id, idx) => (
             <div
@@ -184,5 +216,6 @@ export default function WritingModuleRunner({
         </p>
       </div>
     </ModuleSessionShell>
+    </>
   );
 }

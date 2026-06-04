@@ -7,6 +7,7 @@ class QuestionItem(BaseModel):
     prompt: str
     passage: Optional[str] = None
     audioUrl: Optional[str] = None
+    imageUrl: Optional[str] = None
     choices: List[str]
     correctChoiceIndex: int
     explanation: Optional[str] = None

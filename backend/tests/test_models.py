@@ -3,14 +3,15 @@ from models.ai import AIWritingCorrection, AISpeakingSuggestion, StudyPlanRespon
 
 def test_writing_correction_model():
     data = {
+        "analysis": "Reasoned through all dimensions.",
+        "overallFeedback": "Good structure.",
         "cefrScore": "B2",
         "scoreRange": "B1-B2",
-        "overallFeedback": "Good structure.",
         "dimensionScores": {
-            "vocabulary": "B2",
-            "grammar": "B1",
-            "coherence": "B2",
-            "taskCompleteness": "B2",
+            "vocabulary": "B2 — good range.",
+            "grammar": "B1 — some errors.",
+            "coherence": "B2 — clear flow.",
+            "taskCompleteness": "B2 — task met.",
         },
         "detailedCorrections": [
             {"original": "je suis alle", "corrected": "je suis alle(e)", "explanation": "Gender agreement."}

@@ -21,6 +21,7 @@ def _map_row(row: dict) -> QuestionItem:
         prompt=row["prompt"],
         passage=row.get("passage"),
         audioUrl=row.get("audio_path"),
+        imageUrl=row.get("image_path"),
         choices=row.get("choices") or [],
         correctChoiceIndex=row.get("correct_index") or 0,
         explanation=row.get("explanation"),

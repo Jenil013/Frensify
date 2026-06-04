@@ -75,6 +75,7 @@ export default function TcfModuleSession({
       <WritingModuleRunner
         module={module}
         examType={examType}
+        examMode={examMode}
         onAbort={onAbort}
         onComplete={(result) => onComplete({ type: "writing", result })}
       />

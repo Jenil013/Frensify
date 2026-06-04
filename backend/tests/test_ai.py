@@ -1,10 +1,12 @@
 from unittest.mock import patch, MagicMock
+from datetime import date, timedelta
 from models.ai import AIWritingCorrection, AISpeakingSuggestion
 
 _WRITING_FEEDBACK = AIWritingCorrection(
+    analysis="Clear structure with some grammar gaps.",
+    overallFeedback="Good.",
     cefrScore="B2",
     scoreRange="B1-B2",
-    overallFeedback="Good.",
     dimensionScores={"vocabulary": "B2", "grammar": "B1", "coherence": "B2", "taskCompleteness": "B2"},
     detailedCorrections=[],
     improvedVersion="Improved.",
@@ -20,11 +22,44 @@ _SPEAKING_FEEDBACK = AISpeakingSuggestion(
     modelSpokenDraft="En effet...",
 )
 
+_TCF_MODULE_PAYLOAD = {
+    "module_id": "expression-ecrite",
+    "exam_type": "TCF",
+    "sections": [
+        {
+            "section_id": "1",
+            "prompt": "Decrivez votre ville.",
+            "essay_text": "Ma ville est belle.",
+            "word_count": 4,
+        },
+        {
+            "section_id": "2",
+            "prompt": "Ecrivez une lettre.",
+            "essay_text": "Cher ami, je vous ecris.",
+            "word_count": 5,
+        },
+        {
+            "section_id": "3",
+            "prompt": "Argumentez.",
+            "essay_text": "Je pense que c'est important.",
+            "word_count": 5,
+        },
+    ],
+}
+
 
 def _setup_cap_mock(mock_db):
-    """Configure mock_db so the weekly_usage cap check returns count=0 (under cap)."""
+    """Configure mock_db so the weekly_usage cap check returns no row (under cap)."""
     mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value \
-        .single.return_value.execute.return_value = MagicMock(data=None)
+        .execute.return_value = MagicMock(data=[])
+
+
+def _setup_cap_at_limit(mock_db, endpoint: str, cap: int):
+    monday = date.today() - timedelta(days=date.today().weekday())
+    mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value \
+        .execute.return_value = MagicMock(
+            data=[{"user_id": "user-uuid-123", "week_start": monday.isoformat(), f"{endpoint}_count": cap}]
+        )
 
 
 def test_writing_eval_practice(client, auth_headers, mock_db):
@@ -69,3 +104,55 @@ def test_speaking_eval_practice(client, auth_headers, mock_db):
         )
     assert response.status_code == 200
     assert response.json()["cefrLevel"] == "B1"
+
+
+def test_writing_module_practice(client, auth_headers, mock_db):
+    _setup_cap_mock(mock_db)
+    with patch("routers.ai.evaluate_writing", return_value=_WRITING_FEEDBACK) as mock_eval, \
+         patch("routers.ai.write_audit_log") as mock_audit, \
+         patch("routers.ai.increment") as mock_increment:
+        mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{}])
+        response = client.post(
+            "/api/v1/ai/writing/module",
+            headers=auth_headers,
+            json=_TCF_MODULE_PAYLOAD,
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["sections"]) == 3
+    assert all(s["feedback"]["cefrScore"] == "B2" for s in body["sections"])
+    assert mock_eval.call_count == 3
+    mock_increment.assert_called_once()
+    mock_audit.assert_called_once()
+
+
+def test_writing_module_wrong_section_count(client, auth_headers, mock_db):
+    _setup_cap_mock(mock_db)
+    payload = {**_TCF_MODULE_PAYLOAD, "sections": _TCF_MODULE_PAYLOAD["sections"][:2]}
+    response = client.post(
+        "/api/v1/ai/writing/module",
+        headers=auth_headers,
+        json=payload,
+    )
+    assert response.status_code == 422
+
+
+def test_writing_module_practice_cap_exceeded(client, auth_headers, mock_db):
+    _setup_cap_at_limit(mock_db, "writing_eval", 2)
+    response = client.post(
+        "/api/v1/ai/writing/module",
+        headers=auth_headers,
+        json=_TCF_MODULE_PAYLOAD,
+    )
+    assert response.status_code == 429
+
+
+def test_writing_module_practice_free_tier(client, auth_headers, mock_db, mock_profile):
+    mock_profile["tier"] = "Free"
+    _setup_cap_at_limit(mock_db, "writing_eval", 0)
+    response = client.post(
+        "/api/v1/ai/writing/module",
+        headers=auth_headers,
+        json=_TCF_MODULE_PAYLOAD,
+    )
+    assert response.status_code == 429

@@ -10,6 +10,8 @@ class WritingEvalRequest(BaseModel):
     word_count: int
     exam_type: str
     prompt: str
+    task_number: Optional[str] = None
+    min_words: Optional[int] = None
 
 
 class DimensionScores(BaseModel):
@@ -26,12 +28,37 @@ class DetailedCorrection(BaseModel):
 
 
 class AIWritingCorrection(BaseModel):
+    analysis: str
+    overallFeedback: str
     cefrScore: str
     scoreRange: str
-    overallFeedback: str
     dimensionScores: DimensionScores
     detailedCorrections: List[DetailedCorrection]
     improvedVersion: str
+
+
+class WritingSectionInput(BaseModel):
+    section_id: str
+    prompt: str
+    essay_text: str
+    word_count: int
+    task_number: Optional[str] = None
+    min_words: Optional[int] = None
+
+
+class WritingModuleEvalRequest(BaseModel):
+    module_id: str
+    exam_type: str
+    sections: List[WritingSectionInput]
+
+
+class WritingSectionFeedback(BaseModel):
+    section_id: str
+    feedback: AIWritingCorrection
+
+
+class WritingModuleEvalResponse(BaseModel):
+    sections: List[WritingSectionFeedback]
 
 
 # --- Speaking ---

@@ -73,6 +73,7 @@ export default function TefModuleSession({
     return (
       <TefWritingModuleRunner
         module={module}
+        examMode={examMode}
         onAbort={onAbort}
         onComplete={(result) =>
           onComplete({ type: "writing", moduleId, result })

@@ -20,6 +20,7 @@ import { TCF_MODULE_REGISTRY } from "../tcfConstants";
 import { TEF_MODULE_REGISTRY } from "../tefConstants";
 import TcfModuleSession from "./tcf/TcfModuleSession";
 import TefModuleSession from "./tef/TefModuleSession";
+import WritingFeedbackModal from "./WritingFeedbackModal";
 
 interface PracticeTabProps {
   profile: UserProfile;
@@ -205,7 +206,11 @@ export default function PracticeTab({
         selectedExercise.prompt,
         writtenEssay,
         selectedExercise.id,
-        profile.targetExam
+        profile.targetExam,
+        {
+          taskNumber: `${profile.targetExam} practice — ${selectedExercise.title}`,
+          minWords: getWritingMinWords(selectedExercise),
+        }
       );
       setWritingFeedback(res);
       onCompleteExercise(selectedExercise.id);
@@ -576,58 +581,6 @@ export default function PracticeTab({
                 </div>
               </div>
 
-              {writingFeedback && (
-                <div id="writing-feedback-view" className="bg-[#EAF5F1] border border-[#D1EBE1] rounded-xl p-5 space-y-4 animate-fade-in text-[#2D6A53]">
-                  <div className="flex flex-wrap justify-between items-center pb-3 border-b border-[#D1EBE1] gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="w-4.5 h-4.5 text-[#2D6A53]" />
-                      <h4 className="font-bold text-[#2D6A53] text-[13px] uppercase tracking-wide">Frensify AI Grader Feedback</h4>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase bg-white border border-[#D1EBE1] px-2 py-0.5 rounded text-[#2D6A53]">
-                        CEFR Rank: {writingFeedback.cefrScore}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase bg-[#2D6A53] px-2 py-0.5 rounded text-white">
-                        TEF/TCF score: {writingFeedback.scoreRange} pts
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs leading-relaxed"><strong>Summary Review:</strong> {writingFeedback.overallFeedback}</p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {Object.entries(writingFeedback.dimensionScores).map(([dim, note]) => (
-                      <div key={dim} className="bg-white border border-[#D1EBE1]/60 rounded-lg p-3 shadow-sm text-[#37352F]">
-                        <span className="text-[9px] font-bold text-[#7A7A78] uppercase block mb-0.5">{dim}</span>
-                        <p className="text-[11px] leading-relaxed">{note}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border-t border-[#D1EBE1]/60 pt-3 space-y-3">
-                    <h5 className="text-[10px] font-bold uppercase tracking-wider">Targeted Grammatical Overviews</h5>
-                    <div className="space-y-2">
-                      {writingFeedback.detailedCorrections.map((corr, idx) => (
-                        <div key={idx} className="bg-white border border-[#D1EBE1]/40 rounded-lg p-3 text-xs text-[#37352F] space-y-1">
-                          <p className="text-[#B83E5C] line-through">❌ "{corr.original}"</p>
-                          <p className="text-[#2D6A53] font-bold">✅ "{corr.corrected}"</p>
-                          <p className="text-[#5F5E5B] text-[11px] bg-[#FAFAF9] p-2 rounded border border-[#E9E9E7]/60 leading-normal mt-1">
-                            <strong>Feedback:</strong> {corr.explanation}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-[#D1EBE1]/60 pt-3 space-y-1.5">
-                    <h5 className="text-[10px] font-bold uppercase tracking-wider">Pro Target Blueprint Model:</h5>
-                    <div className="bg-white border border-[#D1EBE1] text-xs p-3.5 rounded-lg leading-relaxed italic text-[#37352F]">
-                      {writingFeedback.improvedVersion}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {apiError && (
                 <div className="bg-[#FCECF0] border border-[#F8D4DE] text-xs p-3.5 rounded-lg text-[#B83E5C] flex gap-2 items-center">
                   <AlertCircle className="w-4 h-4 text-[#B83E5C]" />
@@ -902,6 +855,18 @@ export default function PracticeTab({
 
         </div>
       )}
+
+      <WritingFeedbackModal
+        open={writingFeedback !== null}
+        onClose={() => setWritingFeedback(null)}
+        title="Your writing results"
+        sections={
+          writingFeedback
+            ? [{ label: "Your essay", feedback: writingFeedback }]
+            : []
+        }
+        continueLabel="Close"
+      />
     </div>
   );
 }

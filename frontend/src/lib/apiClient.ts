@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import type {
+  AIWritingCorrection,
   ExamPathway,
   McqItem,
   UserProfile,
@@ -153,6 +154,69 @@ export async function fetchQuestions(
     params.set("limit", String(limit));
   }
   return apiFetch<McqItem[]>(`/api/v1/questions?${params.toString()}`);
+}
+
+export type WritingEvalContext = "practice" | "mock";
+
+export interface WritingSectionPayload {
+  section_id: string;
+  prompt: string;
+  essay_text: string;
+  word_count: number;
+  task_number?: string;
+  min_words?: number;
+}
+
+export interface WritingSectionFeedbackResponse {
+  section_id: string;
+  feedback: AIWritingCorrection;
+}
+
+export interface WritingModuleEvalResponse {
+  sections: WritingSectionFeedbackResponse[];
+}
+
+export async function submitWritingEvaluation(
+  exerciseId: string,
+  examType: ExamPathway,
+  prompt: string,
+  essayText: string,
+  wordCount: number,
+  taskNumber?: string,
+  minWords?: number
+): Promise<AIWritingCorrection> {
+  return apiFetch<AIWritingCorrection>("/api/v1/ai/writing", {
+    method: "POST",
+    body: JSON.stringify({
+      exercise_id: exerciseId,
+      exam_type: examType,
+      prompt,
+      essay_text: essayText,
+      word_count: wordCount,
+      ...(taskNumber ? { task_number: taskNumber } : {}),
+      ...(minWords !== undefined ? { min_words: minWords } : {}),
+    }),
+  });
+}
+
+export async function submitWritingModuleEvaluation(
+  moduleId: string,
+  examType: ExamPathway,
+  sections: WritingSectionPayload[],
+  context: WritingEvalContext
+): Promise<WritingModuleEvalResponse> {
+  const path =
+    context === "mock"
+      ? "/api/v1/ai/writing/module/mock"
+      : "/api/v1/ai/writing/module";
+  return apiFetch<WritingModuleEvalResponse>(path, {
+    method: "POST",
+    body: JSON.stringify({
+      module_id: moduleId,
+      exam_type: examType,
+      sections,
+    }),
+  });
 }
 
 export function isOnboardingComplete(profile: ApiProfile | null): boolean {

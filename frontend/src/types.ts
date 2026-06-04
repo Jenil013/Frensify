@@ -84,6 +84,7 @@ export interface McqItem {
   prompt: string;
   passage?: string;
   audioUrl?: string;
+  imageUrl?: string;
   transcript?: string;
   choices: string[];
   correctChoiceIndex: number;
@@ -163,9 +164,10 @@ export interface ExerciseItem {
 }
 
 export interface AIWritingCorrection {
+  analysis: string;
+  overallFeedback: string;
   cefrScore: string;
   scoreRange: string;
-  overallFeedback: string;
   dimensionScores: {
     vocabulary: string;
     grammar: string;

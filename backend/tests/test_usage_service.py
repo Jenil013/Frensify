@@ -5,9 +5,9 @@ from services.usage_service import get_or_create_week, increment, write_audit_lo
 
 def _make_db(existing_row=None):
     db = MagicMock()
-    single_mock = MagicMock()
-    single_mock.execute.return_value = MagicMock(data=existing_row)
-    db.table.return_value.select.return_value.eq.return_value.eq.return_value.single.return_value = single_mock
+    select_execute = MagicMock()
+    select_execute.data = [existing_row] if existing_row else []
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = select_execute
     upsert_mock = MagicMock()
     upsert_mock.execute.return_value = MagicMock(data=[{"writing_eval_count": 1}])
     db.table.return_value.upsert.return_value = upsert_mock

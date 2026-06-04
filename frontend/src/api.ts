@@ -3,7 +3,13 @@
 // All evaluation, study planning, and vocabulary insights are driven by client-side simulations,
 // allowing you to test the applet immediately in the preview.
 
-import { AIWritingCorrection, AISpeakingSuggestion, StudyPlanResponse } from "./types";
+import { AIWritingCorrection, AISpeakingSuggestion, StudyPlanResponse, WritingSectionResult } from "./types";
+import {
+  submitWritingEvaluation,
+  submitWritingModuleEvaluation,
+  type WritingEvalContext,
+  type WritingSectionPayload,
+} from "./lib/apiClient";
 
 export interface VocabExplanation {
   word: string;
@@ -49,61 +55,47 @@ export interface VocabExplanation {
  *    ---------------------------------------------------------
  */
 
-// 1. AI Writing Evaluation (FastAPI-ready payload structure)
+// 1. AI Writing Evaluation — standalone practice essays via FastAPI + Gemini
 export async function evaluateWriting(
   prompt: string,
   essay: string,
   taskType: string,
   examType: "TEF" | "TCF",
-  sectionId?: string
+  options?: { taskNumber?: string; minWords?: number }
 ): Promise<AIWritingCorrection> {
-  console.log(
-    `[FastAPI Prep] Requesting writing evaluation for ${examType}${sectionId ? ` section ${sectionId}` : ""}...`
+  const wordCount = essay.trim().split(/\s+/).filter(Boolean).length;
+  return submitWritingEvaluation(
+    taskType,
+    examType,
+    prompt,
+    essay,
+    wordCount,
+    options?.taskNumber,
+    options?.minWords
   );
-  
-  // Simulated latent load to match official cloud processing
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+}
 
-  // Determine scoring level based on mock essay word count heuristic for interactive realism
-  const words = essay.trim().split(/\s+/).length;
-  let simulatedLevel = "B1";
-  let range = "250-320";
-  let feedback = "Solid composition foundation! However, you can significantly elevate your cohesion indices. Try targeting a larger subset of subordinating connectors.";
-  
-  if (words > 180) {
-    simulatedLevel = "C1";
-    range = "450-500";
-    feedback = "Exceptional structural flow. Your use of the conditional aspect is accurate and demonstrates natural Parisian syntactic patterns. Highly prepared.";
-  } else if (words > 100) {
-    simulatedLevel = "B2";
-    range = "360-400";
-    feedback = "Good argumentative organization. Your ideas are clear and readable. Work on refining gender-agreement with passive participles to push for C1.";
-  }
-
-  return {
-    cefrScore: simulatedLevel,
-    scoreRange: `${range} (Official ${examType} Grid Equivalent)`,
-    overallFeedback: `${feedback} (Simulated Client Workspace Diagnostic). To integrate your live model, point this fetch block to your @app.post("/api/v1/feedback/writing") FastAPI server.`,
-    dimensionScores: {
-      vocabulary: `${simulatedLevel} - Standard range with some advanced expressions appropriate for ${examType} targets.`,
-      grammar: `${simulatedLevel} - Appropriate syntactic control with minor agreement mistakes.`,
-      coherence: `${simulatedLevel} - Logical progression of paragraphs. Highlighted connecteurs used correctly.`,
-      taskCompleteness: "Fluent command - Fully answered all sub-dimensions of the prompt details."
-    },
-    detailedCorrections: [
-      {
-        original: "Je vais visiter la canada le semaine dernière.",
-        corrected: "Je suis allé au Canada la semaine dernière.",
-        explanation: "Canada is masculine ('au Canada'). 'Semaine' is feminine ('la semaine'). The indicator 'dernière' requires past tense ('suis allé') rather than futur proche."
-      },
-      {
-        original: "C'est très important de faire ça parce que c'est bon.",
-        corrected: "Il est indispensable de s'y conformer car cet atout s'avère bénéfique.",
-        explanation: "Elevate tone for the official examiner grid. Replace 'très important' with 'indispensable', and 'parce que' with 'car' or 'vu que'."
-      }
-    ],
-    improvedVersion: `En guise de conclusion, je me suis rendu récemment au Canada. Il est indispensable d'adopter des réformes constructives car cet atout s'avère particulièrement bénéfique pour consolider nos capacités académiques...`
-  };
+export async function evaluateWritingModule(
+  moduleId: string,
+  examType: "TEF" | "TCF",
+  sections: WritingSectionPayload[],
+  context: WritingEvalContext
+): Promise<WritingSectionResult[]> {
+  const response = await submitWritingModuleEvaluation(
+    moduleId,
+    examType,
+    sections,
+    context
+  );
+  return response.sections.map((section) => {
+    const input = sections.find((s) => s.section_id === section.section_id)!;
+    return {
+      sectionId: section.section_id,
+      text: input.essay_text,
+      wordCount: input.word_count,
+      feedback: section.feedback,
+    };
+  });
 }
 
 // 2. AI Speaking Accent & Fluency Evaluation (FastAPI-ready payload structure)

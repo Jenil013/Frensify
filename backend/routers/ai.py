@@ -1,9 +1,11 @@
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from database import get_db
 from dependencies import require_ai_cap, get_profile
 from models.ai import (
     WritingEvalRequest, AIWritingCorrection,
+    WritingModuleEvalRequest, WritingModuleEvalResponse,
+    WritingSectionFeedback,
     SpeakingEvalRequest, AISpeakingSuggestion,
     StudyPlanRequest, StudyPlanResponse,
     VocabExplainRequest, VocabExplainResponse,
@@ -32,7 +34,13 @@ async def writing_practice(
     profile: dict = Depends(require_ai_cap("writing_eval", "practice")),
     db=Depends(get_db),
 ):
-    feedback = evaluate_writing(body.essay_text, body.prompt, body.exam_type)
+    feedback = evaluate_writing(
+        body.essay_text,
+        body.prompt,
+        body.exam_type,
+        task_number=body.task_number or f"{body.exam_type} practice ({body.exercise_id})",
+        min_words=body.min_words if body.min_words is not None else 0,
+    )
     db.table("writing_submissions").insert({
         "user_id": profile["id"],
         "exercise_id": body.exercise_id,
@@ -54,7 +62,13 @@ async def writing_mock(
     profile: dict = Depends(require_ai_cap("writing_eval", "mock")),
     db=Depends(get_db),
 ):
-    feedback = evaluate_writing(body.essay_text, body.prompt, body.exam_type)
+    feedback = evaluate_writing(
+        body.essay_text,
+        body.prompt,
+        body.exam_type,
+        task_number=body.task_number or f"{body.exam_type} mock ({body.exercise_id})",
+        min_words=body.min_words if body.min_words is not None else 0,
+    )
     db.table("writing_submissions").insert({
         "user_id": profile["id"],
         "exercise_id": body.exercise_id,
@@ -67,6 +81,77 @@ async def writing_mock(
     }).execute()
     write_audit_log(db, profile["id"], "writing_eval", "mock")
     return feedback
+
+
+_EXPECTED_MODULE_SECTIONS = {
+    "TCF": 3,
+    "TEF": 2,
+}
+
+
+def _validate_module_sections(body: WritingModuleEvalRequest) -> None:
+    expected = _EXPECTED_MODULE_SECTIONS.get(body.exam_type.upper())
+    if expected is None:
+        raise HTTPException(status_code=422, detail=f"Unsupported exam_type: {body.exam_type}")
+    if len(body.sections) != expected:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{body.exam_type} writing module requires {expected} sections, got {len(body.sections)}.",
+        )
+
+
+def _run_writing_module_eval(
+    body: WritingModuleEvalRequest,
+    profile: dict,
+    db,
+    context: str,
+) -> WritingModuleEvalResponse:
+    _validate_module_sections(body)
+    section_results: list[WritingSectionFeedback] = []
+    for section in body.sections:
+        feedback = evaluate_writing(
+            section.essay_text,
+            section.prompt,
+            body.exam_type,
+            task_number=section.task_number or f"{body.exam_type} Task {section.section_id}",
+            min_words=section.min_words if section.min_words is not None else 0,
+        )
+        exercise_id = f"{body.exam_type}-{body.module_id}-{section.section_id}"
+        db.table("writing_submissions").insert({
+            "user_id": profile["id"],
+            "exercise_id": exercise_id,
+            "essay_text": section.essay_text,
+            "word_count": section.word_count,
+            "exam_type": body.exam_type,
+            "ai_feedback": feedback.model_dump(),
+            "cefr_score": feedback.cefrScore,
+            "score_range": feedback.scoreRange,
+        }).execute()
+        section_results.append(
+            WritingSectionFeedback(section_id=section.section_id, feedback=feedback)
+        )
+    if context == "practice":
+        increment(db, profile["id"], _monday(), "writing_eval")
+    write_audit_log(db, profile["id"], "writing_eval", context)
+    return WritingModuleEvalResponse(sections=section_results)
+
+
+@router.post("/writing/module", response_model=WritingModuleEvalResponse)
+async def writing_module_practice(
+    body: WritingModuleEvalRequest,
+    profile: dict = Depends(require_ai_cap("writing_eval", "practice")),
+    db=Depends(get_db),
+):
+    return _run_writing_module_eval(body, profile, db, "practice")
+
+
+@router.post("/writing/module/mock", response_model=WritingModuleEvalResponse)
+async def writing_module_mock(
+    body: WritingModuleEvalRequest,
+    profile: dict = Depends(require_ai_cap("writing_eval", "mock")),
+    db=Depends(get_db),
+):
+    return _run_writing_module_eval(body, profile, db, "mock")
 
 
 # ─── Speaking helpers ────────────────────────────────────────────────────────

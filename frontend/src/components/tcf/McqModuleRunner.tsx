@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import ModuleSessionShell from "./ModuleSessionShell";
+import ListeningAudioPlayer from "./ListeningAudioPlayer";
 import {
   McqItem,
   McqModuleResult,
@@ -40,8 +41,6 @@ export default function McqModuleRunner({
     () => Array(total).fill(null)
   );
   const [phase, setPhase] = useState<"active" | "review" | "done">("active");
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
 
   const finishModule = useCallback(() => {
     const rawScore = scoreAnswers(questions, answers);
@@ -64,20 +63,6 @@ export default function McqModuleRunner({
       finishModule();
     }
   }, [secondsLeft, phase, finishModule]);
-
-  useEffect(() => {
-    if (!isPlayingAudio || phase !== "active") return;
-    const t = setInterval(() => {
-      setAudioProgress((p) => {
-        if (p >= 100) {
-          setIsPlayingAudio(false);
-          return 0;
-        }
-        return p + 2;
-      });
-    }, 250);
-    return () => clearInterval(t);
-  }, [isPlayingAudio, phase]);
 
   const q = questions[currentIndex];
   if (!q) return null;
@@ -147,50 +132,13 @@ export default function McqModuleRunner({
       ) : (
         <div className="space-y-4">
           {isListening && (
-            <div className="bg-[#EBF3FC] border border-[#D2E7F6] rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsPlayingAudio(!isPlayingAudio)}
-                  className="w-10 h-10 rounded-full bg-[#1A73E8] text-white flex items-center justify-center cursor-pointer"
-                >
-                  {isPlayingAudio ? (
-                    <Pause className="w-4 h-4" />
-                  ) : (
-                    <Play className="w-4 h-4 ml-0.5" />
-                  )}
-                </button>
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-[#1D74B4]">Audio document</p>
-                  {q.audioUrl ? (
-                    <audio src={q.audioUrl} className="hidden" />
-                  ) : (
-                    <p className="text-[10px] text-[#55698B]">
-                      Simulated playback (Supabase audio URL when available)
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsPlayingAudio(false);
-                    setAudioProgress(0);
-                  }}
-                  className="p-1.5 border border-[#CDDFD9] rounded cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="mt-3 h-1.5 bg-white/60 rounded overflow-hidden">
-                <div
-                  className="h-full bg-[#1A73E8] transition-all"
-                  style={{ width: `${audioProgress}%` }}
-                />
-              </div>
-              {!examMode && q.transcript && (
-                <p className="mt-3 text-xs italic text-[#5F5E5B]">{q.transcript}</p>
-              )}
-            </div>
+            <ListeningAudioPlayer
+              audioUrl={q.audioUrl}
+              imageUrl={q.imageUrl}
+              transcript={q.transcript}
+              examMode={examMode}
+              questionKey={q.id}
+            />
           )}
 
           {!isListening && q.passage && (

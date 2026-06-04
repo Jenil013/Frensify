@@ -5,6 +5,7 @@ import jwt as pyjwt
 from auth_jwt import decode_supabase_access_token
 from config import settings, TIER_CAPS, MOCK_CAPS
 from database import get_db
+from services.usage_service import get_weekly_usage
 
 _bearer = HTTPBearer()
 
@@ -65,15 +66,7 @@ def require_ai_cap(endpoint: str, context: str = "practice"):
                 )
         else:
             week_start = _get_monday(date.today())
-            result = (
-                db.table("weekly_usage")
-                .select("*")
-                .eq("user_id", profile["id"])
-                .eq("week_start", week_start.isoformat())
-                .single()
-                .execute()
-            )
-            usage = result.data or {}
+            usage = get_weekly_usage(db, profile["id"], week_start)
             count = usage.get(f"{endpoint}_count", 0)
             cap = TIER_CAPS[tier][endpoint]
             if cap is not None and count >= cap:

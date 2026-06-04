@@ -135,7 +135,7 @@ export default function DashboardTab({
             <p className="text-[#3B4C7C] text-xs leading-relaxed max-w-xl">
               {recommendedExercise.skill === "speaking" 
                 ? "TCF oral module: Section A (5 min, obtain info) and Section B (10 min, convince). Practice full 15-minute format."
-                : "TCF reading module: 40 MCQs in 60 minutes with +1/0 scoring. Run a full module from Practice or Simulations."}
+                : "TCF reading module: 39 MCQs in 60 minutes with +1/0 scoring. Run a full module from Practice or Simulations."}
             </p>
           </div>
           

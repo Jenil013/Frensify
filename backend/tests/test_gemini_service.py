@@ -1,6 +1,13 @@
 import json
 from unittest.mock import patch, MagicMock
-from services.gemini_service import generate_study_plan, explain_vocab, evaluate_writing, evaluate_speaking
+from services.gemini_service import (
+    generate_study_plan,
+    explain_vocab,
+    evaluate_writing,
+    evaluate_speaking,
+    _load_model,
+)
+from models.ai import AIWritingCorrection
 
 
 _PLAN_JSON = json.dumps({
@@ -32,14 +39,15 @@ _VOCAB_JSON = json.dumps({
 })
 
 _WRITING_JSON = json.dumps({
+    "analysis": "The response shows B2-level coherence with B1 grammar gaps.",
+    "overallFeedback": "Good structure and vocabulary.",
     "cefrScore": "B2",
     "scoreRange": "B1-B2",
-    "overallFeedback": "Good structure and vocabulary.",
     "dimensionScores": {
-        "vocabulary": "B2",
-        "grammar": "B1",
-        "coherence": "B2",
-        "taskCompleteness": "B2",
+        "vocabulary": "B2 — varied and appropriate.",
+        "grammar": "B1 — agreement errors present.",
+        "coherence": "B2 — logical flow.",
+        "taskCompleteness": "B2 — prompt addressed.",
     },
     "detailedCorrections": [
         {"original": "je suis alle", "corrected": "je suis alle(e)", "explanation": "Gender agreement."}
@@ -60,12 +68,8 @@ _SPEAKING_JSON = json.dumps({
 })
 
 
-@patch("services.gemini_service.genai.GenerativeModel")
-def test_generate_study_plan(MockModel):
-    instance = MagicMock()
-    MockModel.return_value = instance
-    instance.generate_content.return_value = MagicMock(text=_PLAN_JSON)
-
+@patch("services.gemini_service._generate_json", return_value=_PLAN_JSON)
+def test_generate_study_plan(mock_generate):
     result = generate_study_plan(
         exam_type="TCF",
         current_level="B1",
@@ -75,40 +79,38 @@ def test_generate_study_plan(MockModel):
     )
     assert result.weeklyBreakdown[0].weekNumber == 1
     assert "Listening" in result.prioritySkillsToBuild
+    mock_generate.assert_called_once()
 
 
-@patch("services.gemini_service.genai.GenerativeModel")
-def test_explain_vocab(MockModel):
-    instance = MagicMock()
-    MockModel.return_value = instance
-    instance.generate_content.return_value = MagicMock(text=_VOCAB_JSON)
-
+@patch("services.gemini_service._generate_json", return_value=_VOCAB_JSON)
+def test_explain_vocab(mock_generate):
     result = explain_vocab(word="bonjour", translation="hello", category="greetings")
     assert result.word == "bonjour"
     assert "salut" in result.relatedWords
+    mock_generate.assert_called_once()
 
 
-@patch("services.gemini_service.genai.GenerativeModel")
-def test_evaluate_writing_returns_correction(MockModel):
-    instance = MagicMock()
-    MockModel.return_value = instance
-    instance.generate_content.return_value = MagicMock(text=_WRITING_JSON)
-
+@patch("services.gemini_service._generate_json", return_value=_WRITING_JSON)
+def test_evaluate_writing_returns_correction(mock_generate):
     result = evaluate_writing(
         essay="Je suis alle au marche ce matin.",
         prompt="Decrivez une journee typique.",
         exam_type="TCF",
+        task_number="TCF Task 1 (short message)",
+        min_words=60,
     )
     assert result.cefrScore == "B2"
+    assert result.analysis
     assert len(result.detailedCorrections) == 1
+    mock_generate.assert_called_once()
+    user_prompt = mock_generate.call_args.kwargs["contents"]
+    assert "TCF Task 1 (short message)" in user_prompt
+    assert "Minimum required word count: 60" in user_prompt
+    assert mock_generate.call_args.kwargs["system_instruction"] is not None
 
 
-@patch("services.gemini_service.genai.GenerativeModel")
-def test_evaluate_speaking_returns_suggestion(MockModel):
-    instance = MagicMock()
-    MockModel.return_value = instance
-    instance.generate_content.return_value = MagicMock(text=_SPEAKING_JSON)
-
+@patch("services.gemini_service._generate_json", return_value=_SPEAKING_JSON)
+def test_evaluate_speaking_returns_suggestion(mock_generate):
     fake_audio = b"fake-audio-bytes"
     result = evaluate_speaking(
         audio_bytes=fake_audio,
@@ -119,3 +121,13 @@ def test_evaluate_speaking_returns_suggestion(MockModel):
     )
     assert result.cefrLevel == "B1"
     assert "nasal" in result.pronunciationTips[0]
+    mock_generate.assert_called_once()
+    contents = mock_generate.call_args.kwargs["contents"]
+    assert isinstance(contents, list)
+    assert len(contents) == 2
+
+
+def test_load_model_tolerates_trailing_json_noise():
+    noisy = _WRITING_JSON + "\n\n}"
+    result = _load_model(noisy, AIWritingCorrection)
+    assert result.cefrScore == "B2"

@@ -1,57 +1,108 @@
-import base64
-import google.generativeai as genai
+import json
+import re
+from typing import TypeVar
+
+from google import genai
+from google.genai import types
+
 from config import GEMINI_EVAL_MODEL, GEMINI_UTILS_MODEL, settings
 from models.ai import (
-    AIWritingCorrection, AISpeakingSuggestion,
-    StudyPlanResponse, VocabExplainResponse,
+    AIWritingCorrection,
+    AISpeakingSuggestion,
+    StudyPlanResponse,
+    VocabExplainResponse,
 )
 
 
 # ─── System prompts ────────────────────────────────────────────────────────────
 
-_WRITING_SYSTEM = (
-"""
-You are a strict but fair TEF/TCF French writing examiner.
+_WRITING_SYSTEM = """You are a strict but fair French writing examiner for the TEF or TCF exam.
+You evaluate one written response exactly as a trained CEFR-based examiner would, using
+the official criteria for Expression Écrite.
 
-Your job is to evaluate one French essay exactly as a real CEFR-based examiner would for TEF/TCF written expression. Score the response using the following dimensions:
+The user message provides the exam context (exam type, task, prompt, word count, and
+candidate text). Judge the response ONLY against that task and the text the candidate
+actually wrote. Never invent missing content.
 
-1. Task completion / task fulfillment
-2. Coherence and cohesion
-3. Vocabulary range and accuracy
-4. Grammatical range and accuracy
+=== EXAM FORMAT DIFFERENCES (apply the right one) ===
+- TEF Expression Écrite: 2 tasks (a practical/message task and an argumentative
+  task). Reported on a CEFR scale A1–C2.
+- TCF Expression Écrite: 3 tasks (a short message, an opinion piece, and an
+  opinion-with-summary). Reported on a 0–20 scale that maps to CEFR.
+The task types differ in expected register, length, and structure, so weight
+"task completion" against THIS specific task, not a generic essay.
 
-Apply CEFR standards carefully:
-- A1/A2: very basic language, frequent errors, limited control, weak organization.
-- B1: meaning is generally clear, simple organization, basic but functional vocabulary, noticeable errors that do not fully block communication.
-- B2: clearly developed response, good task completion, logical organization, varied vocabulary and grammar, errors are present but do not impede communication.
-- C1: strong control, flexible language use, well-structured arguments, few errors, precise vocabulary.
-- C2: near-native control, highly accurate, elegant, fully appropriate to task.
+=== CEFR STANDARDS ===
+- A1/A2: very basic language, frequent errors, limited control, weak structure.
+- B1: meaning generally clear; simple organization; basic but functional
+  vocabulary; noticeable errors that don't fully block communication.
+- B2: clearly developed; good task completion; logical organization; varied
+  vocabulary and grammar; errors present but don't impede communication.
+- C1: strong, flexible control; well-structured argument; few errors; precise
+  vocabulary.
+- C2: near-native control; highly accurate; elegant; fully appropriate to task.
 
-Evaluation rules:
+=== SCORING DIMENSIONS (rate each, then derive the overall level) ===
+1. taskCompleteness: did they answer the prompt fully, follow the required
+   format/register, meet the word count, and stay relevant?
+2. coherence: paragraphing, logical flow, connectors, readability.
+3. vocabulary: range, appropriateness, precision, lexical control.
+4. grammar: sentence variety, accuracy, tense control, agreement, syntax.
+
+=== EVALUATION RULES ===
 - Be strict and consistent.
-- Judge the essay only on the text provided.
-- Do not invent missing content.
-- Penalize incomplete task response, off-topic content, weak structure, repetition, unnatural phrasing, and major grammar/spelling errors.
-- Reward clear argumentation, relevant examples, logical sequencing, and accurate use of varied vocabulary and grammar.
-- If the text mixes levels, choose the most defensible CEFR level based on overall performance.
-- If the essay is borderline between two levels, return the lower level in the scoreRange and explain why.
-- Do not over-reward length alone. Long but weak essays must still be scored low.
-- Do not under-score minor mistakes if the message remains clear.
+- Penalize: incomplete or off-topic responses, missing the word count, wrong
+  register/format for the task, weak structure, repetition, unnatural phrasing,
+  major grammar/spelling errors.
+- Reward: clear argumentation, relevant examples, logical sequencing, accurate
+  use of varied vocabulary and grammar, register appropriate to the task.
+- Don't over-reward length. A long but weak response still scores low.
+- Don't under-score minor mistakes if the message stays clear.
+- If the text mixes levels, choose the most defensible overall level.
+- If borderline between two levels, set cefrScore to the LOWER level and show
+  both in scoreRange.
 
-Important grading guidance:
-- Task completion is about whether the writer answered the prompt fully, followed the required format, and stayed relevant.
-- Coherence is about paragraphing, logical flow, connectors, and ease of reading.
-- Vocabulary is about range, appropriateness, precision, and lexical control.
-- Grammar is about sentence variety, accuracy, tense control, agreement, and syntactic control.
-- For B2 and above, the essay must be clearly organized, relevant, and mostly accurate.
-- For B1, the essay should communicate the main idea clearly even if simple and imperfect.
+=== CALIBRATION ANCHORS (reference points, do not score these) ===
+B1 anchor (message task) — clear, simple, functional, limited range:
+"Salut Marie, samedi dernier je suis allé à un concert dans ma ville. J'ai
+beaucoup aimé parce que les musiciens étaient très bons et l'ambiance était
+super. Après, j'ai mangé avec mes amis. Je pense que tu vas aimer ce genre
+d'événement. Tu veux venir la prochaine fois ? À bientôt."
+→ B1: communicates clearly with simple connectors (parce que, après); basic
+   vocabulary; little syntactic range; no real development.
 
-Return ONLY valid JSON.
-Do not include markdown, commentary, or extra text.
-Use the provided schema exactly.
-If information is uncertain, make the best grounded judgment and reflect uncertainty in scoreRange.
-"""
-)
+B2 anchor (argumentative task) — developed, structured, varied, mostly accurate:
+"De nos jours, le télétravail suscite de nombreux débats. D'une part, il offre
+une plus grande flexibilité ; d'autre part, il peut entraîner un isolement et
+brouiller la frontière entre vie professionnelle et vie privée. Pour ma part, je
+considère que c'est une évolution positive, à condition qu'elle soit encadrée.
+En effet, les entreprises devraient instaurer des règles claires afin de
+préserver l'équilibre de leurs employés."
+→ B2: clear structure; varied connectors (d'une part… d'autre part, en effet);
+   controlled subjunctive; precise vocabulary; a genuine, developed argument.
+
+=== OUTPUT (return ONLY valid JSON, keys in EXACTLY this order) ===
+1. "analysis": Reason through all four dimensions first, citing specific
+   evidence from the candidate's text. Write this BEFORE deciding any score.
+2. "overallFeedback": 2–4 sentences of learner-facing feedback — main strengths
+   and the most important things to improve. Encouraging but honest.
+3. "cefrScore": the single most defensible level (A1–C2). If borderline, use
+   the LOWER level.
+4. "scoreRange": the plausible span, e.g. "B1-B2". If not borderline, repeat
+   the level, e.g. "B2".
+5. "dimensionScores": object with "vocabulary", "grammar", "coherence",
+   "taskCompleteness". Each value is a string formatted as
+   "LEVEL — one-sentence justification".
+6. "detailedCorrections": the most impactful errors only (max ~6), each as
+   { "original", "corrected", "explanation" }. Explanations in plain terms.
+7. "improvedVersion": a rewrite of the candidate's text that keeps their ideas
+   and respects the required task format, but fixes the errors and raises it to
+   a strong example for their target level. Do not add substantive new content
+   beyond what's needed to fix and elevate.
+
+Output ONLY the JSON object. No markdown, no backticks, no commentary, no text
+before or after. If uncertain, make the best grounded judgment and reflect it
+in "analysis" and "scoreRange"."""
 
 _SPEAKING_SYSTEM = (
 """
@@ -115,20 +166,46 @@ Tone:
 )
 
 _WRITING_SCHEMA = """{
+  "analysis": "string",
+  "overallFeedback": "string",
   "cefrScore": "string (e.g. B2)",
   "scoreRange": "string (e.g. B1-B2)",
-  "overallFeedback": "string",
   "dimensionScores": {
-    "vocabulary": "string",
-    "grammar": "string",
-    "coherence": "string",
-    "taskCompleteness": "string"
+    "vocabulary": "string (LEVEL — justification)",
+    "grammar": "string (LEVEL — justification)",
+    "coherence": "string (LEVEL — justification)",
+    "taskCompleteness": "string (LEVEL — justification)"
   },
   "detailedCorrections": [
     { "original": "string", "corrected": "string", "explanation": "string" }
   ],
   "improvedVersion": "string"
 }"""
+
+
+def _build_writing_user_prompt(
+    *,
+    exam_type: str,
+    task_number: str,
+    task_prompt: str,
+    min_words: int,
+    candidate_text: str,
+) -> str:
+    return (
+        "=== EXAM CONTEXT ===\n"
+        f"- Exam: {exam_type}\n"
+        f"- Task number / type: {task_number}\n"
+        "- The exact task instructions the candidate was given:\n"
+        "<<<\n"
+        f"{task_prompt}\n"
+        ">>>\n"
+        f"- Minimum required word count: {min_words}\n"
+        "- The candidate's response:\n"
+        "<<<\n"
+        f"{candidate_text}\n"
+        ">>>\n\n"
+        f"Return JSON matching this schema (keys in exactly this order):\n{_WRITING_SCHEMA}"
+    )
 
 _SPEAKING_SCHEMA = """{
   "cefrLevel": "string (e.g. B1)",
@@ -143,34 +220,53 @@ _SPEAKING_SCHEMA = """{
 }"""
 
 
-# ─── Model factories ───────────────────────────────────────────────────────────
+T = TypeVar("T")
 
-def _get_utils_model():
-    genai.configure(api_key=settings.gemini_api_key_utils)
-    return genai.GenerativeModel(
-        GEMINI_UTILS_MODEL,
-        generation_config=genai.GenerationConfig(
-            response_mime_type="application/json",
-        ),
+
+def _strip_code_fence(text: str) -> str:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, count=1)
+        cleaned = re.sub(r"\s*```\s*$", "", cleaned)
+    return cleaned.strip()
+
+
+def _parse_json_payload(text: str) -> dict:
+    """Parse the first JSON object, ignoring trailing model noise."""
+    cleaned = _strip_code_fence(text)
+    try:
+        payload, _end = json.JSONDecoder().raw_decode(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Gemini returned invalid JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("Gemini JSON response must be an object.")
+    return payload
+
+
+def _load_model(text: str, model_cls: type[T]) -> T:
+    return model_cls.model_validate(_parse_json_payload(text))
+
+
+def _generate_json(
+    *,
+    model: str,
+    api_key: str,
+    contents: str | list,
+    system_instruction: str | None = None,
+) -> str:
+    client = genai.Client(api_key=api_key)
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        system_instruction=system_instruction,
     )
-
-
-def _get_eval_model():
-    genai.configure(api_key=settings.gemini_api_key_eval)
-    return genai.GenerativeModel(
-        GEMINI_EVAL_MODEL,
-        generation_config=genai.GenerationConfig(response_mime_type="application/json"),
-        system_instruction=_WRITING_SYSTEM,
+    response = client.models.generate_content(
+        model=model,
+        contents=contents,
+        config=config,
     )
-
-
-def _get_speaking_model():
-    genai.configure(api_key=settings.gemini_api_key_eval)
-    return genai.GenerativeModel(
-        GEMINI_EVAL_MODEL,
-        generation_config=genai.GenerationConfig(response_mime_type="application/json"),
-        system_instruction=_SPEAKING_SYSTEM,
-    )
+    if not response.text:
+        raise ValueError("Gemini returned an empty response.")
+    return response.text
 
 
 # ─── Study plan ────────────────────────────────────────────────────────────────
@@ -182,7 +278,6 @@ def generate_study_plan(
     weeks_count: int,
     daily_minutes: int,
 ) -> StudyPlanResponse:
-    model = _get_utils_model()
     prompt = (
         f"Create a {weeks_count}-week French study plan for a {exam_type} exam candidate.\n"
         f"Current CEFR level: {current_level}. Target: {target_score}.\n"
@@ -197,14 +292,17 @@ def generate_study_plan(
         '  "prioritySkillsToBuild": [str]\n'
         "}"
     )
-    result = model.generate_content(prompt)
-    return StudyPlanResponse.model_validate_json(result.text)
+    result = _generate_json(
+        model=GEMINI_UTILS_MODEL,
+        api_key=settings.gemini_api_key_utils,
+        contents=prompt,
+    )
+    return _load_model(result, StudyPlanResponse)
 
 
 # ─── Vocab explain ─────────────────────────────────────────────────────────────
 
 def explain_vocab(word: str, translation: str, category: str | None) -> VocabExplainResponse:
-    model = _get_utils_model()
     prompt = (
         f"Explain the French word '{word}' (meaning: {translation}"
         + (f", category: {category}" if category else "")
@@ -218,22 +316,40 @@ def explain_vocab(word: str, translation: str, category: str | None) -> VocabExp
         '  "relatedWords": [str]\n'
         "}"
     )
-    result = model.generate_content(prompt)
-    return VocabExplainResponse.model_validate_json(result.text)
+    result = _generate_json(
+        model=GEMINI_UTILS_MODEL,
+        api_key=settings.gemini_api_key_utils,
+        contents=prompt,
+    )
+    return _load_model(result, VocabExplainResponse)
 
 
 # ─── Writing eval ──────────────────────────────────────────────────────────────
 
-def evaluate_writing(essay: str, prompt: str, exam_type: str) -> AIWritingCorrection:
-    model = _get_eval_model()
-    user_prompt = (
-        f"Exam: {exam_type}\n"
-        f"Prompt given to candidate: {prompt}\n\n"
-        f"Candidate's essay:\n{essay}\n\n"
-        f"Return JSON matching this schema:\n{_WRITING_SCHEMA}"
+def evaluate_writing(
+    essay: str,
+    prompt: str,
+    exam_type: str,
+    *,
+    task_number: str | None = None,
+    min_words: int | None = None,
+) -> AIWritingCorrection:
+    resolved_task = task_number or f"{exam_type} writing task"
+    resolved_min_words = min_words if min_words is not None else 0
+    user_prompt = _build_writing_user_prompt(
+        exam_type=exam_type,
+        task_number=resolved_task,
+        task_prompt=prompt,
+        min_words=resolved_min_words,
+        candidate_text=essay,
     )
-    result = model.generate_content(user_prompt)
-    return AIWritingCorrection.model_validate_json(result.text)
+    result = _generate_json(
+        model=GEMINI_EVAL_MODEL,
+        api_key=settings.gemini_api_key_eval,
+        contents=user_prompt,
+        system_instruction=_WRITING_SYSTEM,
+    )
+    return _load_model(result, AIWritingCorrection)
 
 
 # ─── Speaking eval ─────────────────────────────────────────────────────────────
@@ -245,13 +361,6 @@ def evaluate_speaking(
     exam_type: str,
     duration_seconds: int,
 ) -> AISpeakingSuggestion:
-    model = _get_speaking_model()
-    audio_part = {
-        "inline_data": {
-            "mime_type": audio_mime_type,
-            "data": base64.b64encode(audio_bytes).decode("utf-8"),
-        }
-    }
     text_part = (
         f"Exam: {exam_type}\n"
         f"Prompt given to candidate: {prompt}\n"
@@ -259,5 +368,14 @@ def evaluate_speaking(
         f"Evaluate the audio recording above.\n"
         f"Return JSON matching this schema:\n{_SPEAKING_SCHEMA}"
     )
-    result = model.generate_content([audio_part, text_part])
-    return AISpeakingSuggestion.model_validate_json(result.text)
+    contents = [
+        types.Part.from_bytes(data=audio_bytes, mime_type=audio_mime_type),
+        text_part,
+    ]
+    result = _generate_json(
+        model=GEMINI_EVAL_MODEL,
+        api_key=settings.gemini_api_key_eval,
+        contents=contents,
+        system_instruction=_SPEAKING_SYSTEM,
+    )
+    return _load_model(result, AISpeakingSuggestion)
