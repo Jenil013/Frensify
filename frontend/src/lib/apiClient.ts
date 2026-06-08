@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import type {
   AIWritingCorrection,
+  AISpeakingSuggestion,
   ExamPathway,
   McqItem,
   UserProfile,
@@ -220,6 +221,96 @@ export async function submitWritingEvaluation(
       word_count: wordCount,
       ...(taskNumber ? { task_number: taskNumber } : {}),
       ...(minWords !== undefined ? { min_words: minWords } : {}),
+    }),
+  });
+}
+
+export interface OralCombinationSection {
+  prompt: string;
+  stimulus?: string;
+}
+
+export interface OralCombinationResponse {
+  id: string;
+  combinationIndex: number;
+  title: string;
+  sections: Record<string, OralCombinationSection>;
+}
+
+export async function fetchOralCombination(
+  examType: string,
+  moduleId: string
+): Promise<OralCombinationResponse> {
+  const params = new URLSearchParams({
+    exam_type: examType,
+    module_id: moduleId,
+  });
+  return apiFetch<OralCombinationResponse>(
+    `/api/v1/oral-combination?${params.toString()}`
+  );
+}
+
+export interface SpeakingUploadUrlResponse {
+  upload_url: string;
+  storage_path: string;
+}
+
+export async function fetchSpeakingUploadUrl(): Promise<SpeakingUploadUrlResponse> {
+  return apiFetch<SpeakingUploadUrlResponse>("/api/v1/ai/speaking/upload-url", {
+    method: "POST",
+  });
+}
+
+export async function uploadSpeakingAudio(
+  uploadUrl: string,
+  blob: Blob
+): Promise<void> {
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    body: blob,
+    headers: { "Content-Type": "audio/webm" },
+  });
+  if (!response.ok) {
+    throw new Error("Audio upload failed.");
+  }
+}
+
+export type SpeakingEvalContext = "practice" | "mock";
+
+export interface SpeakingSectionPayload {
+  section_id: string;
+  prompt: string;
+  storage_path: string;
+  duration_seconds: number;
+}
+
+export interface SpeakingSectionFeedbackResponse {
+  section_id: string;
+  feedback: AISpeakingSuggestion;
+}
+
+export interface SpeakingModuleEvalResponse {
+  sections: SpeakingSectionFeedbackResponse[];
+}
+
+export async function submitSpeakingModuleEvaluation(
+  moduleId: string,
+  examType: ExamPathway,
+  exerciseId: string,
+  sections: SpeakingSectionPayload[],
+  context: SpeakingEvalContext
+): Promise<SpeakingModuleEvalResponse> {
+  const path =
+    context === "mock"
+      ? "/api/v1/ai/speaking/module/mock"
+      : "/api/v1/ai/speaking/module";
+  return apiFetch<SpeakingModuleEvalResponse>(path, {
+    method: "POST",
+    body: JSON.stringify({
+      module_id: moduleId,
+      exam_type: examType,
+      exercise_id: exerciseId,
+      sections,
     }),
   });
 }

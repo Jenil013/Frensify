@@ -118,7 +118,12 @@ export default function WritingModuleRunner({
         sections,
         examMode ? "mock" : "practice"
       );
-      setPendingResult({ sections: sectionResults });
+      const result = { sections: sectionResults };
+      if (examMode) {
+        onComplete(result);
+      } else {
+        setPendingResult(result);
+      }
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -128,7 +133,7 @@ export default function WritingModuleRunner({
     } finally {
       setLoading(false);
     }
-  }, [sectionContent, texts, examType, examMode]);
+  }, [sectionContent, texts, examType, examMode, onComplete]);
 
   const dismissFeedback = useCallback(() => {
     if (pendingResult) {
@@ -183,13 +188,15 @@ export default function WritingModuleRunner({
 
   return (
     <>
-      <WritingFeedbackModal
-        open={pendingResult !== null && feedbackSections.length > 0}
-        onClose={dismissFeedback}
-        title="Expression écrite — your results"
-        sections={feedbackSections}
-        continueLabel={examMode ? "Continue mock test" : "Back to practice"}
-      />
+      {!examMode && (
+        <WritingFeedbackModal
+          open={pendingResult !== null && feedbackSections.length > 0}
+          onClose={dismissFeedback}
+          title="Expression écrite — your results"
+          sections={feedbackSections}
+          continueLabel="Back to practice"
+        />
+      )}
 
       <ModuleSessionShell
       title={module.meta.labelFr}

@@ -9,7 +9,12 @@ import {
   TEF_PLACEHOLDER_LISTENING_QUESTIONS,
   TEF_PLACEHOLDER_READING_QUESTIONS,
 } from "../tefConstants";
-import { fetchQuestions, fetchWritingCombination } from "../lib/apiClient";
+import {
+  fetchQuestions,
+  fetchOralCombination,
+  fetchWritingCombination,
+} from "../lib/apiClient";
+import { buildRandomTcfTask1Section } from "../utils/tcfOralTask1";
 
 const TEF_READING_QUESTION_TARGET = 40;
 const TCF_READING_QUESTION_TARGET = 39;
@@ -100,6 +105,32 @@ export async function loadTcfModule(
       }
       return { ...base };
     }
+    case "expression-orale": {
+      const base = TCF_MODULE_REGISTRY[moduleId];
+      if (isSupabaseConfigured()) {
+        try {
+          const combo = await fetchOralCombination("TCF", moduleId);
+          return {
+            ...base,
+            sections: combo.sections,
+            combinationId: combo.id,
+            combinationTitle: combo.title,
+          };
+        } catch (err) {
+          console.warn(
+            `[questionBank] Oral combination load failed for TCF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
+      }
+      return {
+        ...base,
+        sections: {
+          ...base.sections,
+          "1": buildRandomTcfTask1Section(),
+        },
+      };
+    }
     default:
       return { ...TCF_MODULE_REGISTRY[moduleId] };
   }
@@ -146,6 +177,26 @@ export async function loadTefModule(
     }
     case "comprehension-orale":
       return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_LISTENING_QUESTIONS);
+    case "expression-orale": {
+      const base = TEF_MODULE_REGISTRY[moduleId];
+      if (isSupabaseConfigured()) {
+        try {
+          const combo = await fetchOralCombination("TEF", moduleId);
+          return {
+            ...base,
+            sections: combo.sections,
+            combinationId: combo.id,
+            combinationTitle: combo.title,
+          };
+        } catch (err) {
+          console.warn(
+            `[questionBank] Oral combination load failed for TEF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
+      }
+      return { ...base };
+    }
     default:
       return { ...TEF_MODULE_REGISTRY[moduleId] };
   }

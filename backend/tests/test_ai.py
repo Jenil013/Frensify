@@ -83,6 +83,25 @@ def test_writing_eval_practice(client, auth_headers, mock_db):
     assert response.json()["cefrScore"] == "B2"
 
 
+def test_speaking_upload_url(client, auth_headers, mock_profile):
+    with patch("supabase.create_client") as mock_create:
+        mock_storage = MagicMock()
+        mock_storage.from_.return_value.create_signed_upload_url.return_value = {
+            "signed_url": "https://example.supabase.co/upload/signed?token=abc",
+            "token": "abc",
+            "path": f"{mock_profile['id']}/test.webm",
+        }
+        mock_create.return_value.storage = mock_storage
+        response = client.post(
+            "/api/v1/ai/speaking/upload-url",
+            headers=auth_headers,
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["upload_url"].startswith("https://example.supabase.co")
+    assert body["storage_path"].endswith(".webm")
+
+
 def test_speaking_eval_practice(client, auth_headers, mock_db):
     _setup_cap_mock(mock_db)
     with patch("routers.ai.evaluate_speaking", return_value=_SPEAKING_FEEDBACK), \
@@ -145,6 +164,67 @@ def test_writing_module_practice_cap_exceeded(client, auth_headers, mock_db):
         json=_TCF_MODULE_PAYLOAD,
     )
     assert response.status_code == 429
+
+
+_TCF_SPEAKING_MODULE_PAYLOAD = {
+    "module_id": "expression-orale",
+    "exam_type": "TCF",
+    "exercise_id": "oral-combo-1",
+    "sections": [
+        {
+            "section_id": "1",
+            "prompt": "Examiner cue: Presentez-vous.",
+            "storage_path": "user-uuid-123/a1.webm",
+            "duration_seconds": 30,
+        },
+        {
+            "section_id": "2",
+            "prompt": "Role-play scenario.",
+            "storage_path": "user-uuid-123/a2.webm",
+            "duration_seconds": 45,
+        },
+        {
+            "section_id": "3",
+            "prompt": "Argument topic.",
+            "storage_path": "user-uuid-123/a3.webm",
+            "duration_seconds": 60,
+        },
+    ],
+}
+
+
+def test_speaking_module_practice(client, auth_headers, mock_db):
+    _setup_cap_mock(mock_db)
+    with patch("routers.ai._run_speaking_eval", return_value=_SPEAKING_FEEDBACK) as mock_eval, \
+         patch("routers.ai.write_audit_log") as mock_audit, \
+         patch("routers.ai.increment") as mock_increment:
+        mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{}])
+        response = client.post(
+            "/api/v1/ai/speaking/module",
+            headers=auth_headers,
+            json=_TCF_SPEAKING_MODULE_PAYLOAD,
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["sections"]) == 3
+    assert all(s["feedback"]["cefrLevel"] == "B1" for s in body["sections"])
+    assert mock_eval.call_count == 3
+    mock_increment.assert_called_once()
+    mock_audit.assert_called_once()
+
+
+def test_speaking_module_wrong_section_count(client, auth_headers, mock_db):
+    _setup_cap_mock(mock_db)
+    payload = {
+        **_TCF_SPEAKING_MODULE_PAYLOAD,
+        "sections": _TCF_SPEAKING_MODULE_PAYLOAD["sections"][:2],
+    }
+    response = client.post(
+        "/api/v1/ai/speaking/module",
+        headers=auth_headers,
+        json=payload,
+    )
+    assert response.status_code == 422
 
 
 def test_writing_module_practice_free_tier(client, auth_headers, mock_db, mock_profile):

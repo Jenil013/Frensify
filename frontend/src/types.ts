@@ -10,6 +10,30 @@ export type SkillType = "listening" | "reading" | "speaking" | "writing";
 
 export type UserSubscriptionTier = "Free" | "Pro" | "Max";
 
+export interface FullExamReportModule {
+  moduleId: string;
+  moduleLabel: string;
+  skill: SkillType;
+  type: "mcq" | "writing" | "oral";
+  rawScore?: number;
+  maxScore?: number;
+  scorePct?: number;
+  cefrEstimate?: string;
+  sectionLabels?: string[];
+  writingSections?: WritingSectionResult[];
+  oralSections?: OralSectionResult[];
+}
+
+export interface FullExamReport {
+  examType: ExamPathway;
+  examId: string;
+  examName: string;
+  date: string;
+  comprehensionAggregatePct: number;
+  estimatedCefr: string;
+  modules: FullExamReportModule[];
+}
+
 export interface MockTestScore {
   examId: string;
   examName: string;
@@ -17,6 +41,7 @@ export interface MockTestScore {
   scorePct: number;
   cefr: string;
   moduleBreakdown?: TcfMockModuleResult[];
+  fullReport?: FullExamReport;
 }
 
 export interface TcfMockModuleResult {
@@ -100,6 +125,8 @@ export interface TcfModuleDefinition {
   meta: TcfModuleMeta;
   questions?: McqItem[];
   sections?: Record<string, TcfExpressionSection>;
+  combinationId?: string;
+  combinationTitle?: string;
 }
 
 export interface McqModuleResult {
@@ -125,6 +152,7 @@ export interface OralSectionResult {
   transcript: string;
   durationSeconds: number;
   feedback?: AISpeakingSuggestion;
+  examinerCue?: string;
 }
 
 export interface OralModuleResult {
@@ -235,6 +263,8 @@ export interface TefModuleDefinition {
   meta: TefModuleMeta;
   questions?: McqItem[];
   sections?: Record<string, TefExpressionSection>;
+  combinationId?: string;
+  combinationTitle?: string;
 }
 
 export interface TefModuleCompletionResult {

@@ -120,9 +120,9 @@ export const TCF_MODULE_REGISTRY: Record<TcfModuleId, TcfModuleDefinition> = {
     sections: {
       "1": {
         prompt:
-          "The examiner will ask you questions about yourself: your hobbies, your studies, your daily routine. Answer naturally and in complete sentences. (2 minutes)",
+          "Structured interview (2 min). Introduce yourself, then answer a follow-up question about your life. Answer naturally in complete sentences.",
         stimulus:
-          "Présentez-vous : parlez de votre quotidien, de vos loisirs et de vos projets.",
+          "Présentez-vous : dites votre nom, votre âge, d'où vous venez et parlez un peu de votre famille.",
       },
       "2": {
         prompt:

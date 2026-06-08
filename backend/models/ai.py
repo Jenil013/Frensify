@@ -87,6 +87,29 @@ class AISpeakingSuggestion(BaseModel):
     modelSpokenDraft: str
 
 
+class SpeakingSectionInput(BaseModel):
+    section_id: str
+    prompt: str
+    storage_path: str
+    duration_seconds: int
+
+
+class SpeakingModuleEvalRequest(BaseModel):
+    module_id: str
+    exam_type: str
+    exercise_id: str
+    sections: List[SpeakingSectionInput]
+
+
+class SpeakingSectionFeedback(BaseModel):
+    section_id: str
+    feedback: AISpeakingSuggestion
+
+
+class SpeakingModuleEvalResponse(BaseModel):
+    sections: List[SpeakingSectionFeedback]
+
+
 # --- Study Plan ---
 
 class StudyPlanRequest(BaseModel):

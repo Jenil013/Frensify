@@ -1,0 +1,81 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+function pickFrenchVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis?.getVoices() ?? [];
+  return (
+    voices.find((v) => v.lang.startsWith("fr-FR")) ??
+    voices.find((v) => v.lang.startsWith("fr")) ??
+    null
+  );
+}
+
+export function useExaminerTts() {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [hasFrenchVoice, setHasFrenchVoice] = useState(true);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const refreshVoices = useCallback(() => {
+    setHasFrenchVoice(pickFrenchVoice() != null);
+  }, []);
+
+  useEffect(() => {
+    refreshVoices();
+    window.speechSynthesis?.addEventListener("voiceschanged", refreshVoices);
+    return () => {
+      window.speechSynthesis?.removeEventListener("voiceschanged", refreshVoices);
+      window.speechSynthesis?.cancel();
+    };
+  }, [refreshVoices]);
+
+  const cancel = useCallback(() => {
+    window.speechSynthesis?.cancel();
+    utteranceRef.current = null;
+    setIsSpeaking(false);
+  }, []);
+
+  const speak = useCallback(
+    (text: string, onEnd?: () => void) => {
+      if (!window.speechSynthesis || !text.trim()) {
+        onEnd?.();
+        return;
+      }
+
+      cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text.trim());
+      const voice = pickFrenchVoice();
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      } else {
+        utterance.lang = "fr-FR";
+        setHasFrenchVoice(false);
+      }
+      utterance.rate = 0.92;
+      utterance.pitch = 1;
+
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        utteranceRef.current = null;
+        onEnd?.();
+      };
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+        utteranceRef.current = null;
+        onEnd?.();
+      };
+
+      utteranceRef.current = utterance;
+      window.speechSynthesis.speak(utterance);
+    },
+    [cancel]
+  );
+
+  return {
+    speak,
+    cancel,
+    isSpeaking,
+    hasFrenchVoice,
+  };
+}

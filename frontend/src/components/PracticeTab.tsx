@@ -18,6 +18,9 @@ import TefModuleSession from "./tef/TefModuleSession";
 import McqPracticeResultsModal, {
   type McqPracticeResultsPayload,
 } from "./McqPracticeResultsModal";
+import SpeakingResultsModal, {
+  type SpeakingResultsPayload,
+} from "./SpeakingResultsModal";
 import { isMcqComprehensionModule } from "../utils/mcqScoring";
 
 interface PracticeTabProps {
@@ -34,6 +37,8 @@ export default function PracticeTab({
   const [activeTefModule, setActiveTefModule] = useState<TefModuleId | null>(null);
   const [moduleCompleteMsg, setModuleCompleteMsg] = useState<string | null>(null);
   const [mcqResults, setMcqResults] = useState<McqPracticeResultsPayload | null>(null);
+  const [speakingResults, setSpeakingResults] =
+    useState<SpeakingResultsPayload | null>(null);
 
   const skillToTcfModule: Record<SkillType, TcfModuleId> = {
     reading: "comprehension-ecrite",
@@ -47,6 +52,26 @@ export default function PracticeTab({
     reading: "comprehension-ecrite",
     writing: "expression-ecrite",
     speaking: "expression-orale",
+  };
+
+  const openSpeakingResultsIfApplicable = (
+    examType: "TCF" | "TEF",
+    moduleId: string | null,
+    oral: OralModuleResult
+  ) => {
+    if (!moduleId || moduleId !== "expression-orale") return;
+    const registry =
+      examType === "TCF"
+        ? TCF_MODULE_REGISTRY[moduleId as TcfModuleId]
+        : TEF_MODULE_REGISTRY[moduleId as TefModuleId];
+    const sectionLabels =
+      registry.meta.sections?.map((s) => s.label.split("—")[0].trim()) ?? [];
+    setSpeakingResults({
+      examType,
+      moduleLabel: registry.meta.labelFr,
+      sectionLabels,
+      sections: oral.sections,
+    });
   };
 
   const openMcqResultsIfApplicable = (
@@ -94,10 +119,7 @@ export default function PracticeTab({
       );
       setModuleCompleteMsg(`Writing module complete — ${tasks.join(", ")}`);
     } else {
-      const tasks = result.result.sections.map(
-        (s, i) => `T${i + 1}: ${s.feedback?.cefrLevel ?? "—"}`
-      );
-      setModuleCompleteMsg(`Oral module complete — ${tasks.join(", ")}`);
+      openSpeakingResultsIfApplicable("TCF", completedModule, result.result);
     }
   };
 
@@ -122,10 +144,7 @@ export default function PracticeTab({
       const b = writing.sections[1]?.feedback?.cefrScore ?? "—";
       setModuleCompleteMsg(`TEF writing complete — Section A: ${a}, B: ${b}`);
     } else {
-      const oral = result.result as OralModuleResult;
-      const a = oral.sections[0]?.feedback?.cefrLevel ?? "—";
-      const b = oral.sections[1]?.feedback?.cefrLevel ?? "—";
-      setModuleCompleteMsg(`TEF oral complete — Section A: ${a}, B: ${b}`);
+      openSpeakingResultsIfApplicable("TEF", completedModule, result.result);
     }
   };
 
@@ -179,6 +198,11 @@ export default function PracticeTab({
         open={mcqResults != null}
         payload={mcqResults}
         onClose={() => setMcqResults(null)}
+      />
+      <SpeakingResultsModal
+        open={speakingResults != null}
+        payload={speakingResults}
+        onClose={() => setSpeakingResults(null)}
       />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>

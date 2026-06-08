@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from database import get_db
@@ -7,6 +8,8 @@ from models.ai import (
     WritingModuleEvalRequest, WritingModuleEvalResponse,
     WritingSectionFeedback,
     SpeakingEvalRequest, AISpeakingSuggestion,
+    SpeakingModuleEvalRequest, SpeakingModuleEvalResponse,
+    SpeakingSectionFeedback,
     StudyPlanRequest, StudyPlanResponse,
     VocabExplainRequest, VocabExplainResponse,
     SpeakingUploadUrlResponse,
@@ -190,16 +193,69 @@ def _run_speaking_eval(body: SpeakingEvalRequest) -> AISpeakingSuggestion:
 
 # ─── Speaking ────────────────────────────────────────────────────────────────
 
+def _validate_speaking_module_sections(body: SpeakingModuleEvalRequest) -> None:
+    expected = _EXPECTED_MODULE_SECTIONS.get(body.exam_type.upper())
+    if expected is None:
+        raise HTTPException(status_code=422, detail=f"Unsupported exam_type: {body.exam_type}")
+    if len(body.sections) != expected:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{body.exam_type} speaking module requires {expected} sections, got {len(body.sections)}.",
+        )
+
+
+def _run_speaking_module_eval(
+    body: SpeakingModuleEvalRequest,
+    profile: dict,
+    db,
+    context: str,
+) -> SpeakingModuleEvalResponse:
+    _validate_speaking_module_sections(body)
+    section_results: list[SpeakingSectionFeedback] = []
+    for section in body.sections:
+        eval_body = SpeakingEvalRequest(
+            exercise_id=f"{body.exercise_id}-{section.section_id}",
+            storage_path=section.storage_path,
+            duration_seconds=section.duration_seconds,
+            exam_type=body.exam_type,
+            prompt=section.prompt,
+        )
+        feedback = _run_speaking_eval(eval_body)
+        db.table("speaking_sessions").insert({
+            "user_id": profile["id"],
+            "exercise_id": eval_body.exercise_id,
+            "transcript": None,
+            "recording_path": section.storage_path,
+            "duration_seconds": section.duration_seconds,
+            "exam_type": body.exam_type,
+            "ai_feedback": feedback.model_dump(),
+            "cefr_level": feedback.cefrLevel,
+        }).execute()
+        section_results.append(
+            SpeakingSectionFeedback(section_id=section.section_id, feedback=feedback)
+        )
+    if context == "practice":
+        increment(db, profile["id"], _monday(), "speaking_eval")
+    write_audit_log(db, profile["id"], "speaking_eval", context)
+    return SpeakingModuleEvalResponse(sections=section_results)
+
+
 @router.post("/speaking/upload-url", response_model=SpeakingUploadUrlResponse)
 async def speaking_upload_url(
     profile: dict = Depends(get_profile),
 ):
     from supabase import create_client
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    storage_path = f"{profile['id']}/recording-{date.today().isoformat()}.webm"
+    storage_path = f"{profile['id']}/{uuid.uuid4()}.webm"
     signed = client.storage.from_("speaking-recordings").create_signed_upload_url(storage_path)
+    upload_url = signed.get("signed_url") or signed.get("signedURL")
+    if not upload_url:
+        raise HTTPException(
+            status_code=500,
+            detail="Storage API did not return a signed upload URL.",
+        )
     return SpeakingUploadUrlResponse(
-        upload_url=signed["signedURL"],
+        upload_url=upload_url,
         storage_path=storage_path,
     )
 
@@ -245,6 +301,24 @@ async def speaking_mock(
     }).execute()
     write_audit_log(db, profile["id"], "speaking_eval", "mock")
     return feedback
+
+
+@router.post("/speaking/module", response_model=SpeakingModuleEvalResponse)
+async def speaking_module_practice(
+    body: SpeakingModuleEvalRequest,
+    profile: dict = Depends(require_ai_cap("speaking_eval", "practice")),
+    db=Depends(get_db),
+):
+    return _run_speaking_module_eval(body, profile, db, "practice")
+
+
+@router.post("/speaking/module/mock", response_model=SpeakingModuleEvalResponse)
+async def speaking_module_mock(
+    body: SpeakingModuleEvalRequest,
+    profile: dict = Depends(require_ai_cap("speaking_eval", "mock")),
+    db=Depends(get_db),
+):
+    return _run_speaking_module_eval(body, profile, db, "mock")
 
 
 # ─── Study Plan ──────────────────────────────────────────────────────────────

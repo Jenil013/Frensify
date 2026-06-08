@@ -10,6 +10,7 @@ import {
   UserSubscriptionTier,
   VocabularyCard,
   ExerciseItem,
+  FullExamReport,
   TcfMockModuleResult,
   TcfModuleId,
 } from "./types";
@@ -137,7 +138,8 @@ export default function App() {
     examName: string,
     scorePct: number,
     cefr: string,
-    moduleBreakdown?: TcfMockModuleResult[]
+    moduleBreakdown?: TcfMockModuleResult[],
+    fullReport?: FullExamReport
   ) => {
     const todayStr = new Date().toISOString().split("T")[0];
     const newScore = {
@@ -147,6 +149,7 @@ export default function App() {
       scorePct,
       cefr,
       moduleBreakdown,
+      fullReport,
     };
     setProfile(prev => ({
       ...prev,

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Lock, Play, Award } from "lucide-react";
+import { Lock, Play } from "lucide-react";
 import {
   UserProfile,
+  FullExamReport,
   TcfMockModuleResult,
   TcfModuleCompletionResult,
   TcfModuleId,
@@ -17,6 +18,8 @@ import { TCF_MODULE_ORDER, getModuleLabel } from "../tcfConstants";
 import { TEF_MODULE_ORDER, getTefModuleLabel } from "../tefConstants";
 import TcfModuleSession from "./tcf/TcfModuleSession";
 import TefModuleSession from "./tef/TefModuleSession";
+import FullExamReportModal from "./FullExamReportModal";
+import { buildFullExamReport } from "../utils/fullExamReport";
 
 interface ExamsTabProps {
   profile: UserProfile;
@@ -26,7 +29,8 @@ interface ExamsTabProps {
     name: string,
     scorePct: number,
     cefr: string,
-    moduleBreakdown?: TcfMockModuleResult[]
+    moduleBreakdown?: TcfMockModuleResult[],
+    fullReport?: FullExamReport
   ) => void;
   onSaveModuleScore?: (
     moduleId: TcfModuleId,
@@ -128,7 +132,9 @@ export default function ExamsTab({
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
   const [moduleResults, setModuleResults] = useState<ModuleResultsMap>({});
   const [tefModuleResults, setTefModuleResults] = useState<TefModuleResultsMap>({});
-  const [showResults, setShowResults] = useState(false);
+  const [fullExamReport, setFullExamReport] = useState<FullExamReport | null>(
+    null
+  );
 
   const isTefSession = activeSessionExam?.examType === "TEF";
 
@@ -146,7 +152,29 @@ export default function ExamsTab({
     setCurrentModuleIndex(0);
     setModuleResults({});
     setTefModuleResults({});
-    setShowResults(false);
+    setFullExamReport(null);
+  };
+
+  const finishTcfMock = (nextResults: typeof moduleResults) => {
+    if (!activeSessionExam) return;
+
+    const report = buildFullExamReport(
+      "TCF",
+      activeSessionExam.id,
+      activeSessionExam.name,
+      nextResults
+    );
+    const breakdown = buildModuleBreakdown(nextResults);
+
+    onSaveMockScore(
+      activeSessionExam.id,
+      activeSessionExam.name,
+      report.comprehensionAggregatePct,
+      report.estimatedCefr,
+      breakdown,
+      report
+    );
+    setFullExamReport(report);
   };
 
   const handleTcfModuleComplete = (result: TcfModuleCompletionResult) => {
@@ -163,26 +191,37 @@ export default function ExamsTab({
       );
     }
 
-    if (currentModuleIndex < TCF_MODULE_ORDER.length - 1) {
-      setCurrentModuleIndex((i) => i + 1);
-      return;
-    }
+    const advance = () => {
+      if (currentModuleIndex < TCF_MODULE_ORDER.length - 1) {
+        setCurrentModuleIndex((i) => i + 1);
+        return;
+      }
+      finishTcfMock(nextResults);
+    };
 
-    const breakdown = buildModuleBreakdown(nextResults);
-    const scorePct = aggregateScorePct(breakdown);
-    const cefr =
-      scorePct >= 85 ? "C1" : scorePct >= 70 ? "B2" : scorePct >= 50 ? "B1" : "A2";
+    advance();
+  };
 
-    if (activeSessionExam) {
-      onSaveMockScore(
-        activeSessionExam.id,
-        activeSessionExam.name,
-        scorePct,
-        cefr,
-        breakdown
-      );
-    }
-    setShowResults(true);
+  const finishTefMock = (nextResults: typeof tefModuleResults) => {
+    if (!activeSessionExam) return;
+
+    const report = buildFullExamReport(
+      "TEF",
+      activeSessionExam.id,
+      activeSessionExam.name,
+      nextResults
+    );
+    const breakdown = buildTefModuleBreakdown(nextResults);
+
+    onSaveMockScore(
+      activeSessionExam.id,
+      activeSessionExam.name,
+      report.comprehensionAggregatePct,
+      report.estimatedCefr,
+      breakdown as unknown as TcfMockModuleResult[],
+      report
+    );
+    setFullExamReport(report);
   };
 
   const handleTefModuleComplete = (result: TefModuleCompletionResult) => {
@@ -200,25 +239,15 @@ export default function ExamsTab({
       );
     }
 
-    if (currentModuleIndex < TEF_MODULE_ORDER.length - 1) {
-      setCurrentModuleIndex((i) => i + 1);
-      return;
-    }
+    const advance = () => {
+      if (currentModuleIndex < TEF_MODULE_ORDER.length - 1) {
+        setCurrentModuleIndex((i) => i + 1);
+        return;
+      }
+      finishTefMock(nextResults);
+    };
 
-    const breakdown = buildTefModuleBreakdown(nextResults);
-    const scorePct = aggregateScorePct(breakdown);
-    const cefr =
-      scorePct >= 85 ? "C1" : scorePct >= 70 ? "B2" : scorePct >= 50 ? "B1" : "A2";
-
-    if (activeSessionExam) {
-      onSaveMockScore(
-        activeSessionExam.id,
-        activeSessionExam.name,
-        scorePct,
-        cefr
-      );
-    }
-    setShowResults(true);
+    advance();
   };
 
   const matchedExams = MOCK_EXAMS_DB.filter(
@@ -233,6 +262,14 @@ export default function ExamsTab({
 
   return (
     <div id="exams-tab" className="space-y-6 animate-fade-in text-[#37352F]">
+      <FullExamReportModal
+        open={fullExamReport != null}
+        report={fullExamReport}
+        onClose={() => {
+          setFullExamReport(null);
+          setActiveSessionExam(null);
+        }}
+      />
       {!activeSessionExam ? (
         <div className="space-y-6">
           <div>
@@ -318,20 +355,6 @@ export default function ExamsTab({
             })}
           </div>
         </div>
-      ) : showResults ? (
-        isTefSession ? (
-          <TefResultsPanel
-            breakdown={buildTefModuleBreakdown(tefModuleResults)}
-            examName={activeSessionExam.name}
-            onClose={() => setActiveSessionExam(null)}
-          />
-        ) : (
-          <ResultsPanel
-            breakdown={buildModuleBreakdown(moduleResults)}
-            examName={activeSessionExam.name}
-            onClose={() => setActiveSessionExam(null)}
-          />
-        )
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs">
@@ -392,124 +415,6 @@ export default function ExamsTab({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function ResultsPanel({
-  breakdown,
-  examName,
-  onClose,
-}: {
-  breakdown: TcfMockModuleResult[];
-  examName: string;
-  onClose: () => void;
-}) {
-  const scorePct = aggregateScorePct(breakdown);
-
-  return (
-    <div className="bg-white border rounded-xl p-6 text-center space-y-5 shadow-premium">
-      <Award className="w-10 h-10 text-[#2D6A53] mx-auto" />
-      <h4 className="text-lg font-bold">{examName} — Complete</h4>
-      <p className="text-xs text-[#7A7A78]">
-        Comprehension modules use +1/0 scoring. Expression modules use AI CEFR
-        estimates per section.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg mx-auto">
-        {breakdown.map((row) => (
-          <div
-            key={row.moduleId}
-            className="border rounded-lg p-3 bg-[#FAFAF9] text-xs"
-          >
-            <p className="font-bold text-[#37352F]">{row.moduleLabel}</p>
-            {row.rawScore != null && row.maxScore != null ? (
-              <p className="text-[#2D6A53] font-extrabold mt-1">
-                {row.rawScore}/{row.maxScore} ({row.scorePct}%)
-              </p>
-            ) : row.sectionCefr ? (
-              <p className="text-[#5F5E5B] mt-1">
-                {Object.entries(row.sectionCefr).map(([key, val]) => (
-                  <span key={key} className="mr-2">
-                    {key}: {val ?? "—"}
-                  </span>
-                ))}
-              </p>
-            ) : null}
-          </div>
-        ))}
-      </div>
-
-      <p className="text-sm font-bold">
-        Comprehension aggregate: {scorePct}%
-      </p>
-
-      <button
-        type="button"
-        onClick={onClose}
-        className="px-4 py-2 bg-[#37352F] text-white text-xs font-bold rounded-lg cursor-pointer"
-      >
-        Back to simulations
-      </button>
-    </div>
-  );
-}
-
-function TefResultsPanel({
-  breakdown,
-  examName,
-  onClose,
-}: {
-  breakdown: TefMockModuleResult[];
-  examName: string;
-  onClose: () => void;
-}) {
-  const scorePct = aggregateScorePct(breakdown);
-
-  return (
-    <div className="bg-white border rounded-xl p-6 text-center space-y-5 shadow-premium">
-      <Award className="w-10 h-10 text-[#2D6A53] mx-auto" />
-      <h4 className="text-lg font-bold">{examName} — Complete</h4>
-      <p className="text-xs text-[#7A7A78]">
-        Comprehension modules use +1/0 scoring. Expression modules use AI CEFR
-        estimates per task. Scores map to 0–699 TEF Canada scale.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg mx-auto">
-        {breakdown.map((row) => (
-          <div
-            key={row.moduleId}
-            className="border rounded-lg p-3 bg-[#FAFAF9] text-xs"
-          >
-            <p className="font-bold text-[#37352F]">{row.moduleLabel}</p>
-            {row.rawScore != null && row.maxScore != null ? (
-              <p className="text-[#2D6A53] font-extrabold mt-1">
-                {row.rawScore}/{row.maxScore} ({row.scorePct}%)
-              </p>
-            ) : row.sectionCefr ? (
-              <p className="text-[#5F5E5B] mt-1">
-                {Object.entries(row.sectionCefr).map(([key, val]) => (
-                  <span key={key} className="mr-2">
-                    {key}: {val ?? "—"}
-                  </span>
-                ))}
-              </p>
-            ) : null}
-          </div>
-        ))}
-      </div>
-
-      <p className="text-sm font-bold">
-        Comprehension aggregate: {scorePct}%
-      </p>
-
-      <button
-        type="button"
-        onClick={onClose}
-        className="px-4 py-2 bg-[#37352F] text-white text-xs font-bold rounded-lg cursor-pointer"
-      >
-        Back to simulations
-      </button>
     </div>
   );
 }

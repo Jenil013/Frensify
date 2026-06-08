@@ -3,10 +3,19 @@
 // All evaluation, study planning, and vocabulary insights are driven by client-side simulations,
 // allowing you to test the applet immediately in the preview.
 
-import { AIWritingCorrection, AISpeakingSuggestion, StudyPlanResponse, WritingSectionResult } from "./types";
 import {
+  AIWritingCorrection,
+  OralSectionResult,
+  StudyPlanResponse,
+  WritingSectionResult,
+} from "./types";
+import {
+  fetchSpeakingUploadUrl,
+  submitSpeakingModuleEvaluation,
   submitWritingEvaluation,
   submitWritingModuleEvaluation,
+  uploadSpeakingAudio,
+  type SpeakingEvalContext,
   type WritingEvalContext,
   type WritingSectionPayload,
 } from "./lib/apiClient";
@@ -98,44 +107,51 @@ export async function evaluateWritingModule(
   });
 }
 
-// 2. AI Speaking Accent & Fluency Evaluation (FastAPI-ready payload structure)
-export async function evaluateSpeaking(
-  prompt: string,
-  transcriptText: string,
-  preparationTimeSec: number,
-  speakingDurationSec: number,
+export interface SpeakingSectionUpload {
+  section_id: string;
+  prompt: string;
+  blob: Blob;
+  duration_seconds: number;
+}
+
+export async function evaluateSpeakingModule(
+  moduleId: string,
   examType: "TEF" | "TCF",
-  sectionId?: string
-): Promise<AISpeakingSuggestion> {
-  console.log(
-    `[FastAPI Prep] Requesting voice/transcript diagnostic for ${examType}${sectionId ? ` section ${sectionId}` : ""}...`
+  exerciseId: string,
+  sections: SpeakingSectionUpload[],
+  context: SpeakingEvalContext
+): Promise<OralSectionResult[]> {
+  const uploaded = await Promise.all(
+    sections.map(async (section) => {
+      const { upload_url, storage_path } = await fetchSpeakingUploadUrl();
+      await uploadSpeakingAudio(upload_url, section.blob);
+      return {
+        section_id: section.section_id,
+        prompt: section.prompt,
+        storage_path,
+        duration_seconds: section.duration_seconds,
+      };
+    })
   );
 
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const response = await submitSpeakingModuleEvaluation(
+    moduleId,
+    examType,
+    exerciseId,
+    uploaded,
+    context
+  );
 
-  return {
-    cefrLevel: "B2",
-    fluencyFeedback: "Vocal flow is consistent and pacing maintains strong logical stress. Pauses are located properly before complex transition markers. Refine initial vocal attack speeds.",
-    grammarAndVocab: "Demonstrates adequate structural variations. Correct gender agreements detected for primary relative clauses. Incorporate some subjonctif moods to guarantee higher scores.",
-    structureAnalysis: "Introduction contains a clean thesis layout. The primary supporting argument has excellent local illustrations. Conclusion is brief but meets guidelines.",
-    pronunciationTips: [
-      "Keep the tongue forward and lips fully rounded when articulating the French 'u' vowel sound.",
-      "Mind the phonetic liaison on plural qualifiers (e.g., 'les_atouts' should sound with a clear 'z')."
-    ],
-    suggestedPhrases: [
-      {
-        french: "Néanmoins, il convient de pondérer cette affirmation.",
-        english: "Nonetheless, it is appropriate to weigh this statement.",
-        context: "Excellent transition to use for the introduction of opposing arguments in Speaking Section B."
-      },
-      {
-        french: "C'est un atout majeur pour l'administration.",
-        english: "It is a major asset for the administration.",
-        context: "Use to emphasize a key positive consequence of a policy change."
-      }
-    ],
-    modelSpokenDraft: "Concernant votre question, je pense que l'initiative proposée s'avère intéressante. Néanmoins, il convient de pondérer cette affirmation. D'une part, cela représente un atout majeur; d'autre part, la logistique s'annonce ardue."
-  };
+  return response.sections.map((section) => {
+    const input = sections.find((s) => s.section_id === section.section_id)!;
+    return {
+      sectionId: section.section_id,
+      transcript: "",
+      durationSeconds: input.duration_seconds,
+      feedback: section.feedback,
+      examinerCue: input.prompt,
+    };
+  });
 }
 
 // 3. Personalized Study Plan Generator (FastAPI-ready payload structure)
