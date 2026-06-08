@@ -106,6 +106,7 @@ export interface McqModuleResult {
   rawScore: number;
   maxScore: number;
   answers: (number | null)[];
+  questions: McqItem[];
 }
 
 export interface WritingSectionResult {

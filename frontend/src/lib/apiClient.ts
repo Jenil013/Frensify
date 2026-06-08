@@ -156,6 +156,31 @@ export async function fetchQuestions(
   return apiFetch<McqItem[]>(`/api/v1/questions?${params.toString()}`);
 }
 
+export interface WritingCombinationSection {
+  prompt: string;
+  stimulus?: string;
+}
+
+export interface WritingCombinationResponse {
+  id: string;
+  combinationIndex: number;
+  title: string;
+  sections: Record<string, WritingCombinationSection>;
+}
+
+export async function fetchWritingCombination(
+  examType: string,
+  moduleId: string
+): Promise<WritingCombinationResponse> {
+  const params = new URLSearchParams({
+    exam_type: examType,
+    module_id: moduleId,
+  });
+  return apiFetch<WritingCombinationResponse>(
+    `/api/v1/writing-combination?${params.toString()}`
+  );
+}
+
 export type WritingEvalContext = "practice" | "mock";
 
 export interface WritingSectionPayload {

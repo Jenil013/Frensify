@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Sparkles, Loader2, ChevronRight } from "lucide-react";
 import ModuleSessionShell from "./ModuleSessionShell";
+import SpeakingPrecheckModal from "../SpeakingPrecheckModal";
 import { evaluateSpeaking } from "../../api";
 import {
   ExamPathway,
@@ -38,6 +39,7 @@ export default function OralModuleRunner({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [loading, setLoading] = useState(false);
   const [completedResults, setCompletedResults] = useState<OralSectionResult[]>([]);
+  const [precheckDone, setPrecheckDone] = useState(false);
 
   const taskId = TASK_IDS[currentTask];
   const meta = sectionsMeta[currentTask];
@@ -146,6 +148,17 @@ export default function OralModuleRunner({
       </button>
     </div>
   );
+
+  if (!precheckDone) {
+    return (
+      <SpeakingPrecheckModal
+        open
+        estimatedMinutes={module.meta.durationMinutes}
+        onCancel={() => onAbort?.()}
+        onConfirm={() => setPrecheckDone(true)}
+      />
+    );
+  }
 
   return (
     <ModuleSessionShell

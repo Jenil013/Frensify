@@ -23,6 +23,39 @@ function wordCount(text: string): number {
 
 const TASK_IDS = ["1", "2", "3"] as const;
 
+const DOC2_SPLIT_RE = /(?=Document\s+2\s*:)/i;
+const DOC_LABEL_RE = /^Document\s+([12])\s*:\s*/i;
+
+function Task3Stimulus({ text }: { text: string }) {
+  const parts = text.split(DOC2_SPLIT_RE).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) {
+    return (
+      <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-xs italic leading-relaxed whitespace-pre-wrap">
+        {text}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 space-y-5">
+      {parts.map((part, index) => {
+        const labelMatch = part.match(DOC_LABEL_RE);
+        const label = labelMatch ? `Document ${labelMatch[1]} :` : `Document ${index + 1} :`;
+        const body = labelMatch ? part.slice(labelMatch[0].length).trim() : part;
+        return (
+          <div
+            key={index}
+            className={index > 0 ? "pt-5 border-t border-[#E9E9E7]" : undefined}
+          >
+            <p className="text-xs font-bold not-italic text-[#37352F] mb-2">{label}</p>
+            <p className="text-xs italic leading-relaxed whitespace-pre-wrap">{body}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function WritingModuleRunner({
   module,
   examType,
@@ -191,11 +224,7 @@ export default function WritingModuleRunner({
         </div>
 
         <p className="text-xs font-bold text-[#37352F]">{meta.label}</p>
-        {content.stimulus && (
-          <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-xs italic leading-relaxed">
-            {content.stimulus}
-          </div>
-        )}
+        {content.stimulus && <Task3Stimulus text={content.stimulus} />}
         <p className="text-xs text-[#5F5E5B]">{content.prompt}</p>
         <textarea
           value={activeText}

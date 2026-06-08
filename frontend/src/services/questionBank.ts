@@ -9,7 +9,7 @@ import {
   TEF_PLACEHOLDER_LISTENING_QUESTIONS,
   TEF_PLACEHOLDER_READING_QUESTIONS,
 } from "../tefConstants";
-import { fetchQuestions } from "../lib/apiClient";
+import { fetchQuestions, fetchWritingCombination } from "../lib/apiClient";
 
 const TEF_READING_QUESTION_TARGET = 40;
 const TCF_READING_QUESTION_TARGET = 39;
@@ -20,7 +20,7 @@ const TCF_LISTENING_QUESTION_TARGET = 39;
  *
  * - reading_questions: id, prompt, passage, choices (jsonb), correct_index, explanation, sort_order
  * - listening_questions: id, prompt, audio_url, transcript, choices (jsonb), correct_index, explanation, sort_order
- * - writing_prompts: module_section ('A'|'B'), prompt, stimulus
+ * - exercise_items (writing): module_id, combination_index, tasks jsonb (3 tâches per row)
  * - oral_prompts: module_section ('A'|'B'), prompt, stimulus
  */
 
@@ -81,6 +81,24 @@ export async function loadTcfModule(
         }
       }
       return attachMcqQuestions(moduleId, PLACEHOLDER_READING_QUESTIONS);
+    }
+    case "expression-ecrite": {
+      const base = TCF_MODULE_REGISTRY[moduleId];
+      if (isSupabaseConfigured()) {
+        try {
+          const combo = await fetchWritingCombination("TCF", moduleId);
+          return {
+            ...base,
+            sections: combo.sections,
+          };
+        } catch (err) {
+          console.warn(
+            `[questionBank] Writing combination load failed for TCF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
+      }
+      return { ...base };
     }
     default:
       return { ...TCF_MODULE_REGISTRY[moduleId] };

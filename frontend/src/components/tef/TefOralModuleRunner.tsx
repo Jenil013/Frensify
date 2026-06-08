@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Sparkles, Loader2, ChevronRight } from "lucide-react";
 import ModuleSessionShell from "../tcf/ModuleSessionShell";
+import SpeakingPrecheckModal from "../SpeakingPrecheckModal";
 import { evaluateSpeaking } from "../../api";
 import {
   TefModuleDefinition,
@@ -34,6 +35,7 @@ export default function TefOralModuleRunner({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [loading, setLoading] = useState(false);
   const [resultA, setResultA] = useState<OralModuleResult["sections"][0] | null>(null);
+  const [precheckDone, setPrecheckDone] = useState(false);
 
   const activeMeta = currentSection === "A" ? metaA : metaB;
   const activeContent = currentSection === "A" ? sectionA : sectionB;
@@ -188,6 +190,17 @@ export default function TefOralModuleRunner({
       )}
     </div>
   );
+
+  if (!precheckDone) {
+    return (
+      <SpeakingPrecheckModal
+        open
+        estimatedMinutes={module.meta.durationMinutes}
+        onCancel={() => onAbort?.()}
+        onConfirm={() => setPrecheckDone(true)}
+      />
+    );
+  }
 
   return (
     <ModuleSessionShell

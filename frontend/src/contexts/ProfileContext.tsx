@@ -28,7 +28,7 @@ const AUTH_ERROR_MESSAGES = new Set([
 ]);
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const { session, loading: authLoading, signOut } = useAuth();
+  const { session, loading: authLoading, passwordRecovery, signOut } = useAuth();
   const [profile, setProfileState] = useState<ApiProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         e instanceof Error ? e.message : "Failed to load profile.";
       // A dead/invalid session can't be recovered by a route change — clear it
       // so the user re-authenticates instead of getting bounced to /onboarding.
-      if (AUTH_ERROR_MESSAGES.has(message)) {
+      if (AUTH_ERROR_MESSAGES.has(message) && !passwordRecovery) {
         await signOut();
       }
       setError(message);
@@ -59,7 +59,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [session, signOut]);
+  }, [session, signOut, passwordRecovery]);
 
   const setProfile = useCallback((next: ApiProfile) => {
     setProfileState(next);
@@ -74,8 +74,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+    if (passwordRecovery) {
+      setLoading(false);
+      return;
+    }
     refresh();
-  }, [session, authLoading, refresh]);
+  }, [session, authLoading, passwordRecovery, refresh]);
 
   // Treat the context as loading whenever a session exists but its profile
   // has not been fetched yet. The refresh effect runs after commit, so without

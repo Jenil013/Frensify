@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Mail, Lock, ArrowLeft } from "lucide-react";
-import FrensifyLogo from "../components/FrensifyLogo";
+import { Mail, Lock } from "lucide-react";
+import { AuthShell } from "../components/auth/AuthShell";
 import { useAuth } from "../contexts/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 
@@ -172,9 +172,19 @@ export default function AuthPage() {
         </label>
 
         <label className="block">
-          <span className="text-xs font-semibold text-[#5F5E5B] uppercase tracking-wide">
-            Password
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#5F5E5B] uppercase tracking-wide">
+              Password
+            </span>
+            {mode === "signin" && (
+              <Link
+                to="/auth/forgot-password"
+                className="text-xs font-medium text-[#002D62] hover:underline"
+              >
+                Forgot password?
+              </Link>
+            )}
+          </div>
           <div className="mt-1 relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7A7A78]" />
             <input
@@ -243,35 +253,6 @@ export default function AuthPage() {
         )}
       </p>
     </AuthShell>
-  );
-}
-
-function AuthShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
-      <header className="p-6">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-sm text-[#5F5E5B] hover:text-[#37352F] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to home
-        </Link>
-      </header>
-
-      <div className="flex-1 flex items-center justify-center px-6 pb-12">
-        <div className="w-full max-w-md">
-          <div className="flex justify-center mb-8">
-            <Link to="/">
-              <FrensifyLogo height={36} showSubtext={false} />
-            </Link>
-          </div>
-          <div className="bg-white rounded-2xl border border-[#E9E9E7] p-8 shadow-sm">
-            {children}
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 

@@ -39,7 +39,7 @@ export default function TefMcqModuleRunner({
 
   const finishModule = useCallback(() => {
     const rawScore = scoreAnswers(questions, answers);
-    onComplete({ rawScore, maxScore: total, answers });
+    onComplete({ rawScore, maxScore: total, answers, questions });
     setPhase("done");
   }, [answers, onComplete, questions, total]);
 
@@ -109,15 +109,21 @@ export default function TefMcqModuleRunner({
       footer={footer}
     >
       {phase === "review" || phase === "done" ? (
-        <div className="text-center py-8 space-y-3">
-          <p className="text-lg font-bold text-[#37352F]">Module complete</p>
-          <p className="text-3xl font-extrabold text-[#2D6A53]">
-            {rawScore}/{total}
-          </p>
-          <p className="text-xs text-[#7A7A78]">
-            Correct answer = +1 point · Wrong or blank = 0 points
-          </p>
-        </div>
+        examMode ? (
+          <div className="text-center py-8 space-y-3">
+            <p className="text-lg font-bold text-[#37352F]">Module complete</p>
+            <p className="text-3xl font-extrabold text-[#2D6A53]">
+              {rawScore}/{total}
+            </p>
+            <p className="text-xs text-[#7A7A78]">
+              Correct answer = +1 point · Wrong or blank = 0 points
+            </p>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-xs text-[#7A7A78]">
+            Preparing your results…
+          </div>
+        )
       ) : (
         <div className="space-y-4">
           {isListening && (

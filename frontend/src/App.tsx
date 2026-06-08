@@ -132,14 +132,6 @@ export default function App() {
     }));
   };
 
-  const handleCompletePractice = (exerciseId: string) => {
-    if (profile.completedActivities.includes(exerciseId)) return;
-    setProfile(prev => ({
-      ...prev,
-      completedActivities: [...prev.completedActivities, exerciseId]
-    }));
-  };
-
   const handleSaveMockScore = (
     examId: string,
     examName: string,
@@ -369,10 +361,8 @@ export default function App() {
           )}
 
           {activeTab === "practice" && (
-            <PracticeTab 
+            <PracticeTab
               profile={profile}
-              exercises={SAMPLE_EXERCISES}
-              onCompleteExercise={handleCompletePractice}
               onNavigateToPricing={() => setActiveTab("pricing")}
             />
           )}
