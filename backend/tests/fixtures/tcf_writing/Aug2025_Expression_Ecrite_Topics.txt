@@ -1,0 +1,13 @@
+Combinaison 1:
+  Task1: "Écrivez un message pour inviter un ami à un événement."
+
+  Task2: "Rédigez un article de blog sur une sortie récente."
+
+  Task3: "Le télétravail
+Document 1 :
+
+Le télétravail offre plus de flexibilité.
+
+Document 2 :
+
+Le télétravail peut isoler les employés."

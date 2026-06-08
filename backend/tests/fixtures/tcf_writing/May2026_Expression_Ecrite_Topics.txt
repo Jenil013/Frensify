@@ -1,0 +1,29 @@
+Combinaison 1:
+  Task1: "Vous rédigez un message à vos amis pour les convier à une fête d'anniversaire surprise organisée pour votre meilleur(e) ami(e). Indiquez le lieu, la date et l'heure, etc."
+
+  Task2: "Vous avez pris part à un marché d'occasion dans votre ville. Rédigez un article sur votre blog pour raconter cette activité et dire pourquoi elle vous a plu."
+
+  Task3: "Les vols low-cost : avantages et limites
+Document 1 :
+
+Je voyage souvent avec des compagnies aériennes à petit prix.
+
+Document 2 :
+
+Dernièrement, j'ai décidé d'arrêter de voyager avec les compagnies aériennes low-cost."
+
+--------------------------------------------------
+
+Combinaison 2:
+  Task1: "Rédigez un courriel en réponse à une annonce de recherche de vélo."
+
+  Task2: "Rédigez un message sur un forum pour partager votre expérience d'une journée à la campagne."
+
+  Task3: "Les sévérité des parents envers les enfants
+Document 1 :
+
+À 22 ans, je vis toujours chez mes parents.
+
+Document 2 :
+
+Certains parents hésitent à être trop stricts."

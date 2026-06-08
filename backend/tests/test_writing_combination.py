@@ -1,10 +1,9 @@
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-_SEED_DIR = Path(__file__).resolve().parents[2] / "supabase" / "seed"
-sys.path.insert(0, str(_SEED_DIR))
-from import_tcf_writing import discover_sources, parse_tcf_writing_file  # noqa: E402
+from content.tcf_writing import discover_sources, parse_tcf_writing_file
+
+_FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "tcf_writing"
 
 _COMBO_ROW = {
     "id": "combo-uuid-1",
@@ -56,16 +55,17 @@ def test_get_writing_combination_404_when_empty(client, auth_headers, mock_db):
     assert response.status_code == 404
 
 
-def test_discover_sources_aug2025_through_may2026():
-    sources = discover_sources()
+def test_discover_sources_orders_files_chronologically():
+    sources = discover_sources(_FIXTURES_DIR, start=(2025, 8), end=(2026, 5))
     names = [p.name for p in sources]
-    assert names[0].startswith("Aug2025")
-    assert names[-1].startswith("May2026")
-    assert len(sources) == 10
+    assert names == [
+        "Aug2025_Expression_Ecrite_Topics.txt",
+        "May2026_Expression_Ecrite_Topics.txt",
+    ]
 
 
-def test_global_combination_indexes_across_all_files():
-    sources = discover_sources()
+def test_global_combination_indexes_across_fixture_files():
+    sources = discover_sources(_FIXTURES_DIR, start=(2025, 8), end=(2026, 5))
     next_index = 1
     for source in sources:
         rows = parse_tcf_writing_file(source)
@@ -76,19 +76,13 @@ def test_global_combination_indexes_across_all_files():
             }
             assert indexed["combination_index"] == next_index
             next_index += 1
-    assert next_index - 1 == 105
+    assert next_index - 1 == 3
 
 
-def test_parse_may2026_writing_file():
-    source = (
-        Path(__file__).resolve().parents[2]
-        / "supabase"
-        / "question_bank"
-        / "TCF Writing"
-        / "May2026_Expression_Ecrite_Topics.txt"
-    )
+def test_parse_may2026_writing_fixture():
+    source = _FIXTURES_DIR / "May2026_Expression_Ecrite_Topics.txt"
     rows = parse_tcf_writing_file(source)
-    assert len(rows) == 11
+    assert len(rows) == 2
     assert rows[0]["source_combo"] == 1
     assert len(rows[0]["tasks"]) == 3
     stimulus = rows[0]["tasks"][2].get("stimulus", "")
