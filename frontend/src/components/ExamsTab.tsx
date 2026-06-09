@@ -19,7 +19,19 @@ import { TEF_MODULE_ORDER, getTefModuleLabel } from "../tefConstants";
 import TcfModuleSession from "./tcf/TcfModuleSession";
 import TefModuleSession from "./tef/TefModuleSession";
 import FullExamReportModal from "./FullExamReportModal";
+import AiEvaluatingModal from "./AiEvaluatingModal";
 import { buildFullExamReport } from "../utils/fullExamReport";
+import {
+  anyPendingEvals,
+  resolveTcfPendingEvals,
+  resolveTefPendingEvals,
+} from "../utils/pendingEvaluations";
+import { fetchUsageLimits } from "../lib/apiClient";
+import UsageLimitModal from "./UsageLimitModal";
+import {
+  mockExamLimitBlock,
+  type UsageLimitBlock,
+} from "../utils/usageLimits";
 
 interface ExamsTabProps {
   profile: UserProfile;
@@ -135,10 +147,15 @@ export default function ExamsTab({
   const [fullExamReport, setFullExamReport] = useState<FullExamReport | null>(
     null
   );
+  const [aiEvaluating, setAiEvaluating] = useState(false);
+  const [evalError, setEvalError] = useState<string | null>(null);
+  const [finishingExam, setFinishingExam] = useState(false);
+  const [usageLimitBlock, setUsageLimitBlock] =
+    useState<UsageLimitBlock | null>(null);
 
   const isTefSession = activeSessionExam?.examType === "TEF";
 
-  const handleStartExam = (exam: (typeof MOCK_EXAMS_DB)[0]) => {
+  const handleStartExam = async (exam: (typeof MOCK_EXAMS_DB)[0]) => {
     if (profile.tier === "Free") {
       onNavigateToPricing();
       return;
@@ -148,11 +165,67 @@ export default function ExamsTab({
       return;
     }
 
+    try {
+      const limits = await fetchUsageLimits();
+      const block = mockExamLimitBlock(limits);
+      if (block) {
+        setUsageLimitBlock(block);
+        return;
+      }
+    } catch {
+      setUsageLimitBlock({
+        reason: "monthly_mock_exhausted",
+        title: "Could not verify your allowance",
+        message:
+          "We couldn't check your simulation limit. Please sign in again and retry.",
+        showUpgrade: false,
+      });
+      return;
+    }
+
     setActiveSessionExam(exam);
     setCurrentModuleIndex(0);
     setModuleResults({});
     setTefModuleResults({});
     setFullExamReport(null);
+    setAiEvaluating(false);
+    setEvalError(null);
+    setFinishingExam(false);
+  };
+
+  const completeMockWithEvals = async (
+    isTef: boolean,
+    nextResults: ModuleResultsMap | TefModuleResultsMap
+  ) => {
+    if (!activeSessionExam) return;
+
+    if (!anyPendingEvals(nextResults)) {
+      if (isTef) finishTefMock(nextResults as TefModuleResultsMap);
+      else finishTcfMock(nextResults as ModuleResultsMap);
+      return;
+    }
+
+    setFinishingExam(true);
+    setEvalError(null);
+    setAiEvaluating(true);
+    let failed = false;
+    try {
+      const merged = isTef
+        ? await resolveTefPendingEvals(nextResults as TefModuleResultsMap)
+        : await resolveTcfPendingEvals(nextResults as ModuleResultsMap);
+      if (isTef) finishTefMock(merged);
+      else finishTcfMock(merged);
+    } catch (err: unknown) {
+      failed = true;
+      setEvalError(
+        err instanceof Error
+          ? err.message
+          : "AI evaluation failed. Please try again later."
+      );
+    } finally {
+      setAiEvaluating(false);
+      if (!failed) setFinishingExam(false);
+    }
   };
 
   const finishTcfMock = (nextResults: typeof moduleResults) => {
@@ -191,15 +264,11 @@ export default function ExamsTab({
       );
     }
 
-    const advance = () => {
-      if (currentModuleIndex < TCF_MODULE_ORDER.length - 1) {
-        setCurrentModuleIndex((i) => i + 1);
-        return;
-      }
-      finishTcfMock(nextResults);
-    };
-
-    advance();
+    if (currentModuleIndex < TCF_MODULE_ORDER.length - 1) {
+      setCurrentModuleIndex((i) => i + 1);
+      return;
+    }
+    void completeMockWithEvals(false, nextResults);
   };
 
   const finishTefMock = (nextResults: typeof tefModuleResults) => {
@@ -239,15 +308,11 @@ export default function ExamsTab({
       );
     }
 
-    const advance = () => {
-      if (currentModuleIndex < TEF_MODULE_ORDER.length - 1) {
-        setCurrentModuleIndex((i) => i + 1);
-        return;
-      }
-      finishTefMock(nextResults);
-    };
-
-    advance();
+    if (currentModuleIndex < TEF_MODULE_ORDER.length - 1) {
+      setCurrentModuleIndex((i) => i + 1);
+      return;
+    }
+    void completeMockWithEvals(true, nextResults);
   };
 
   const matchedExams = MOCK_EXAMS_DB.filter(
@@ -262,6 +327,21 @@ export default function ExamsTab({
 
   return (
     <div id="exams-tab" className="space-y-6 animate-fade-in text-[#37352F]">
+      <UsageLimitModal
+        open={usageLimitBlock != null}
+        block={usageLimitBlock}
+        onClose={() => setUsageLimitBlock(null)}
+        onUpgrade={onNavigateToPricing}
+      />
+      <AiEvaluatingModal
+        open={aiEvaluating || evalError != null}
+        error={evalError}
+        onDismissError={() => {
+          setEvalError(null);
+          setFinishingExam(false);
+          setActiveSessionExam(null);
+        }}
+      />
       <FullExamReportModal
         open={fullExamReport != null}
         report={fullExamReport}
@@ -354,6 +434,10 @@ export default function ExamsTab({
               );
             })}
           </div>
+        </div>
+      ) : finishingExam ? (
+        <div className="py-16 text-center text-xs text-[#7A7A78]">
+          Finalizing your mock exam results…
         </div>
       ) : (
         <div className="space-y-4">

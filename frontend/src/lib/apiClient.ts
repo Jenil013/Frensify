@@ -114,6 +114,88 @@ export async function apiFetch<T>(
   return response.json() as Promise<T>;
 }
 
+export interface UsageLimitsResponse {
+  tier: string;
+  weekStart: string;
+  monthStart: string;
+  weeklyUsage: {
+    writingEval: number;
+    speakingEval: number;
+    studyPlan: number;
+    vocabExplain: number;
+  };
+  weeklyCaps: {
+    writingEval: number;
+    speakingEval: number;
+    studyPlan: number;
+    vocabExplain: number;
+  };
+  monthlyMockUsage: number;
+  monthlyMockCap: number;
+  canStart: {
+    writingPractice: boolean;
+    speakingPractice: boolean;
+    mockExam: boolean;
+  };
+}
+
+type UsageLimitsApiResponse = {
+  tier: string;
+  week_start: string;
+  month_start: string;
+  weekly_usage: {
+    writing_eval: number;
+    speaking_eval: number;
+    study_plan: number;
+    vocab_explain: number;
+  };
+  weekly_caps: {
+    writing_eval: number;
+    speaking_eval: number;
+    study_plan: number;
+    vocab_explain: number;
+  };
+  monthly_mock_usage: number;
+  monthly_mock_cap: number;
+  can_start: {
+    writing_practice: boolean;
+    speaking_practice: boolean;
+    mock_exam: boolean;
+  };
+};
+
+function mapUsageLimits(data: UsageLimitsApiResponse): UsageLimitsResponse {
+  return {
+    tier: data.tier,
+    weekStart: data.week_start,
+    monthStart: data.month_start,
+    weeklyUsage: {
+      writingEval: data.weekly_usage.writing_eval,
+      speakingEval: data.weekly_usage.speaking_eval,
+      studyPlan: data.weekly_usage.study_plan,
+      vocabExplain: data.weekly_usage.vocab_explain,
+    },
+    weeklyCaps: {
+      writingEval: data.weekly_caps.writing_eval,
+      speakingEval: data.weekly_caps.speaking_eval,
+      studyPlan: data.weekly_caps.study_plan,
+      vocabExplain: data.weekly_caps.vocab_explain,
+    },
+    monthlyMockUsage: data.monthly_mock_usage,
+    monthlyMockCap: data.monthly_mock_cap,
+    canStart: {
+      writingPractice: data.can_start.writing_practice,
+      speakingPractice: data.can_start.speaking_practice,
+      mockExam: data.can_start.mock_exam,
+    },
+  };
+}
+
+export async function fetchUsageLimits(): Promise<UsageLimitsResponse> {
+  const data = await apiFetch<UsageLimitsApiResponse>("/api/v1/usage/limits");
+  return mapUsageLimits(data);
+}
+
 export async function fetchProfile(): Promise<ApiProfile> {
   return apiFetch<ApiProfile>("/api/v1/profile");
 }
@@ -145,14 +227,14 @@ export async function openBillingPortal(): Promise<{ url: string }> {
 export async function fetchQuestions(
   examType: string,
   moduleId: string,
-  limit?: number
+  options?: { limit?: number }
 ): Promise<McqItem[]> {
   const params = new URLSearchParams({
     exam_type: examType,
     module_id: moduleId,
   });
-  if (limit != null) {
-    params.set("limit", String(limit));
+  if (options?.limit != null) {
+    params.set("limit", String(options.limit));
   }
   return apiFetch<McqItem[]>(`/api/v1/questions?${params.toString()}`);
 }

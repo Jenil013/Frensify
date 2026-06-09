@@ -161,8 +161,16 @@ export interface OralModuleResult {
 
 export type TcfModuleCompletionResult =
   | { type: "mcq"; result: McqModuleResult }
-  | { type: "writing"; result: WritingModuleResult }
-  | { type: "oral"; result: OralModuleResult };
+  | {
+      type: "writing";
+      result: WritingModuleResult;
+      pendingEval?: Promise<WritingModuleResult>;
+    }
+  | {
+      type: "oral";
+      result: OralModuleResult;
+      pendingEval?: Promise<OralModuleResult>;
+    };
 
 export interface VocabularyCard {
   id: string;
@@ -271,6 +279,7 @@ export interface TefModuleCompletionResult {
   type: "mcq" | "writing" | "oral";
   moduleId: TefModuleId;
   result: McqModuleResult | WritingModuleResult | OralModuleResult;
+  pendingEval?: Promise<WritingModuleResult> | Promise<OralModuleResult>;
 }
 
 export interface TefMockModuleResult {

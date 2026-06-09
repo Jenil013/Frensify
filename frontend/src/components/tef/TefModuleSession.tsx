@@ -28,7 +28,7 @@ export default function TefModuleSession({
 
   useEffect(() => {
     let cancelled = false;
-    loadTefModule(moduleId)
+    loadTefModule(moduleId, examMode)
       .then((def) => {
         if (!cancelled) setModule(def);
       })
@@ -38,7 +38,7 @@ export default function TefModuleSession({
     return () => {
       cancelled = true;
     };
-  }, [moduleId]);
+  }, [moduleId, examMode]);
 
   if (error) {
     return (
@@ -75,8 +75,13 @@ export default function TefModuleSession({
         module={module}
         examMode={examMode}
         onAbort={onAbort}
-        onComplete={(result) =>
-          onComplete({ type: "writing", moduleId, result })
+        onComplete={(result, options) =>
+          onComplete({
+            type: "writing",
+            moduleId,
+            result,
+            pendingEval: options?.pendingEval,
+          })
         }
       />
     );
@@ -87,8 +92,13 @@ export default function TefModuleSession({
       module={module}
       examMode={examMode}
       onAbort={onAbort}
-      onComplete={(result) =>
-        onComplete({ type: "oral", moduleId, result })
+      onComplete={(result, options) =>
+        onComplete({
+          type: "oral",
+          moduleId,
+          result,
+          pendingEval: options?.pendingEval,
+        })
       }
     />
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Sparkles, Loader2, ChevronRight } from "lucide-react";
 import ModuleSessionShell from "../tcf/ModuleSessionShell";
 import WritingFeedbackModal from "../WritingFeedbackModal";
+import AiEvaluatingModal from "../AiEvaluatingModal";
 import { evaluateWritingModule } from "../../api";
 import {
   TefModuleDefinition,
@@ -11,7 +12,10 @@ import {
 interface TefWritingModuleRunnerProps {
   module: TefModuleDefinition;
   examMode?: boolean;
-  onComplete: (result: WritingModuleResult) => void;
+  onComplete: (
+    result: WritingModuleResult,
+    options?: { pendingEval?: Promise<WritingModuleResult> }
+  ) => void;
   onAbort?: () => void;
 }
 
@@ -35,7 +39,7 @@ export default function TefWritingModuleRunner({
   const [textA, setTextA] = useState("");
   const [textB, setTextB] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(metaA.durationMinutes * 60);
-  const [loading, setLoading] = useState(false);
+  const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingResult, setPendingResult] = useState<WritingModuleResult | null>(null);
 
@@ -56,40 +60,64 @@ export default function TefWritingModuleRunner({
     return () => clearInterval(t);
   }, [secondsLeft]);
 
+  const buildEvalPayload = useCallback(
+    () => [
+      {
+        section_id: "A",
+        prompt: sectionA.prompt,
+        essay_text: textA,
+        word_count: wordCount(textA),
+        task_number: `TEF ${metaA.label}`,
+        min_words: metaA.minWords ?? 0,
+      },
+      {
+        section_id: "B",
+        prompt: sectionB.prompt,
+        essay_text: textB,
+        word_count: wordCount(textB),
+        task_number: `TEF ${metaB.label}`,
+        min_words: metaB.minWords ?? 0,
+      },
+    ],
+    [sectionA.prompt, textA, metaA.label, metaA.minWords, sectionB.prompt, textB, metaB.label, metaB.minWords]
+  );
+
+  const buildDraftResult = useCallback(
+    (): WritingModuleResult => ({
+      sections: [
+        { sectionId: "A", text: textA, wordCount: wordCount(textA) },
+        { sectionId: "B", text: textB, wordCount: wordCount(textB) },
+      ],
+    }),
+    [textA, textB]
+  );
+
   const finishModule = useCallback(async () => {
     if (words < minWords) return;
-    setLoading(true);
     setError(null);
+    const sections = buildEvalPayload();
+
+    if (examMode) {
+      const draft = buildDraftResult();
+      const pendingEval = evaluateWritingModule(
+        "expression-ecrite",
+        "TEF",
+        sections,
+        "mock"
+      ).then((evaluated) => ({ sections: evaluated }));
+      onComplete(draft, { pendingEval });
+      return;
+    }
+
+    setEvaluating(true);
     try {
       const sectionResults = await evaluateWritingModule(
         "expression-ecrite",
         "TEF",
-        [
-          {
-            section_id: "A",
-            prompt: sectionA.prompt,
-            essay_text: textA,
-            word_count: wordCount(textA),
-            task_number: `TEF ${metaA.label}`,
-            min_words: metaA.minWords ?? 0,
-          },
-          {
-            section_id: "B",
-            prompt: sectionB.prompt,
-            essay_text: textB,
-            word_count: wordCount(textB),
-            task_number: `TEF ${metaB.label}`,
-            min_words: metaB.minWords ?? 0,
-          },
-        ],
-        examMode ? "mock" : "practice"
+        sections,
+        "practice"
       );
-      const result = { sections: sectionResults };
-      if (examMode) {
-        onComplete(result);
-      } else {
-        setPendingResult(result);
-      }
+      setPendingResult({ sections: sectionResults });
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -97,15 +125,13 @@ export default function TefWritingModuleRunner({
           : "Writing evaluation failed. Please try again."
       );
     } finally {
-      setLoading(false);
+      setEvaluating(false);
     }
   }, [
     words,
     minWords,
-    sectionA.prompt,
-    textA,
-    sectionB.prompt,
-    textB,
+    buildEvalPayload,
+    buildDraftResult,
     examMode,
     onComplete,
   ]);
@@ -130,7 +156,7 @@ export default function TefWritingModuleRunner({
       {currentSection === "A" ? (
         <button
           type="button"
-          disabled={loading || words < minWords}
+          disabled={(!examMode && evaluating) || words < minWords}
           onClick={() => setCurrentSection("B")}
           className="px-4 py-2 bg-[#37352F] text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer"
         >
@@ -141,15 +167,16 @@ export default function TefWritingModuleRunner({
       ) : (
         <button
           type="button"
-          disabled={loading || words < minWords}
+          disabled={(!examMode && evaluating) || words < minWords}
           onClick={finishModule}
           className="px-4 py-2 bg-[#2D6A53] text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer"
         >
-          {loading ? (
+          {!examMode && evaluating ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <>
-              <Sparkles className="w-3.5 h-3.5" /> Submit module
+              <Sparkles className="w-3.5 h-3.5" />{" "}
+              {examMode ? "Submit & continue" : "Submit module"}
             </>
           )}
         </button>
@@ -159,6 +186,8 @@ export default function TefWritingModuleRunner({
 
   return (
     <>
+      <AiEvaluatingModal open={!examMode && evaluating} />
+
       {!examMode && (
         <WritingFeedbackModal
           open={pendingResult !== null && feedbackSections.length > 0}

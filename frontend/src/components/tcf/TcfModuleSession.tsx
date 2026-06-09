@@ -31,7 +31,7 @@ export default function TcfModuleSession({
 
   useEffect(() => {
     let cancelled = false;
-    loadTcfModule(moduleId)
+    loadTcfModule(moduleId, examMode)
       .then((def) => {
         if (!cancelled) setModule(def);
       })
@@ -41,7 +41,7 @@ export default function TcfModuleSession({
     return () => {
       cancelled = true;
     };
-  }, [moduleId]);
+  }, [moduleId, examMode]);
 
   if (error) {
     return (
@@ -77,7 +77,13 @@ export default function TcfModuleSession({
         examType={examType}
         examMode={examMode}
         onAbort={onAbort}
-        onComplete={(result) => onComplete({ type: "writing", result })}
+        onComplete={(result, options) =>
+          onComplete({
+            type: "writing",
+            result,
+            pendingEval: options?.pendingEval,
+          })
+        }
       />
     );
   }
@@ -88,7 +94,13 @@ export default function TcfModuleSession({
       examType={examType}
       examMode={examMode}
       onAbort={onAbort}
-      onComplete={(result) => onComplete({ type: "oral", result })}
+      onComplete={(result, options) =>
+        onComplete({
+          type: "oral",
+          result,
+          pendingEval: options?.pendingEval,
+        })
+      }
     />
   );
 }

@@ -22,6 +22,13 @@ import SpeakingResultsModal, {
   type SpeakingResultsPayload,
 } from "./SpeakingResultsModal";
 import { isMcqComprehensionModule } from "../utils/mcqScoring";
+import { fetchUsageLimits } from "../lib/apiClient";
+import UsageLimitModal from "./UsageLimitModal";
+import {
+  practiceLimitBlock,
+  skillNeedsAiEval,
+  type UsageLimitBlock,
+} from "../utils/usageLimits";
 
 interface PracticeTabProps {
   profile: UserProfile;
@@ -39,6 +46,8 @@ export default function PracticeTab({
   const [mcqResults, setMcqResults] = useState<McqPracticeResultsPayload | null>(null);
   const [speakingResults, setSpeakingResults] =
     useState<SpeakingResultsPayload | null>(null);
+  const [usageLimitBlock, setUsageLimitBlock] =
+    useState<UsageLimitBlock | null>(null);
 
   const skillToTcfModule: Record<SkillType, TcfModuleId> = {
     reading: "comprehension-ecrite",
@@ -144,15 +153,40 @@ export default function PracticeTab({
       const b = writing.sections[1]?.feedback?.cefrScore ?? "—";
       setModuleCompleteMsg(`TEF writing complete — Section A: ${a}, B: ${b}`);
     } else {
-      openSpeakingResultsIfApplicable("TEF", completedModule, result.result);
+      openSpeakingResultsIfApplicable(
+        "TEF",
+        completedModule,
+        result.result as OralModuleResult
+      );
     }
   };
 
-  const startFullModule = () => {
+  const startFullModule = async () => {
     if (profile.tier === "Free") {
       onNavigateToPricing();
       return;
     }
+
+    if (skillNeedsAiEval(activeSkill)) {
+      try {
+        const limits = await fetchUsageLimits();
+        const block = practiceLimitBlock(limits, activeSkill);
+        if (block) {
+          setUsageLimitBlock(block);
+          return;
+        }
+      } catch {
+        setUsageLimitBlock({
+          reason: "weekly_exhausted",
+          title: "Could not verify your allowance",
+          message:
+            "We couldn't check your weekly AI evaluation limit. Please sign in again and retry.",
+          showUpgrade: false,
+        });
+        return;
+      }
+    }
+
     setModuleCompleteMsg(null);
     if (profile.targetExam === "TCF") {
       setActiveTcfModule(skillToTcfModule[activeSkill]);
@@ -194,6 +228,12 @@ export default function PracticeTab({
 
   return (
     <div id="practice-tab" className="space-y-6 animate-fade-in text-[#37352F]">
+      <UsageLimitModal
+        open={usageLimitBlock != null}
+        block={usageLimitBlock}
+        onClose={() => setUsageLimitBlock(null)}
+        onUpgrade={onNavigateToPricing}
+      />
       <McqPracticeResultsModal
         open={mcqResults != null}
         payload={mcqResults}

@@ -9,7 +9,10 @@ import {
 interface OralModuleRunnerProps {
   module: TcfModuleDefinition;
   examType: ExamPathway;
-  onComplete: (result: OralModuleResult) => void;
+  onComplete: (
+    result: OralModuleResult,
+    options?: { pendingEval?: Promise<OralModuleResult> }
+  ) => void;
   onAbort?: () => void;
   examMode?: boolean;
 }

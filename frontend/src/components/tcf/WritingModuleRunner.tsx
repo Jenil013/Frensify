@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Sparkles, Loader2, ChevronRight } from "lucide-react";
 import ModuleSessionShell from "./ModuleSessionShell";
 import WritingFeedbackModal from "../WritingFeedbackModal";
+import AiEvaluatingModal from "../AiEvaluatingModal";
 import { evaluateWritingModule } from "../../api";
 import {
   ExamPathway,
@@ -13,7 +14,10 @@ interface WritingModuleRunnerProps {
   module: TcfModuleDefinition;
   examType: ExamPathway;
   examMode?: boolean;
-  onComplete: (result: WritingModuleResult) => void;
+  onComplete: (
+    result: WritingModuleResult,
+    options?: { pendingEval?: Promise<WritingModuleResult> }
+  ) => void;
   onAbort?: () => void;
 }
 
@@ -71,7 +75,7 @@ export default function WritingModuleRunner({
   const [secondsLeft, setSecondsLeft] = useState(
     sectionsMeta[0].durationMinutes * 60
   );
-  const [loading, setLoading] = useState(false);
+  const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingResult, setPendingResult] = useState<WritingModuleResult | null>(null);
 
@@ -100,30 +104,55 @@ export default function WritingModuleRunner({
     });
   };
 
-  const submitModule = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const sections = TASK_IDS.map((id, idx) => ({
+  const buildEvalPayload = useCallback(
+    () =>
+      TASK_IDS.map((id, idx) => ({
         section_id: id,
         prompt: sectionContent[id].prompt,
         essay_text: texts[idx],
         word_count: wordCount(texts[idx]),
         task_number: `${examType} ${sectionsMeta[idx].label}`,
         min_words: sectionsMeta[idx].minWords ?? 0,
-      }));
+      })),
+    [sectionContent, texts, examType, sectionsMeta]
+  );
+
+  const buildDraftResult = useCallback(
+    (): WritingModuleResult => ({
+      sections: TASK_IDS.map((id, idx) => ({
+        sectionId: id,
+        text: texts[idx],
+        wordCount: wordCount(texts[idx]),
+      })),
+    }),
+    [texts]
+  );
+
+  const submitModule = useCallback(async () => {
+    setError(null);
+    const sections = buildEvalPayload();
+
+    if (examMode) {
+      const draft = buildDraftResult();
+      const pendingEval = evaluateWritingModule(
+        "expression-ecrite",
+        examType,
+        sections,
+        "mock"
+      ).then((evaluated) => ({ sections: evaluated }));
+      onComplete(draft, { pendingEval });
+      return;
+    }
+
+    setEvaluating(true);
+    try {
       const sectionResults = await evaluateWritingModule(
         "expression-ecrite",
         examType,
         sections,
-        examMode ? "mock" : "practice"
+        "practice"
       );
-      const result = { sections: sectionResults };
-      if (examMode) {
-        onComplete(result);
-      } else {
-        setPendingResult(result);
-      }
+      setPendingResult({ sections: sectionResults });
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -131,9 +160,9 @@ export default function WritingModuleRunner({
           : "Writing evaluation failed. Please try again."
       );
     } finally {
-      setLoading(false);
+      setEvaluating(false);
     }
-  }, [sectionContent, texts, examType, examMode, onComplete]);
+  }, [buildEvalPayload, buildDraftResult, examType, examMode, onComplete]);
 
   const dismissFeedback = useCallback(() => {
     if (pendingResult) {
@@ -165,17 +194,18 @@ export default function WritingModuleRunner({
     <div className="flex justify-end">
       <button
         type="button"
-        disabled={loading || words < minWords}
+        disabled={(!examMode && evaluating) || words < minWords}
         onClick={advanceOrSubmit}
         className={`px-4 py-2 text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer ${
           isLastTask ? "bg-[#2D6A53]" : "bg-[#37352F]"
         }`}
       >
-        {loading ? (
+        {!examMode && evaluating ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : isLastTask ? (
           <>
-            <Sparkles className="w-3.5 h-3.5" /> Submit module
+            <Sparkles className="w-3.5 h-3.5" />{" "}
+            {examMode ? "Submit & continue" : "Submit module"}
           </>
         ) : (
           <>
@@ -188,6 +218,8 @@ export default function WritingModuleRunner({
 
   return (
     <>
+      <AiEvaluatingModal open={!examMode && evaluating} />
+
       {!examMode && (
         <WritingFeedbackModal
           open={pendingResult !== null && feedbackSections.length > 0}

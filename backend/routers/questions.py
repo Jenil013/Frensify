@@ -14,6 +14,9 @@ from models.questions import QuestionItem
 
 router = APIRouter(tags=["questions"])
 
+LISTENING_MODULE_ID = "comprehension-orale"
+LISTENING_IMAGE_FRONT_COUNT = 3
+
 
 def _map_row(row: dict) -> QuestionItem:
     return QuestionItem(
@@ -34,6 +37,33 @@ def _effective_count(requested: int, available: int, tier: str, module_id: str) 
     if tier == "Free" and module_id in CAPPED_FREE_MODULE_IDS:
         count = min(count, FREE_READING_LISTENING_CAP)
     return count
+
+
+def _row_has_image(row: dict) -> bool:
+    path = row.get("image_path")
+    return bool(path and str(path).strip())
+
+
+def _sample_listening_rows(rows: list[dict], count: int) -> list[dict]:
+    image_rows = [r for r in rows if _row_has_image(r)]
+    other_rows = [r for r in rows if not _row_has_image(r)]
+
+    front_count = min(LISTENING_IMAGE_FRONT_COUNT, len(image_rows), count)
+    front = random.sample(image_rows, front_count) if front_count else []
+
+    remaining = count - len(front)
+    rest_pool = [r for r in other_rows if r not in front]
+    rest_count = min(remaining, len(rest_pool))
+    rest = random.sample(rest_pool, rest_count) if rest_count else []
+
+    combined = front + rest
+    if len(combined) < count:
+        used_ids = {r["id"] for r in combined}
+        filler = [r for r in rows if r["id"] not in used_ids]
+        need = count - len(combined)
+        combined.extend(random.sample(filler, min(need, len(filler))))
+
+    return combined[:count]
 
 
 @router.get("/questions", response_model=List[QuestionItem])
@@ -58,5 +88,9 @@ async def list_questions(
     if count <= 0:
         return []
 
-    sampled = random.sample(rows, count)
+    if module_id == LISTENING_MODULE_ID:
+        sampled = _sample_listening_rows(rows, count)
+    else:
+        sampled = random.sample(rows, count)
+
     return [_map_row(row) for row in sampled]

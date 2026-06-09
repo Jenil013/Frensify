@@ -15,10 +15,14 @@ import {
   fetchWritingCombination,
 } from "../lib/apiClient";
 import { buildRandomTcfTask1Section } from "../utils/tcfOralTask1";
+import { orderListeningExamQuestions } from "../utils/listeningQuestions";
 
 const TEF_READING_QUESTION_TARGET = 40;
 const TCF_READING_QUESTION_TARGET = 39;
 const TCF_LISTENING_QUESTION_TARGET = 39;
+const TEF_LISTENING_QUESTION_TARGET = 40;
+
+const PLACEHOLDER_LISTENING_IMAGE = "/fevicon_Logo.svg";
 
 /**
  * Supabase table mapping (when you connect your question bank):
@@ -43,18 +47,37 @@ function attachMcqQuestions(
   return { ...base, questions };
 }
 
+function withPlaceholderListeningImages(questions: McqItem[]): McqItem[] {
+  return questions.map((q, index) =>
+    index < 3 ? { ...q, imageUrl: PLACEHOLDER_LISTENING_IMAGE } : q
+  );
+}
+
+function placeholderListeningQuestions(): McqItem[] {
+  return orderListeningExamQuestions(
+    withPlaceholderListeningImages(PLACEHOLDER_LISTENING_QUESTIONS),
+    TCF_LISTENING_QUESTION_TARGET
+  );
+}
+
+function placeholderTefListeningQuestions(): McqItem[] {
+  return orderListeningExamQuestions(
+    withPlaceholderListeningImages(TEF_PLACEHOLDER_LISTENING_QUESTIONS),
+    TEF_LISTENING_QUESTION_TARGET
+  );
+}
+
 export async function loadTcfModule(
-  moduleId: TcfModuleId
+  moduleId: TcfModuleId,
+  examMode = true
 ): Promise<TcfModuleDefinition> {
   switch (moduleId) {
     case "comprehension-orale": {
       if (isSupabaseConfigured()) {
         try {
-          const questions = await fetchQuestions(
-            "TCF",
-            moduleId,
-            TCF_LISTENING_QUESTION_TARGET
-          );
+          const questions = await fetchQuestions("TCF", moduleId, {
+            limit: TCF_LISTENING_QUESTION_TARGET,
+          });
           if (questions.length > 0) {
             return attachMcqQuestions(moduleId, questions);
           }
@@ -65,16 +88,14 @@ export async function loadTcfModule(
           );
         }
       }
-      return attachMcqQuestions(moduleId, PLACEHOLDER_LISTENING_QUESTIONS);
+      return attachMcqQuestions(moduleId, placeholderListeningQuestions());
     }
     case "comprehension-ecrite": {
       if (isSupabaseConfigured()) {
         try {
-          const questions = await fetchQuestions(
-            "TCF",
-            moduleId,
-            TCF_READING_QUESTION_TARGET
-          );
+          const questions = await fetchQuestions("TCF", moduleId, {
+            limit: TCF_READING_QUESTION_TARGET,
+          });
           if (questions.length > 0) {
             return attachMcqQuestions(moduleId, questions);
           }
@@ -131,8 +152,10 @@ export async function loadTcfModule(
         },
       };
     }
-    default:
-      return { ...TCF_MODULE_REGISTRY[moduleId] };
+    default: {
+      const _exhaustive: never = moduleId;
+      throw new Error(`Unknown TCF module: ${_exhaustive}`);
+    }
   }
 }
 
@@ -152,17 +175,16 @@ function attachTefMcqQuestions(
 }
 
 export async function loadTefModule(
-  moduleId: TefModuleId
+  moduleId: TefModuleId,
+  examMode = true
 ): Promise<TefModuleDefinition> {
   switch (moduleId) {
     case "comprehension-ecrite": {
       if (isSupabaseConfigured()) {
         try {
-          const questions = await fetchQuestions(
-            "TEF",
-            moduleId,
-            TEF_READING_QUESTION_TARGET
-          );
+          const questions = await fetchQuestions("TEF", moduleId, {
+            limit: TEF_READING_QUESTION_TARGET,
+          });
           if (questions.length > 0) {
             return attachTefMcqQuestions(moduleId, questions);
           }
@@ -175,8 +197,24 @@ export async function loadTefModule(
       }
       return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_READING_QUESTIONS);
     }
-    case "comprehension-orale":
-      return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_LISTENING_QUESTIONS);
+    case "comprehension-orale": {
+      if (isSupabaseConfigured()) {
+        try {
+          const questions = await fetchQuestions("TEF", moduleId, {
+            limit: TEF_LISTENING_QUESTION_TARGET,
+          });
+          if (questions.length > 0) {
+            return attachTefMcqQuestions(moduleId, questions);
+          }
+        } catch (err) {
+          console.warn(
+            `[questionBank] Backend load failed for TEF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
+      }
+      return attachTefMcqQuestions(moduleId, placeholderTefListeningQuestions());
+    }
     case "expression-orale": {
       const base = TEF_MODULE_REGISTRY[moduleId];
       if (isSupabaseConfigured()) {

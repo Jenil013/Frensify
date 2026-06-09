@@ -51,3 +51,26 @@
   filter: brightness(1.12) saturate(1.2);
   box-shadow: none; /* let the inline glow intensify via filter */
 }
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-ghost-line {
+  background: linear-gradient(
+    90deg,
+    #ececea 0%,
+    #ececea 35%,
+    #eaf5f1 48%,
+    #d1ebe1 52%,
+    #eaf5f1 65%,
+    #ececea 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+}

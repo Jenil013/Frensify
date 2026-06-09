@@ -6,6 +6,7 @@ import SpeakingConversationPanel, {
   type CandidateState,
 } from "./SpeakingConversationPanel";
 import SpeakingTaskProgress from "./SpeakingTaskProgress";
+import AiEvaluatingModal from "./AiEvaluatingModal";
 import { useExaminerTts } from "../hooks/useExaminerTts";
 import { useSpeakingRecorder } from "../hooks/useSpeakingRecorder";
 import { evaluateSpeakingModule } from "../api";
@@ -30,7 +31,10 @@ interface OralSimulationRunnerProps {
   sectionContent: Record<string, TcfExpressionSection>;
   examType: ExamPathway;
   exerciseId: string;
-  onComplete: (result: OralModuleResult) => void;
+  onComplete: (
+    result: OralModuleResult,
+    options?: { pendingEval?: Promise<OralModuleResult> }
+  ) => void;
   onAbort?: () => void;
   examMode?: boolean;
 }
@@ -68,7 +72,7 @@ export default function OralSimulationRunner({
   );
   const [prepSecondsLeft, setPrepSecondsLeft] = useState<number | null>(null);
   const [examinerReady, setExaminerReady] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recordings, setRecordings] = useState<
     Record<string, { blob: Blob; durationSeconds: number }>
@@ -170,22 +174,54 @@ export default function OralSimulationRunner({
   const allRecorded = sectionIds.every((id) => recordings[id]);
   const isLastTask = currentIndex === sectionIds.length - 1;
 
-  const submitModule = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const sections = sectionIds.map((id) => ({
+  const buildEvalSections = useCallback(
+    () =>
+      sectionIds.map((id) => ({
         section_id: id,
         prompt: buildEvalPrompt(sectionContent[id]),
         blob: recordings[id].blob,
         duration_seconds: recordings[id].durationSeconds,
-      }));
+      })),
+    [sectionIds, sectionContent, recordings]
+  );
+
+  const buildDraftResult = useCallback(
+    (): OralModuleResult => ({
+      sections: sectionIds.map((id) => ({
+        sectionId: id,
+        transcript: "",
+        durationSeconds: recordings[id].durationSeconds,
+        examinerCue: examinerSpokenText(sectionContent[id]),
+      })),
+    }),
+    [sectionIds, sectionContent, recordings]
+  );
+
+  const submitModule = useCallback(async () => {
+    setError(null);
+    const sections = buildEvalSections();
+
+    if (examMode) {
+      const draft = buildDraftResult();
+      const pendingEval = evaluateSpeakingModule(
+        "expression-orale",
+        examType,
+        exerciseId,
+        sections,
+        "mock"
+      ).then((results) => ({ sections: results }));
+      onComplete(draft, { pendingEval });
+      return;
+    }
+
+    setEvaluating(true);
+    try {
       const results = await evaluateSpeakingModule(
         "expression-orale",
         examType,
         exerciseId,
         sections,
-        examMode ? "mock" : "practice"
+        "practice"
       );
       onComplete({ sections: results });
     } catch (err: unknown) {
@@ -195,12 +231,11 @@ export default function OralSimulationRunner({
           : "Speaking evaluation failed. Please try again."
       );
     } finally {
-      setLoading(false);
+      setEvaluating(false);
     }
   }, [
-    sectionIds,
-    sectionContent,
-    recordings,
+    buildEvalSections,
+    buildDraftResult,
     examType,
     exerciseId,
     examMode,
@@ -225,13 +260,17 @@ export default function OralSimulationRunner({
       )}
       <button
         type="button"
-        disabled={loading || !taskRecording || (isLastTask && !allRecorded)}
+        disabled={
+          (!examMode && evaluating) ||
+          !taskRecording ||
+          (isLastTask && !allRecorded)
+        }
         onClick={() => void advanceOrSubmit()}
         className={`px-4 py-2 text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer ${
           isLastTask ? "bg-[#2D6A53]" : "bg-[#37352F]"
         }`}
       >
-        {loading ? (
+        {!examMode && evaluating ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : isLastTask ? (
           <>
@@ -260,6 +299,9 @@ export default function OralSimulationRunner({
   const taskLabels = sectionMetas.map((s) => s.label.split("—")[0].trim());
 
   return (
+    <>
+    <AiEvaluatingModal open={!examMode && evaluating} />
+
     <ModuleSessionShell
       title={title}
       objective={objective}
@@ -312,5 +354,6 @@ export default function OralSimulationRunner({
         />
       </div>
     </ModuleSessionShell>
+    </>
   );
 }

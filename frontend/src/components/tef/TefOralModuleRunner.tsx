@@ -4,7 +4,10 @@ import { OralModuleResult, TefModuleDefinition } from "../../types";
 
 interface TefOralModuleRunnerProps {
   module: TefModuleDefinition;
-  onComplete: (result: OralModuleResult) => void;
+  onComplete: (
+    result: OralModuleResult,
+    options?: { pendingEval?: Promise<OralModuleResult> }
+  ) => void;
   onAbort?: () => void;
   examMode?: boolean;
 }
