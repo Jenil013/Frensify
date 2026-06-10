@@ -142,7 +142,14 @@ export default function TefMcqModuleRunner({
             </div>
           )}
 
-          <p className="text-xs font-bold text-[#7A7A78] uppercase">{q.prompt}</p>
+          <div className="flex items-center gap-2">
+            {!isListening && q.difficulty && (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D6A53] bg-[#E8F3EE] px-2 py-0.5 rounded-md">
+                {q.difficulty}
+              </span>
+            )}
+            <p className="text-xs font-bold text-[#7A7A78] uppercase flex-1">{q.prompt}</p>
+          </div>
 
           <div className="space-y-2">
             {q.choices.map((choice, i) => (

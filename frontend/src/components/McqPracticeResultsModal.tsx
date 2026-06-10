@@ -78,9 +78,16 @@ function QuestionReview({
   return (
     <article className="border border-[#E9E9E7] rounded-xl bg-white p-4 space-y-3 shadow-sm">
       <div className="space-y-1">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78]">
-          Question {questionIndex + 1}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78]">
+            Question {questionIndex + 1}
+          </p>
+          {question.difficulty && (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D6A53]">
+              {question.difficulty}
+            </span>
+          )}
+        </div>
         <p className="text-sm font-semibold text-[#37352F] leading-relaxed">
           {question.prompt}
         </p>

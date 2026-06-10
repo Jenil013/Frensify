@@ -485,6 +485,16 @@ const TEF_LISTENING_TEMPLATES: Omit<McqItem, "id">[] = [
   },
 ];
 
+/** Official TEF Canada reading difficulty bands (40 questions). */
+export const TEF_READING_DIFFICULTY_BANDS: { difficulty: string; count: number }[] = [
+  { difficulty: "A1", count: 13 },
+  { difficulty: "A2", count: 7 },
+  { difficulty: "B1", count: 6 },
+  { difficulty: "B2", count: 4 },
+  { difficulty: "C1", count: 4 },
+  { difficulty: "C2", count: 6 },
+];
+
 function expandTefMcqBank(
   templates: Omit<McqItem, "id">[],
   prefix: string,
@@ -500,10 +510,30 @@ function expandTefMcqBank(
   });
 }
 
-export const TEF_PLACEHOLDER_READING_QUESTIONS = expandTefMcqBank(
+function expandTefReadingBank(
+  templates: Omit<McqItem, "id">[],
+  prefix: string
+): McqItem[] {
+  const questions: McqItem[] = [];
+  let questionNumber = 1;
+  for (const band of TEF_READING_DIFFICULTY_BANDS) {
+    for (let i = 0; i < band.count; i++) {
+      const t = templates[(questionNumber - 1) % templates.length];
+      questions.push({
+        ...t,
+        id: `${prefix}-q${questionNumber}`,
+        difficulty: band.difficulty,
+        prompt: `[${band.difficulty}] ${t.prompt}`,
+      });
+      questionNumber += 1;
+    }
+  }
+  return questions;
+}
+
+export const TEF_PLACEHOLDER_READING_QUESTIONS = expandTefReadingBank(
   TEF_READING_TEMPLATES,
-  "tef-reading",
-  40
+  "tef-reading"
 );
 
 export const TEF_PLACEHOLDER_LISTENING_QUESTIONS = expandTefMcqBank(

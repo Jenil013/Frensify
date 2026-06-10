@@ -114,6 +114,7 @@ export interface McqItem {
   choices: string[];
   correctChoiceIndex: number;
   explanation?: string;
+  difficulty?: string;
 }
 
 export interface TcfExpressionSection {

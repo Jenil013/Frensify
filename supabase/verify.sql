@@ -21,7 +21,9 @@ WHERE trigger_name = 'on_auth_user_created';
 SELECT id, name, public FROM storage.buckets;
 
 -- 5. Question and exercise counts
-SELECT 'questions' AS tbl, COUNT(*) FROM public.questions
+SELECT 'listening_questions' AS tbl, COUNT(*) FROM public.listening_questions
+UNION ALL
+SELECT 'reading_questions', COUNT(*) FROM public.reading_questions
 UNION ALL
 SELECT 'exercise_items', COUNT(*) FROM public.exercise_items;
 

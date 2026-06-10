@@ -37,10 +37,20 @@ def test_listening_puts_image_questions_first_tcf(client, auth_headers, mock_db)
     assert not body[3]["imageUrl"]
 
 
+def test_listening_queries_listening_questions_table(client, auth_headers, mock_db):
+    rows = [_listening_row(i, with_image=i <= 3) for i in range(1, 45)]
+    _mock_rows(mock_db, rows)
+    client.get(
+        "/api/v1/questions?exam_type=TCF&module_id=comprehension-orale&limit=39",
+        headers=auth_headers,
+    )
+    mock_db.table.assert_called_with("listening_questions")
+
+
 def test_listening_puts_image_questions_first_tef(client, auth_headers, mock_db):
     rows = [
         {
-            **_listening_row(i, with_image=i <= 3),
+            **_listening_row(i, with_image=i <= 4),
             "exam_type": "TEF",
         }
         for i in range(1, 46)
@@ -53,5 +63,5 @@ def test_listening_puts_image_questions_first_tef(client, auth_headers, mock_db)
     assert response.status_code == 200
     body = response.json()
     assert len(body) == 40
-    assert all(item["imageUrl"] for item in body[:3])
-    assert not body[3]["imageUrl"]
+    assert all(item["imageUrl"] for item in body[:4])
+    assert not body[4]["imageUrl"]

@@ -25,18 +25,34 @@ const TEF_LISTENING_QUESTION_TARGET = 40;
 const PLACEHOLDER_LISTENING_IMAGE = "/fevicon_Logo.svg";
 
 /**
- * Supabase table mapping (when you connect your question bank):
+ * MCQ content is loaded via FastAPI `/api/v1/questions` (not direct Supabase reads).
  *
- * - reading_questions: id, prompt, passage, choices (jsonb), correct_index, explanation, sort_order
- * - listening_questions: id, prompt, audio_url, transcript, choices (jsonb), correct_index, explanation, sort_order
+ * - reading_questions: exam_type, module_id, prompt, passage, choices, correct_index, …
+ * - listening_questions: exam_type, module_id, prompt, audio_path, image_path, choices, …
  * - exercise_items (writing): module_id, combination_index, tasks jsonb (3 tâches per row)
- * - oral_prompts: module_section ('A'|'B'), prompt, stimulus
  */
 
 export function isSupabaseConfigured(): boolean {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
   return Boolean(url && key && url.length > 0 && key.length > 0);
+}
+
+async function tryFetchMcqQuestions(
+  examType: "TCF" | "TEF",
+  moduleId: string,
+  limit: number
+): Promise<McqItem[] | null> {
+  try {
+    const questions = await fetchQuestions(examType, moduleId, { limit });
+    return questions.length > 0 ? questions : null;
+  } catch (err) {
+    console.warn(
+      `[questionBank] Backend load failed for ${examType} ${moduleId}, using placeholders.`,
+      err
+    );
+    return null;
+  }
 }
 
 function attachMcqQuestions(
@@ -198,20 +214,13 @@ export async function loadTefModule(
       return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_READING_QUESTIONS);
     }
     case "comprehension-orale": {
-      if (isSupabaseConfigured()) {
-        try {
-          const questions = await fetchQuestions("TEF", moduleId, {
-            limit: TEF_LISTENING_QUESTION_TARGET,
-          });
-          if (questions.length > 0) {
-            return attachTefMcqQuestions(moduleId, questions);
-          }
-        } catch (err) {
-          console.warn(
-            `[questionBank] Backend load failed for TEF ${moduleId}, using placeholders.`,
-            err
-          );
-        }
+      const questions = await tryFetchMcqQuestions(
+        "TEF",
+        moduleId,
+        TEF_LISTENING_QUESTION_TARGET
+      );
+      if (questions) {
+        return attachTefMcqQuestions(moduleId, questions);
       }
       return attachTefMcqQuestions(moduleId, placeholderTefListeningQuestions());
     }
