@@ -10,13 +10,12 @@ from models.ai import (
     SpeakingEvalRequest, AISpeakingSuggestion,
     SpeakingModuleEvalRequest, SpeakingModuleEvalResponse,
     SpeakingSectionFeedback,
-    StudyPlanRequest, StudyPlanResponse,
     VocabExplainRequest, VocabExplainResponse,
     SpeakingUploadUrlResponse,
 )
 from services.gemini_service import (
     evaluate_writing, evaluate_speaking,
-    generate_study_plan, explain_vocab,
+    explain_vocab,
 )
 from services.usage_service import increment, write_audit_log
 from config import settings
@@ -321,32 +320,6 @@ async def speaking_module_mock(
     return _run_speaking_module_eval(body, profile, db, "mock")
 
 
-# ─── Study Plan ──────────────────────────────────────────────────────────────
-
-@router.post("/study-plan", response_model=StudyPlanResponse)
-async def create_study_plan(
-    body: StudyPlanRequest,
-    profile: dict = Depends(require_ai_cap("study_plan", "practice")),
-    db=Depends(get_db),
-):
-    plan = generate_study_plan(
-        body.exam_type, body.current_level, body.target_score,
-        body.weeks_count, body.daily_minutes,
-    )
-    db.table("study_plans").insert({
-        "user_id": profile["id"],
-        "exam_type": body.exam_type,
-        "current_level": body.current_level,
-        "target_score": body.target_score,
-        "weeks_count": body.weeks_count,
-        "daily_minutes": body.daily_minutes,
-        "plan_data": plan.model_dump(),
-    }).execute()
-    increment(db, profile["id"], _monday(), "study_plan")
-    write_audit_log(db, profile["id"], "study_plan", "practice")
-    return plan
-
-
 # ─── Vocab Explain ───────────────────────────────────────────────────────────
 
 @router.post("/vocab-explain", response_model=VocabExplainResponse)
@@ -355,7 +328,8 @@ async def vocab_explain(
     profile: dict = Depends(require_ai_cap("vocab_explain", "practice")),
     db=Depends(get_db),
 ):
-    result = explain_vocab(body.word, body.translation, body.category)
+    exam_type = body.exam_type or profile.get("target_exam")
+    result = explain_vocab(body.word, body.translation, body.category, exam_type)
     increment(db, profile["id"], _monday(), "vocab_explain")
     write_audit_log(db, profile["id"], "vocab_explain", "practice")
     return result

@@ -1,7 +1,6 @@
 import json
 from unittest.mock import patch, MagicMock
 from services.gemini_service import (
-    generate_study_plan,
     explain_vocab,
     evaluate_writing,
     evaluate_speaking,
@@ -10,28 +9,17 @@ from services.gemini_service import (
 from models.ai import AIWritingCorrection
 
 
-_PLAN_JSON = json.dumps({
-    "weeklyBreakdown": [{
-        "weekNumber": 1,
-        "theme": "Foundations",
-        "mainGoal": "Build B1 vocabulary",
-        "dailyTasks": {
-            "Monday": "Vocab drill 20 words",
-            "Tuesday": "TCF reading passage",
-            "Wednesday": "Listening comprehension",
-            "Thursday": "Essay practice",
-            "Friday": "Grammar review",
-            "Saturday": "Mock MCQ set",
-            "Sunday": "Rest and review",
-        },
-        "tips": "Focus on connectors.",
-    }],
-    "expertAdvice": "Consistency is key.",
-    "prioritySkillsToBuild": ["Listening", "Writing"],
-})
-
 _VOCAB_JSON = json.dumps({
     "word": "bonjour",
+    "translation": "hello",
+    "difficulty": "A1",
+    "explanation": "A standard French greeting.",
+    "examSignificance": "Useful in TCF oral interview openings.",
+    "examples": [
+        {"french": "Bonjour, comment allez-vous?", "english": "Hello, how are you?"},
+        {"french": "Bonjour madame.", "english": "Good morning, madam."},
+    ],
+    "synonyms": ["salut"],
     "exampleSentence": "Bonjour, comment allez-vous?",
     "exampleTranslation": "Hello, how are you?",
     "usageTip": "Use in formal and informal settings.",
@@ -68,24 +56,18 @@ _SPEAKING_JSON = json.dumps({
 })
 
 
-@patch("services.gemini_service._generate_json", return_value=_PLAN_JSON)
-def test_generate_study_plan(mock_generate):
-    result = generate_study_plan(
-        exam_type="TCF",
-        current_level="B1",
-        target_score="B2",
-        weeks_count=4,
-        daily_minutes=45,
-    )
-    assert result.weeklyBreakdown[0].weekNumber == 1
-    assert "Listening" in result.prioritySkillsToBuild
-    mock_generate.assert_called_once()
-
-
 @patch("services.gemini_service._generate_json", return_value=_VOCAB_JSON)
 def test_explain_vocab(mock_generate):
-    result = explain_vocab(word="bonjour", translation="hello", category="greetings")
+    result = explain_vocab(
+        word="bonjour",
+        translation="hello",
+        category="greetings",
+        exam_type="TCF",
+    )
     assert result.word == "bonjour"
+    assert result.difficulty == "A1"
+    assert result.examSignificance
+    assert len(result.examples) == 2
     assert "salut" in result.relatedWords
     mock_generate.assert_called_once()
 

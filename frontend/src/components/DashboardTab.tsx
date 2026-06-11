@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, Trophy, Flame, ChevronRight, BookOpen, Headphones, PenTool, Mic, TrendingUp, Calendar, ArrowUpRight } from "lucide-react";
 import { UserProfile, ExerciseItem } from "../types";
+import { fetchVocabularyStats } from "../lib/apiClient";
 import { TCF_MODULE_REGISTRY } from "../tcfConstants";
 import { TEF_MODULE_REGISTRY } from "../tefConstants";
 
@@ -65,6 +66,9 @@ interface DashboardTabProps {
   profile: UserProfile;
   onNavigate: (tab: string) => void;
   onStartExercise: (exercise: ExerciseItem) => void;
+  onStartVocabularyReview: () => void;
+  vocabDailyComplete?: boolean;
+  onVocabDailyCompleteChange?: (complete: boolean) => void;
   recommendedExercise: ExerciseItem;
   completedCount: number;
   totalAvailable: number;
@@ -74,6 +78,9 @@ export default function DashboardTab({
   profile,
   onNavigate,
   onStartExercise,
+  onStartVocabularyReview,
+  vocabDailyComplete: vocabDailyCompleteProp,
+  onVocabDailyCompleteChange,
   recommendedExercise,
   completedCount,
   totalAvailable,
@@ -84,6 +91,17 @@ export default function DashboardTab({
     : 84;
 
   const [animated, setAnimated] = useState(false);
+  const [vocabDailyCompleteLocal, setVocabDailyCompleteLocal] = useState(false);
+  const vocabDailyComplete = vocabDailyCompleteProp ?? vocabDailyCompleteLocal;
+
+  useEffect(() => {
+    void fetchVocabularyStats()
+      .then((stats) => {
+        setVocabDailyCompleteLocal(stats.dailyComplete);
+        onVocabDailyCompleteChange?.(stats.dailyComplete);
+      })
+      .catch(() => {});
+  }, [onVocabDailyCompleteChange]);
 
   useEffect(() => {
     setAnimated(false);
@@ -257,16 +275,20 @@ export default function DashboardTab({
 
           <div className="space-y-2">
             
-            <div className="flex items-start gap-2.5 p-2.5 hover:bg-[#F1F1EF]/30 rounded-lg transition-all border border-transparent">
-              <input type="checkbox" checked={completedCount > 0} readOnly className="w-4 h-4 rounded text-[#1A73E8] focus:ring-[#1A73E8] border-[#E9E9E7] accent-[#1A73E8] mt-0.5" />
+            <button
+              type="button"
+              onClick={onStartVocabularyReview}
+              className="w-full flex items-start gap-2.5 p-2.5 hover:bg-[#F1F1EF]/30 rounded-lg transition-all border border-transparent text-left cursor-pointer"
+            >
+              <input type="checkbox" checked={vocabDailyComplete} readOnly className="w-4 h-4 rounded text-[#1A73E8] focus:ring-[#1A73E8] border-[#E9E9E7] accent-[#1A73E8] mt-0.5 pointer-events-none" />
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium truncate ${completedCount > 0 ? "line-through text-[#A1A1AA]" : "text-[#37352F]"}`}>
+                <p className={`text-xs font-medium truncate ${vocabDailyComplete ? "line-through text-[#A1A1AA]" : "text-[#37352F]"}`}>
                   Daily Vocabulary Flip (5 words)
                 </p>
-                <p className="text-[10px] text-[#7A7A78]">Catalog advanced structures</p>
+                <p className="text-[10px] text-[#7A7A78]">Active recall for exam connectors</p>
               </div>
               <span className="text-[9px] bg-[#F1F1EF] text-[#37352F] px-1.5 py-0.5 rounded font-mono shrink-0 font-medium">+2XP</span>
-            </div>
+            </button>
 
             <div className="flex items-start gap-2.5 p-2.5 hover:bg-[#F1F1EF]/30 rounded-lg transition-all border border-transparent">
               <input type="checkbox" checked={completedCount > 1} readOnly className="w-4 h-4 rounded text-[#1A73E8] focus:ring-[#1A73E8] border-[#E9E9E7] accent-[#1A73E8] mt-0.5" />

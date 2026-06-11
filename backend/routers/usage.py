@@ -19,14 +19,12 @@ def _monday(d: date | None = None) -> date:
 class WeeklyUsageOut(BaseModel):
     writing_eval: int
     speaking_eval: int
-    study_plan: int
     vocab_explain: int
 
 
 class WeeklyCapsOut(BaseModel):
     writing_eval: int
     speaking_eval: int
-    study_plan: int
     vocab_explain: int
 
 
@@ -63,7 +61,6 @@ def _build_limits(profile: dict, db) -> UsageLimitsResponse:
 
     writing_count = usage_row.get("writing_eval_count", 0)
     speaking_count = usage_row.get("speaking_eval_count", 0)
-    study_plan_count = usage_row.get("study_plan_count", 0)
     vocab_count = usage_row.get("vocab_explain_count", 0)
 
     month_start = date.today().replace(day=1)
@@ -83,13 +80,11 @@ def _build_limits(profile: dict, db) -> UsageLimitsResponse:
         weekly_usage=WeeklyUsageOut(
             writing_eval=writing_count,
             speaking_eval=speaking_count,
-            study_plan=study_plan_count,
             vocab_explain=vocab_count,
         ),
         weekly_caps=WeeklyCapsOut(
             writing_eval=caps["writing_eval"],
             speaking_eval=caps["speaking_eval"],
-            study_plan=caps["study_plan"],
             vocab_explain=caps["vocab_explain"],
         ),
         monthly_mock_usage=mock_usage,

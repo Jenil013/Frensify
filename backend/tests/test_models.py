@@ -1,4 +1,4 @@
-from models.ai import AIWritingCorrection, AISpeakingSuggestion, StudyPlanResponse
+from models.ai import AIWritingCorrection, AISpeakingSuggestion
 
 
 def test_writing_correction_model():
@@ -22,29 +22,6 @@ def test_writing_correction_model():
     assert model.cefrScore == "B2"
     assert len(model.detailedCorrections) == 1
 
-
-def test_study_plan_model():
-    data = {
-        "weeklyBreakdown": [{
-            "weekNumber": 1,
-            "theme": "Foundations",
-            "mainGoal": "Build vocabulary",
-            "dailyTasks": {
-                "Monday": "Vocab drill",
-                "Tuesday": "Reading",
-                "Wednesday": "Listening",
-                "Thursday": "Writing",
-                "Friday": "Review",
-                "Saturday": "Mock questions",
-                "Sunday": "Rest",
-            },
-            "tips": "Focus on B1 verbs.",
-        }],
-        "expertAdvice": "Consistency matters.",
-        "prioritySkillsToBuild": ["Listening", "Writing"],
-    }
-    plan = StudyPlanResponse(**data)
-    assert plan.weeklyBreakdown[0].weekNumber == 1
 
 def test_speaking_suggestion_model():
     data = {

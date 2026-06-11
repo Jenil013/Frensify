@@ -4,7 +4,6 @@ from datetime import date
 _ZERO_ROW = {
     "writing_eval_count":  0,
     "speaking_eval_count": 0,
-    "study_plan_count":    0,
     "vocab_explain_count": 0,
 }
 

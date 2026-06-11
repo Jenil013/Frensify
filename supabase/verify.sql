@@ -25,7 +25,9 @@ SELECT 'listening_questions' AS tbl, COUNT(*) FROM public.listening_questions
 UNION ALL
 SELECT 'reading_questions', COUNT(*) FROM public.reading_questions
 UNION ALL
-SELECT 'exercise_items', COUNT(*) FROM public.exercise_items;
+SELECT 'exercise_items', COUNT(*) FROM public.exercise_items
+UNION ALL
+SELECT 'vocabulary_cards', COUNT(*) FROM public.vocabulary_cards;
 
 -- 6. No stale data from trigger test (profiles table should be empty if test user was deleted)
 SELECT COUNT(*) AS profile_count FROM public.profiles;

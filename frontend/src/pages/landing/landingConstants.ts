@@ -1,4 +1,4 @@
-import { Headphones, BookOpen, Mic, PenTool, GraduationCap, Sparkles, Shield, TrendingUp, Globe, Calendar, Target } from "lucide-react";
+import { Headphones, BookOpen, Mic, PenTool, GraduationCap, Sparkles, Shield, TrendingUp, Globe, Target } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface TrustPoint {
@@ -90,7 +90,6 @@ export interface AIFeature {
 export const AI_FEATURES: AIFeature[] = [
   { icon: PenTool, title: "Writing Correction Engine", description: "AI analyzes your writing structure, grammar, and coherence — showing exactly what to fix and why." },
   { icon: Mic, title: "Speaking Pronunciation Coach", description: "Get feedback on fluency, pronunciation, and natural expression to sound confident on exam day." },
-  { icon: Calendar, title: "Personalized Study Plans", description: "AI builds a weekly plan based on your weak points, available time, and target exam date." },
   { icon: Target, title: "Weakness-Targeted Drills", description: "Smart recommendations focus your practice on the skills that need the most improvement." },
 ];
 
@@ -130,7 +129,6 @@ export const PRICING_TIERS: PricingTier[] = [
       "Everything in Free",
       "AI-powered writing corrections",
       "2 full-length mock exams",
-      "Personalized AI study plans",
       "Progress analytics dashboard",
     ],
   },
@@ -178,7 +176,7 @@ export const TESTIMONIALS: Testimonial[] = [
     bgColor: "#E8F3FC",
   },
   {
-    quote: "I finally had a study plan that matched my schedule and weak areas. The mock exams felt like the real thing.",
+    quote: "The mock exams felt like the real thing — and the writing feedback showed me exactly what to fix before test day.",
     name: "Sofia R.",
     initials: "SR",
     context: "TEF B2 — Professional Goals",

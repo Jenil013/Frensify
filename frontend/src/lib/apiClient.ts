@@ -2,12 +2,16 @@ import { supabase } from "./supabaseClient";
 import type {
   AIWritingCorrection,
   AISpeakingSuggestion,
+  CefrLevel,
   ExamPathway,
   McqItem,
   UserProfile,
   UserSubscriptionTier,
+  VocabExplanation,
+  VocabularyCard,
+  VocabularyStats,
+  VocabularySuggestion,
 } from "../types";
-import type { CefrLevel } from "../tefConstants";
 
 const FASTAPI_BASE_URL =
   import.meta.env.VITE_FASTAPI_BASE_URL ?? "http://localhost:8000";
@@ -121,13 +125,11 @@ export interface UsageLimitsResponse {
   weeklyUsage: {
     writingEval: number;
     speakingEval: number;
-    studyPlan: number;
     vocabExplain: number;
   };
   weeklyCaps: {
     writingEval: number;
     speakingEval: number;
-    studyPlan: number;
     vocabExplain: number;
   };
   monthlyMockUsage: number;
@@ -146,13 +148,11 @@ type UsageLimitsApiResponse = {
   weekly_usage: {
     writing_eval: number;
     speaking_eval: number;
-    study_plan: number;
     vocab_explain: number;
   };
   weekly_caps: {
     writing_eval: number;
     speaking_eval: number;
-    study_plan: number;
     vocab_explain: number;
   };
   monthly_mock_usage: number;
@@ -172,13 +172,11 @@ function mapUsageLimits(data: UsageLimitsApiResponse): UsageLimitsResponse {
     weeklyUsage: {
       writingEval: data.weekly_usage.writing_eval,
       speakingEval: data.weekly_usage.speaking_eval,
-      studyPlan: data.weekly_usage.study_plan,
       vocabExplain: data.weekly_usage.vocab_explain,
     },
     weeklyCaps: {
       writingEval: data.weekly_caps.writing_eval,
       speakingEval: data.weekly_caps.speaking_eval,
-      studyPlan: data.weekly_caps.study_plan,
       vocabExplain: data.weekly_caps.vocab_explain,
     },
     monthlyMockUsage: data.monthly_mock_usage,
@@ -419,6 +417,156 @@ export async function submitWritingModuleEvaluation(
 
 export function isOnboardingComplete(profile: ApiProfile | null): boolean {
   return Boolean(profile?.target_exam);
+}
+
+type VocabularyCardApi = {
+  id: string;
+  word: string;
+  translation: string;
+  category: string;
+  difficulty: string;
+  mastered: boolean;
+  example_sentence?: string | null;
+  exam_type?: string;
+  last_reviewed_at?: string | null;
+  review_count?: number;
+};
+
+function mapVocabularyCard(row: VocabularyCardApi): VocabularyCard {
+  return {
+    id: row.id,
+    word: row.word,
+    translation: row.translation,
+    category: row.category,
+    difficulty: row.difficulty as VocabularyCard["difficulty"],
+    mastered: row.mastered,
+    exampleSentence: row.example_sentence ?? null,
+    examType: (row.exam_type as VocabularyCard["examType"]) ?? "both",
+    lastReviewedAt: row.last_reviewed_at ?? null,
+    reviewCount: row.review_count ?? 0,
+  };
+}
+
+export async function fetchVocabularyCards(): Promise<VocabularyCard[]> {
+  const data = await apiFetch<VocabularyCardApi[]>("/api/v1/vocabulary");
+  return data.map(mapVocabularyCard);
+}
+
+export async function fetchVocabularyStats(): Promise<VocabularyStats> {
+  const data = await apiFetch<{
+    reviewed_today: number;
+    reviewed_this_week: number;
+    daily_goal: number;
+    daily_complete: boolean;
+  }>("/api/v1/vocabulary/stats");
+  return {
+    reviewedToday: data.reviewed_today,
+    reviewedThisWeek: data.reviewed_this_week,
+    dailyGoal: data.daily_goal,
+    dailyComplete: data.daily_complete,
+  };
+}
+
+export async function fetchVocabularyReview(options?: {
+  limit?: number;
+  examType?: ExamPathway;
+  categories?: string[];
+}): Promise<VocabularyCard[]> {
+  const params = new URLSearchParams();
+  if (options?.limit != null) params.set("limit", String(options.limit));
+  if (options?.examType) params.set("exam_type", options.examType);
+  if (options?.categories?.length) {
+    params.set("categories", options.categories.join(","));
+  }
+  const qs = params.toString();
+  const data = await apiFetch<VocabularyCardApi[]>(
+    `/api/v1/vocabulary/review${qs ? `?${qs}` : ""}`
+  );
+  return data.map(mapVocabularyCard);
+}
+
+export async function fetchVocabularySuggestions(): Promise<VocabularySuggestion> {
+  const data = await apiFetch<{
+    hasSuggestion: boolean;
+    suggested_categories?: string[];
+    reason?: string;
+    source?: "writing" | "speaking" | "both";
+    weakest_level?: string;
+  }>("/api/v1/vocabulary/suggestions");
+  return {
+    hasSuggestion: data.hasSuggestion,
+    suggestedCategories: data.suggested_categories,
+    reason: data.reason,
+    source: data.source,
+    weakestLevel: data.weakest_level,
+  };
+}
+
+export interface VocabularyCardInput {
+  word: string;
+  translation: string;
+  category?: string;
+  difficulty?: CefrLevel;
+  exampleSentence?: string;
+  examType?: ExamPathway | "both";
+}
+
+export async function addVocabularyCard(
+  card: VocabularyCardInput
+): Promise<VocabularyCard> {
+  const data = await apiFetch<VocabularyCardApi>("/api/v1/vocabulary", {
+    method: "POST",
+    body: JSON.stringify({
+      word: card.word,
+      translation: card.translation,
+      category: card.category,
+      difficulty: card.difficulty,
+      example_sentence: card.exampleSentence,
+      exam_type: card.examType,
+    }),
+  });
+  return mapVocabularyCard(data);
+}
+
+export async function updateVocabularyCard(
+  cardId: string,
+  patch: {
+    mastered?: boolean;
+    category?: string;
+    reviewResult?: "again" | "got_it";
+  }
+): Promise<VocabularyCard> {
+  const data = await apiFetch<VocabularyCardApi>(
+    `/api/v1/vocabulary/${cardId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        mastered: patch.mastered,
+        category: patch.category,
+        review_result: patch.reviewResult,
+      }),
+    }
+  );
+  return mapVocabularyCard(data);
+}
+
+export async function explainVocabulary(
+  word: string,
+  options?: {
+    translation?: string;
+    category?: string;
+    examType?: ExamPathway;
+  }
+): Promise<VocabExplanation> {
+  return apiFetch<VocabExplanation>("/api/v1/ai/vocab-explain", {
+    method: "POST",
+    body: JSON.stringify({
+      word,
+      translation: options?.translation,
+      category: options?.category,
+      exam_type: options?.examType,
+    }),
+  });
 }
 
 export function mapApiProfileToUser(

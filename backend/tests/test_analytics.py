@@ -15,7 +15,7 @@ def test_analytics_summary(client, auth_headers, mock_profile, mock_db):
     mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value \
         .single.return_value.execute.return_value = MagicMock(
             data={"writing_eval_count": 1, "speaking_eval_count": 0,
-                  "study_plan_count": 0, "vocab_explain_count": 2}
+                  "vocab_explain_count": 2}
         )
 
     response = client.get("/api/v1/analytics/summary", headers=auth_headers)

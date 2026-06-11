@@ -16,13 +16,13 @@ export default function AIPowered() {
       <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#F2A600]/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 relative">
-        <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 items-start">
-          {/* Left — text block */}
+        <div className="flex flex-col gap-12">
+          {/* Header */}
           <motion.div
-            initial={{ opacity: 0, x: -24 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6 }}
-            className="flex-1 max-w-md"
+            className="text-center max-w-2xl mx-auto"
           >
             <p className="text-[10px] uppercase tracking-widest font-bold text-[#F2A600] mb-3">
               Powered by AI
@@ -30,9 +30,9 @@ export default function AIPowered() {
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-4 leading-tight">
               Intelligent Feedback That Accelerates Your Progress
             </h2>
-            <p className="text-sm text-white/60 leading-relaxed mb-6">
+            <p className="text-sm text-white/60 leading-relaxed mb-4">
               Our AI engine goes beyond generic tips — it analyzes your actual
-              performance to deliver corrections, suggestions, and study plans
+              performance to deliver corrections and suggestions
               tailored to your specific weak points and exam goals.
             </p>
             <p className="text-xs text-white/40">
@@ -40,8 +40,8 @@ export default function AIPowered() {
             </p>
           </motion.div>
 
-          {/* Right — feature cards */}
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+          {/* Feature cards — three in a row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
             {AI_FEATURES.map((feature, i) => {
               const Icon = feature.icon;
               return (

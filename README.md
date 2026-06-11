@@ -31,7 +31,7 @@ graph TD
 
     subgraph Gemini["Google Gemini API"]
         EvalModel["eval model — writing & speaking"]
-        UtilsModel["utils model — study plans & vocab"]
+        UtilsModel["utils model — vocab"]
     end
 
     Browser -->|HTTPS| Frontend
@@ -47,7 +47,7 @@ graph TD
 | ---------------------------------- | ------------------------------------------------------------------------------------------- |
 | FastAPI owns all business logic    | Keeps the React frontend thin and presentation-only                                       |
 | Supabase JWT validated locally     | No round-trip to Supabase on every request; `python-jose` with HS256                        |
-| Two Gemini API keys                | Separate billing/rate-limit pools for eval (writing/speaking) vs. utils (study plan, vocab) |
+| Two Gemini API keys                | Separate billing/rate-limit pools for eval (writing/speaking) vs. utils (vocab) |
 | `@lru_cache` Supabase client       | Single connection instance per worker process                                               |
 | Weekly usage table                 | Enforces per-feature usage caps per tier without relying on Supabase RLS alone              |
 | Signed URLs for audio              | Audio assets in Supabase Storage are never publicly exposed                                 |
@@ -67,7 +67,7 @@ graph TD
 | Database      | Supabase Postgres                                    |
 | Audio Storage | Supabase Storage                                     |
 | AI — Eval     | Google Gemini (writing + speaking feedback)          |
-| AI — Utils    | Google Gemini (study plans, vocabulary explanations) |
+| AI — Utils    | Google Gemini (vocabulary explanations) |
 | Config        | pydantic-settings                                    |
 | Testing       | pytest + FastAPI TestClient                          |
 
@@ -91,7 +91,7 @@ Frensify/
 │   │   ├── practice.py        # GET /exercises, POST /exercises/{id}/complete
 │   │   ├── exams.py           # Mock test CRUD + scoring
 │   │   ├── vocabulary.py      # GET/PATCH /vocabulary
-│   │   ├── ai.py              # Writing eval, speaking eval, study plan, vocab explain
+│   │   ├── ai.py              # Writing eval, speaking eval, vocab explain
 │   │   └── analytics.py       # Score history, weak skills, streaks
 │   ├── services/
 │   │   ├── gemini_service.py  # All four Gemini call functions
@@ -161,8 +161,6 @@ Frensify/
 | ------ | -------------------------- | --------------- | ------------------------------------------------ |
 | POST   | `/api/v1/ai/writing-eval`  | Weekly per tier | Submit writing for AI correction and scoring     |
 | POST   | `/api/v1/ai/speaking-eval` | Weekly per tier | Submit audio for fluency and structure feedback  |
-| POST   | `/api/v1/ai/study-plan`    | Weekly per tier | Generate a personalized study plan               |
-| GET    | `/api/v1/ai/study-plan`    | —               | Fetch the latest stored study plan               |
 | POST   | `/api/v1/ai/vocab-explain` | Weekly per tier | Get contextual explanation for a vocabulary word |
 | POST   | `/api/v1/ai/mock-feedback` | —               | AI summary feedback on a completed mock test     |
 | GET    | `/api/v1/ai/usage`         | —               | Current week's AI usage counts for the user      |
@@ -187,7 +185,6 @@ Frensify/
 | ----------------------------- | ---- | --- | --- |
 | Writing AI evals / week       | 0    | 2   | 4   |
 | Speaking AI evals / week      | 0    | 2   | 4   |
-| Study plan generations / week | 1    | 2   | 3   |
 | Vocab explanations / week     | 3    | 20  | 30  |
 | Mock tests (lifetime)         | 0    | 2   | 4   |
 | Basic vocabulary & exercises  | ✓    | ✓   | ✓   |
@@ -320,7 +317,7 @@ Python 3.14 removed `asyncio.get_event_loop()` as an implicit default and droppe
 | `test_practice.py`       | Exercise listing, exercise completion                                  |
 | `test_exams.py`          | Mock test CRUD, scoring, mock cap enforcement                          |
 | `test_vocabulary.py`     | Vocabulary listing, mastery PATCH                                      |
-| `test_ai.py`             | Writing eval, speaking eval, study plan, vocab explain, usage endpoint |
+| `test_ai.py`             | Writing eval, speaking eval, vocab explain, usage endpoint |
 | `test_analytics.py`      | Score history, weak skills, streaks                                    |
 | `test_gemini_service.py` | All four Gemini service functions (mocked SDK)                         |
 | `test_usage_service.py`  | `get_or_create_week`, `increment`, `write_audit_log`                   |

@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
@@ -32,6 +33,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfileState] = useState<ApiProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const profileRef = useRef<ApiProfile | null>(null);
+  profileRef.current = profile;
 
   const refresh = useCallback(async () => {
     if (!session) {
@@ -39,8 +42,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return null;
     }
-    setLoading(true);
+    if (passwordRecovery) {
+      return null;
+    }
     setError(null);
+    if (profileRef.current === null) {
+      setLoading(true);
+    }
     try {
       const data = await fetchProfile();
       setProfileState(data);
@@ -67,9 +75,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
+  const sessionUserId = session?.user?.id ?? null;
+
   useEffect(() => {
     if (authLoading) return;
-    if (!session) {
+    if (!sessionUserId) {
       setProfileState(null);
       setLoading(false);
       return;
@@ -78,8 +88,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    refresh();
-  }, [session, authLoading, passwordRecovery, refresh]);
+    void refresh();
+  }, [sessionUserId, authLoading, passwordRecovery, refresh]);
 
   // Treat the context as loading whenever a session exists but its profile
   // has not been fetched yet. The refresh effect runs after commit, so without

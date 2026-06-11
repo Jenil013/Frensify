@@ -29,19 +29,16 @@ TIER_CAPS: dict[str, dict[str, int]] = {
     "Free": {
         "writing_eval":  0,
         "speaking_eval": 0,
-        "study_plan":    1,
         "vocab_explain": 3,
     },
     "Pro": {
         "writing_eval":  2,
         "speaking_eval": 2,
-        "study_plan":    2,
         "vocab_explain": 20,
     },
     "Max": {
         "writing_eval":  4,
         "speaking_eval": 4,
-        "study_plan":    3,
         "vocab_explain": 30,
     },
 }

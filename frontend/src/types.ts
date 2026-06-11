@@ -180,6 +180,39 @@ export interface VocabularyCard {
   category: string;
   difficulty: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
   mastered: boolean;
+  exampleSentence?: string | null;
+  examType?: ExamPathway | "both";
+  lastReviewedAt?: string | null;
+  reviewCount?: number;
+}
+
+export interface VocabularyStats {
+  reviewedToday: number;
+  reviewedThisWeek: number;
+  dailyGoal: number;
+  dailyComplete: boolean;
+}
+
+export interface VocabularySuggestion {
+  hasSuggestion: boolean;
+  suggestedCategories?: string[];
+  reason?: string;
+  source?: "writing" | "speaking" | "both";
+  weakestLevel?: string;
+}
+
+export interface VocabExplanation {
+  word: string;
+  translation: string;
+  difficulty: string;
+  explanation: string;
+  examSignificance: string;
+  examples: { french: string; english: string }[];
+  synonyms: string[];
+  exampleSentence: string;
+  exampleTranslation: string;
+  usageTip: string;
+  relatedWords: string[];
 }
 
 export interface ExerciseItem {
@@ -290,28 +323,4 @@ export interface TefMockModuleResult {
   maxScore?: number;
   scorePct?: number;
   sectionCefr?: Record<string, string | undefined>;
-}
-
-export interface StudyPlanDay {
-  Monday: string;
-  Tuesday: string;
-  Wednesday: string;
-  Thursday: string;
-  Friday: string;
-  Saturday: string;
-  Sunday: string;
-}
-
-export interface StudyPlanWeek {
-  weekNumber: number;
-  theme: string;
-  mainGoal: string;
-  dailyTasks: StudyPlanDay;
-  tips: string;
-}
-
-export interface StudyPlanResponse {
-  weeklyBreakdown: StudyPlanWeek[];
-  expertAdvice: string;
-  prioritySkillsToBuild: string[];
 }

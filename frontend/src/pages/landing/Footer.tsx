@@ -16,7 +16,7 @@ export default function Footer() {
             </div>
             <p className="text-xs text-white/50 leading-relaxed max-w-xs">
               Premium TEF & TCF exam preparation with AI-powered feedback,
-              real exam simulations, and personalized study plans.
+              real exam simulations, and progress analytics.
             </p>
           </div>
 
@@ -26,7 +26,7 @@ export default function Footer() {
               Product
             </h4>
             <ul className="space-y-2.5">
-              {["Practice Drills", "Mock Exams", "AI Writing Coach", "Speaking Simulator", "Study Plans"].map(
+              {["Practice Drills", "Mock Exams", "AI Writing Coach", "Speaking Simulator"].map(
                 (item) => (
                   <li key={item}>
                     <Link

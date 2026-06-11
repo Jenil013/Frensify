@@ -1,6 +1,7 @@
-import React from "react";
-import { BarChart, Compass, Sparkles } from "lucide-react";
-import { UserProfile } from "../types";
+import React, { useEffect, useState } from "react";
+import { BarChart, Compass, Sparkles, ChevronRight } from "lucide-react";
+import { UserProfile, VocabularySuggestion } from "../types";
+import { fetchVocabularySuggestions } from "../lib/apiClient";
 import { getModuleLabel } from "../tcfConstants";
 import {
   parseCefrTarget,
@@ -16,12 +17,24 @@ import TefGradingScheme from "./tef/TefGradingScheme";
 interface AnalyticsTabProps {
   profile: UserProfile;
   completedCount: number;
+  onNavigateToVocabulary?: (
+    mode: "review" | "browse",
+    options?: { category?: string; categories?: string[] }
+  ) => void;
 }
 
 export default function AnalyticsTab({
   profile,
   completedCount,
+  onNavigateToVocabulary,
 }: AnalyticsTabProps) {
+  const [vocabSuggestion, setVocabSuggestion] = useState<VocabularySuggestion | null>(null);
+
+  useEffect(() => {
+    void fetchVocabularySuggestions()
+      .then(setVocabSuggestion)
+      .catch(() => setVocabSuggestion(null));
+  }, []);
   const averageAccuracy = profile.mockTestScores.length > 0
     ? Math.round(profile.mockTestScores.reduce((acc, curr) => acc + curr.scorePct, 0) / profile.mockTestScores.length)
     : 81;
@@ -59,6 +72,25 @@ export default function AnalyticsTab({
       ) : (
         /* Analytics Interactive Screen */
         <div className="space-y-6">
+          {vocabSuggestion?.hasSuggestion && vocabSuggestion.reason && onNavigateToVocabulary && (
+            <button
+              type="button"
+              onClick={() =>
+                onNavigateToVocabulary("review", {
+                  categories: vocabSuggestion.suggestedCategories,
+                })
+              }
+              className="w-full bg-[#EAF5F1] border border-[#D1EBE1] rounded-xl p-4 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-[#dff0ea] transition-colors"
+            >
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2D6A53] mb-1">
+                  Vocabulary next step
+                </p>
+                <p className="text-xs text-[#2D6A53]">{vocabSuggestion.reason}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-[#2D6A53] shrink-0" />
+            </button>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white border border-[#E9E9E7] rounded-xl p-5 shadow-premium">
               <span className="text-[10px] font-bold uppercase text-[#7A7A78] block mb-1">Interactive drills taken</span>

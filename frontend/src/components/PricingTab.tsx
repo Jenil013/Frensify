@@ -39,7 +39,6 @@ export default function PricingTab({
         "AI Writing correction and analysis",
         "AI Speaking accent & fluency evaluation",
         "Official full length mock tests",
-        "Personalized week study planner",
         "Progress trend analytics dashboards",
       ],
     },
@@ -57,7 +56,6 @@ export default function PricingTab({
         "2 full-length TCF simulations (~175 min, 4 modules)",
         "AI Writing Correction & grading analysis",
         "Interactive analytics and readiness tracking",
-        "Personalized AI study plans customized daily",
       ],
       notIncluded: [
         "Unlimited speaking sound recorder analysis",

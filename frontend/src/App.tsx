@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Trophy, BookOpen, Headphones, PenTool, Mic, TrendingUp, Calendar, 
+  Trophy, BookOpen, Headphones, PenTool, Mic, TrendingUp, 
   Settings, CreditCard, Shield, Sparkles, User, GraduationCap, Flame, Star, Zap, LogOut
 } from "lucide-react";
 
 import {
   UserProfile,
   UserSubscriptionTier,
-  VocabularyCard,
   ExerciseItem,
+  VocabularyStats,
   FullExamReport,
   TcfMockModuleResult,
   TcfModuleId,
 } from "./types";
-import { INITIAL_VOCABULARY, SAMPLE_EXERCISES } from "./constants";
+import { SAMPLE_EXERCISES } from "./constants";
 import { useAuth } from "./contexts/AuthContext";
 import { useApiProfile } from "./hooks/useApiProfile";
 import { mapApiProfileToUser } from "./lib/apiClient";
@@ -25,7 +25,6 @@ import DashboardTab from "./components/DashboardTab";
 import PracticeTab from "./components/PracticeTab";
 import ExamsTab from "./components/ExamsTab";
 import VocabularyTab from "./components/VocabularyTab";
-import StudyPlanTab from "./components/StudyPlanTab";
 import AnalyticsTab from "./components/AnalyticsTab";
 import PricingTab from "./components/PricingTab";
 import AccountTab from "./components/AccountTab";
@@ -42,27 +41,36 @@ function getInitials(name: string): string {
 
 export default function App() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const { profile: apiProfile, loading: profileLoading, error: profileError, refresh } =
-    useApiProfile();
+  const { user, session, signOut } = useAuth();
+  const { profile: apiProfile, error: profileError, refresh } = useApiProfile();
 
   const [activeTab, setActiveTab] = useState<string>("dashboard");
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileExtras, setProfileExtras] = useState<
+    Pick<UserProfile, "completedActivities" | "mockTestScores" | "moduleScores">
+  >({
+    completedActivities: [],
+    mockTestScores: [],
+    moduleScores: [],
+  });
+  const [profileOverrides, setProfileOverrides] = useState<Partial<UserProfile>>({});
   const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
-  const [vocabList, setVocabList] = useState<VocabularyCard[]>(INITIAL_VOCABULARY);
   const [activeExerciseToLaunch, setActiveExerciseToLaunch] =
     useState<ExerciseItem | null>(null);
+  const [vocabNav, setVocabNav] = useState<{
+    mode: "review" | "browse";
+    category?: string;
+    categories?: string[];
+  }>({ mode: "review" });
+  const [vocabDailyComplete, setVocabDailyComplete] = useState(false);
 
-  useEffect(() => {
-    if (!apiProfile || !user?.email) return;
-    setProfile((prev) =>
-      mapApiProfileToUser(apiProfile, user.email!, {
-        completedActivities: prev?.completedActivities ?? [],
-        mockTestScores: prev?.mockTestScores ?? [],
-        moduleScores: prev?.moduleScores ?? [],
-      })
-    );
-  }, [apiProfile, user?.email]);
+  const email = user?.email ?? session?.user?.email ?? "";
+  const profile = useMemo(() => {
+    if (!apiProfile || !email) return null;
+    return {
+      ...mapApiProfileToUser(apiProfile, email, profileExtras),
+      ...profileOverrides,
+    };
+  }, [apiProfile, email, profileExtras, profileOverrides]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -91,46 +99,12 @@ export default function App() {
     navigate("/auth", { replace: true });
   };
 
-  if (profileLoading) {
-    return <AuthLoadingScreen message="Loading your workspace…" />;
-  }
-
-  if (profileError) {
-    return (
-      <div className="min-h-screen bg-[#FAFAF9] flex flex-col items-center justify-center gap-4 p-6">
-        <p className="text-sm text-red-600 text-center max-w-md">{profileError}</p>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="text-sm font-medium text-[#002D62] hover:underline"
-        >
-          Sign out and try again
-        </button>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return <AuthLoadingScreen message="Loading your workspace…" />;
-  }
-
-  // Recommended next exercise
-  const recommendedExercise = SAMPLE_EXERCISES.find(
-    ex => ex.examType === profile.targetExam && ex.skill === "speaking"
-  ) || SAMPLE_EXERCISES[0];
-
   const handleUpdateProfile = (updated: Partial<UserProfile>) => {
-    setProfile(prev => ({
-      ...prev,
-      ...updated
-    }));
+    setProfileOverrides((prev) => ({ ...prev, ...updated }));
   };
 
   const handleUpdateTier = (newTier: UserSubscriptionTier) => {
-    setProfile(prev => ({
-      ...prev,
-      tier: newTier
-    }));
+    setProfileOverrides((prev) => ({ ...prev, tier: newTier }));
   };
 
   const handleSaveMockScore = (
@@ -151,9 +125,9 @@ export default function App() {
       moduleBreakdown,
       fullReport,
     };
-    setProfile(prev => ({
+    setProfileExtras((prev) => ({
       ...prev,
-      mockTestScores: [newScore, ...prev.mockTestScores]
+      mockTestScores: [newScore, ...prev.mockTestScores],
     }));
   };
 
@@ -164,51 +138,36 @@ export default function App() {
     examContext: string
   ) => {
     const todayStr = new Date().toISOString().split("T")[0];
-    setProfile(prev => ({
+    setProfileExtras((prev) => ({
       ...prev,
       moduleScores: [
         { moduleId, rawScore, maxScore, date: todayStr, examContext },
-        ...(prev.moduleScores ?? []),
+        ...prev.moduleScores,
       ],
     }));
   };
 
-  const handleToggleVocabularyMastery = (id: string) => {
-    setVocabList(prev => prev.map(v => {
-      if (v.id === id) {
-        return { ...v, mastered: !v.mastered };
-      }
-      return v;
-    }));
+  const handleNavigateToVocabulary = (
+    mode: "review" | "browse" = "review",
+    options?: { category?: string; categories?: string[] }
+  ) => {
+    setVocabNav({
+      mode,
+      category: options?.category,
+      categories: options?.categories,
+    });
+    setActiveTab("vocabulary");
   };
 
-  const handleAddCustomVocab = (word: string, translation: string, diff: any, cat: string) => {
-    const newCard: VocabularyCard = {
-      id: `custom-${Date.now()}`,
-      word,
-      translation,
-      difficulty: diff,
-      category: cat,
-      mastered: false
-    };
-    setVocabList(prev => [newCard, ...prev]);
-  };
-
-  const handleIncreaseXPFromTask = () => {
-    // Simply augment completed actions list to trigger reactive dashboard metrics
-    setProfile(prev => ({
-      ...prev,
-      streakDays: prev.streakDays + 1
-    }));
-  };
+  const handleVocabStatsUpdated = useCallback((stats: VocabularyStats) => {
+    setVocabDailyComplete(stats.dailyComplete);
+  }, []);
 
   const handleStartExerciseInPracticeTab = (ex: ExerciseItem) => {
     setActiveTab("practice");
-    // Wait a brief tick to load Practice view state, then force-select exercise
     setTimeout(() => {
       const practiceEl = document.getElementById("practice-tab");
       if (practiceEl) {
-        // Find existing exercise trigger or click practice drill menu
         const drillBtn = document.getElementById("btn-start-recommended");
         if (drillBtn) {
           // Trigger handled cleanly inside component by selecting the recommended exercise
@@ -216,6 +175,29 @@ export default function App() {
       }
     }, 50);
   };
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF9] flex flex-col items-center justify-center gap-4 p-6">
+        <p className="text-sm text-red-600 text-center max-w-md">{profileError}</p>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="text-sm font-medium text-[#002D62] hover:underline"
+        >
+          Sign out and try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return <AuthLoadingScreen message="Loading your workspace…" />;
+  }
+
+  const recommendedExercise = SAMPLE_EXERCISES.find(
+    ex => ex.examType === profile.targetExam && ex.skill === "speaking"
+  ) || SAMPLE_EXERCISES[0];
 
   return (
     <div className="flex min-h-screen bg-white text-[#37352F] font-sans selection:bg-[#E3E2E0]/70">
@@ -236,7 +218,6 @@ export default function App() {
               { id: "practice", label: "Practice Drills", icon: BookOpen },
               { id: "exams", label: "Full Simulations", icon: GraduationCap },
               { id: "vocabulary", label: "Vocabulary Builder", icon: Zap },
-              { id: "study-plan", label: "AI Study Plans", icon: Calendar },
               { id: "analytics", label: "Diagnostic Trends", icon: TrendingUp },
               { id: "pricing", label: "Subscription Pricing", icon: CreditCard },
               { id: "account", label: "Candidate Settings", icon: User },
@@ -357,6 +338,9 @@ export default function App() {
               profile={profile}
               onNavigate={(tab) => setActiveTab(tab)}
               onStartExercise={handleStartExerciseInPracticeTab}
+              onStartVocabularyReview={() => handleNavigateToVocabulary("review")}
+              vocabDailyComplete={vocabDailyComplete}
+              onVocabDailyCompleteChange={setVocabDailyComplete}
               recommendedExercise={recommendedExercise}
               completedCount={profile.completedActivities.length}
               totalAvailable={SAMPLE_EXERCISES.length}
@@ -382,17 +366,11 @@ export default function App() {
           {activeTab === "vocabulary" && (
             <VocabularyTab 
               profile={profile}
-              vocabList={vocabList}
-              onToggleMastery={handleToggleVocabularyMastery}
-              onAddVocab={handleAddCustomVocab}
-            />
-          )}
-
-          {activeTab === "study-plan" && (
-            <StudyPlanTab 
-              profile={profile}
+              initialMode={vocabNav.mode}
+              initialCategory={vocabNav.category}
+              initialCategories={vocabNav.categories}
               onNavigateToPricing={() => setActiveTab("pricing")}
-              onUpdateCompletedAction={handleIncreaseXPFromTask}
+              onStatsUpdated={handleVocabStatsUpdated}
             />
           )}
 
@@ -400,6 +378,7 @@ export default function App() {
             <AnalyticsTab 
               profile={profile}
               completedCount={profile.completedActivities.length}
+              onNavigateToVocabulary={handleNavigateToVocabulary}
             />
           )}
 

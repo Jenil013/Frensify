@@ -5,7 +5,6 @@ def _setup_usage_mock(mock_db, writing_count: int = 0, mock_count: int = 0):
     usage_row = {
         "writing_eval_count": writing_count,
         "speaking_eval_count": 0,
-        "study_plan_count": 0,
         "vocab_explain_count": 0,
     }
 

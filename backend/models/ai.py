@@ -110,50 +110,28 @@ class SpeakingModuleEvalResponse(BaseModel):
     sections: List[SpeakingSectionFeedback]
 
 
-# --- Study Plan ---
-
-class StudyPlanRequest(BaseModel):
-    exam_type: str
-    current_level: str
-    target_score: str
-    weeks_count: int
-    daily_minutes: int
-
-
-class StudyPlanDay(BaseModel):
-    Monday: str
-    Tuesday: str
-    Wednesday: str
-    Thursday: str
-    Friday: str
-    Saturday: str
-    Sunday: str
-
-
-class StudyPlanWeek(BaseModel):
-    weekNumber: int
-    theme: str
-    mainGoal: str
-    dailyTasks: StudyPlanDay
-    tips: str
-
-
-class StudyPlanResponse(BaseModel):
-    weeklyBreakdown: List[StudyPlanWeek]
-    expertAdvice: str
-    prioritySkillsToBuild: List[str]
-
-
 # --- Vocab Explain ---
+
+class VocabExample(BaseModel):
+    french: str
+    english: str
+
 
 class VocabExplainRequest(BaseModel):
     word: str
-    translation: str
+    translation: Optional[str] = None
     category: Optional[str] = None
+    exam_type: Optional[str] = None
 
 
 class VocabExplainResponse(BaseModel):
     word: str
+    translation: str
+    difficulty: str
+    explanation: str
+    examSignificance: str
+    examples: List[VocabExample]
+    synonyms: List[str]
     exampleSentence: str
     exampleTranslation: str
     usageTip: str

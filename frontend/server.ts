@@ -1,5 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
 import express from "express";
-import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 
@@ -21,13 +22,45 @@ app.get("/api/config", (req, res) => {
   });
 });
 
+function shouldServeSpaShell(url: string): boolean {
+  const pathname = url.split("?")[0];
+  if (pathname.startsWith("/api/")) return false;
+  if (pathname.startsWith("/@")) return false;
+  if (pathname.startsWith("/node_modules/")) return false;
+  if (pathname.startsWith("/src/")) return false;
+  // Let Vite serve files with extensions (e.g. /fevicon_Logo.svg).
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) return false;
+  return true;
+}
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
-    // Development Middleware via Vite
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
+    const indexPath = path.resolve(process.cwd(), "index.html");
+
+    // Serve index.html before Vite middleware. In Docker, cwd is /app — the same
+    // path as our /app route — so Vite would otherwise try to read that directory.
+    app.use(async (req, res, next) => {
+      const pathname = req.path || req.originalUrl.split("?")[0];
+      if (!shouldServeSpaShell(pathname)) {
+        return next();
+      }
+      try {
+        const template = fs.readFileSync(indexPath, "utf-8");
+        const html = await vite.transformIndexHtml(pathname, template);
+        return res
+          .status(200)
+          .set({ "Content-Type": "text/html" })
+          .end(html);
+      } catch (error) {
+        vite.ssrFixStacktrace(error as Error);
+        return next(error);
+      }
+    });
+
     app.use(vite.middlewares);
   } else {
     // Serve static files in production

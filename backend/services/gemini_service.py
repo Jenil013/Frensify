@@ -9,7 +9,6 @@ from config import GEMINI_EVAL_MODEL, GEMINI_UTILS_MODEL, settings
 from models.ai import (
     AIWritingCorrection,
     AISpeakingSuggestion,
-    StudyPlanResponse,
     VocabExplainResponse,
 )
 
@@ -269,50 +268,39 @@ def _generate_json(
     return response.text
 
 
-# ─── Study plan ────────────────────────────────────────────────────────────────
+_VOCAB_SYSTEM = """You are a TEF/TCF French exam vocabulary specialist.
+Explain one French word or phrase for an exam candidate preparing for TEF Canada or TCF.
 
-def generate_study_plan(
-    exam_type: str,
-    current_level: str,
-    target_score: str,
-    weeks_count: int,
-    daily_minutes: int,
-) -> StudyPlanResponse:
+Be concise, examiner-like, and exam-oriented — not chatty.
+Estimate CEFR difficulty honestly (A1–C2).
+Explain when the expression helps on TEF vs TCF tasks (writing argumentation, oral interaction).
+Provide natural example sentences at the learner's level.
+Return ONLY valid JSON with no markdown."""
+
+
+def explain_vocab(
+    word: str,
+    translation: str | None,
+    category: str | None,
+    exam_type: str | None = None,
+) -> VocabExplainResponse:
+    exam_ctx = f" Candidate target exam: {exam_type}." if exam_type else ""
+    meaning = f"English meaning: {translation}." if translation else "Infer the English meaning."
+    category_ctx = f" Category hint: {category}." if category else ""
     prompt = (
-        f"Create a {weeks_count}-week French study plan for a {exam_type} exam candidate.\n"
-        f"Current CEFR level: {current_level}. Target: {target_score}.\n"
-        f"Available study time: {daily_minutes} minutes per day.\n\n"
-        "Return a JSON object matching this schema exactly:\n"
-        "{\n"
-        '  "weeklyBreakdown": [{ "weekNumber": int, "theme": str, "mainGoal": str,\n'
-        '    "dailyTasks": { "Monday": str, "Tuesday": str, "Wednesday": str,\n'
-        '      "Thursday": str, "Friday": str, "Saturday": str, "Sunday": str },\n'
-        '    "tips": str }],\n'
-        '  "expertAdvice": str,\n'
-        '  "prioritySkillsToBuild": [str]\n'
-        "}"
-    )
-    result = _generate_json(
-        model=GEMINI_UTILS_MODEL,
-        api_key=settings.gemini_api_key_utils,
-        contents=prompt,
-    )
-    return _load_model(result, StudyPlanResponse)
-
-
-# ─── Vocab explain ─────────────────────────────────────────────────────────────
-
-def explain_vocab(word: str, translation: str, category: str | None) -> VocabExplainResponse:
-    prompt = (
-        f"Explain the French word '{word}' (meaning: {translation}"
-        + (f", category: {category}" if category else "")
-        + ").\n\n"
-        "Return a JSON object matching this schema exactly:\n"
+        f"French expression: {word}\n{meaning}{category_ctx}{exam_ctx}\n\n"
+        "Return a JSON object with EXACTLY these keys:\n"
         "{\n"
         '  "word": str,\n'
-        '  "exampleSentence": str,\n'
-        '  "exampleTranslation": str,\n'
-        '  "usageTip": str,\n'
+        '  "translation": str,\n'
+        '  "difficulty": str (CEFR level A1–C2),\n'
+        '  "explanation": str (1–2 sentences on usage and register),\n'
+        '  "examSignificance": str (1–2 sentences: TEF/TCF task relevance),\n'
+        '  "examples": [{"french": str, "english": str}, {"french": str, "english": str}],\n'
+        '  "synonyms": [str],\n'
+        '  "exampleSentence": str (first example french),\n'
+        '  "exampleTranslation": str (first example english),\n'
+        '  "usageTip": str (one actionable tip for next practice),\n'
         '  "relatedWords": [str]\n'
         "}"
     )
@@ -320,8 +308,12 @@ def explain_vocab(word: str, translation: str, category: str | None) -> VocabExp
         model=GEMINI_UTILS_MODEL,
         api_key=settings.gemini_api_key_utils,
         contents=prompt,
+        system_instruction=_VOCAB_SYSTEM,
     )
-    return _load_model(result, VocabExplainResponse)
+    parsed = _load_model(result, VocabExplainResponse)
+    if translation and not parsed.translation:
+        return parsed.model_copy(update={"translation": translation})
+    return parsed
 
 
 # ─── Writing eval ──────────────────────────────────────────────────────────────

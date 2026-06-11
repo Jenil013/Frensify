@@ -22,8 +22,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 
 // server.ts
+var import_node_fs = __toESM(require("node:fs"), 1);
+var import_node_path = __toESM(require("node:path"), 1);
 var import_express = __toESM(require("express"), 1);
-var import_path = __toESM(require("path"), 1);
 var import_dotenv = __toESM(require("dotenv"), 1);
 var import_vite = require("vite");
 import_dotenv.default.config();
@@ -38,18 +39,41 @@ app.get("/api/config", (req, res) => {
     status: "ok"
   });
 });
+function shouldServeSpaShell(url) {
+  const pathname = url.split("?")[0];
+  if (pathname.startsWith("/api/")) return false;
+  if (pathname.startsWith("/@")) return false;
+  if (pathname.startsWith("/node_modules/")) return false;
+  if (pathname.startsWith("/src/")) return false;
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) return false;
+  return true;
+}
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await (0, import_vite.createServer)({
       server: { middlewareMode: true },
       appType: "spa"
     });
+    const indexPath = import_node_path.default.resolve(process.cwd(), "index.html");
+    app.use(async (req, res, next) => {
+      if (!shouldServeSpaShell(req.originalUrl)) {
+        return next();
+      }
+      try {
+        const template = import_node_fs.default.readFileSync(indexPath, "utf-8");
+        const html = await vite.transformIndexHtml(req.originalUrl, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(html);
+      } catch (error) {
+        vite.ssrFixStacktrace(error);
+        next(error);
+      }
+    });
     app.use(vite.middlewares);
   } else {
-    const distPath = import_path.default.join(process.cwd(), "dist");
+    const distPath = import_node_path.default.join(process.cwd(), "dist");
     app.use(import_express.default.static(distPath));
     app.get("*", (req, res) => {
-      res.sendFile(import_path.default.join(distPath, "index.html"));
+      res.sendFile(import_node_path.default.join(distPath, "index.html"));
     });
   }
   app.listen(PORT, "0.0.0.0", () => {

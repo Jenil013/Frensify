@@ -249,18 +249,5 @@ export const MOCK_EXAMS_DB = [
     writingCount: 3,
     speakingCount: 3,
     premiumOnly: true
-  },
-  {
-    id: "exam-tef-max-2",
-    examType: "TEF" as const,
-    name: "TEF Marathon — Advanced Section Simulator",
-    description: "Full 4-module TEF mock with advanced grammar traps, colloquial audio scenarios, and heavy argumentative writing sections A+B. Designed for C1/C2 target preparation.",
-    estimatedDurationMin: 175,
-    readingsCount: 40,
-    listeningsCount: 40,
-    writingCount: 2,
-    speakingCount: 2,
-    premiumOnly: true,
-    isMaxOnly: true
   }
 ];
