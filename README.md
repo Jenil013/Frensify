@@ -76,7 +76,7 @@ graph TD
 
 ## Demo
 
-<video src="media_asset/Fresify_Demo.mov" controls width="100%">
+<video src="media_asset/Fresify_Demo.mp4" controls width="100%">
   Your browser does not support the video tag. <a href="media_asset/Fresify_Demo.mov">Download the demo video</a>.
 </video>
 
