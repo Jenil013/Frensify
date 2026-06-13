@@ -76,9 +76,7 @@ graph TD
 
 ## Demo
 
-<video src="media_asset/Frensify_Demo.mp4" controls width="100%">
-  Your browser does not support the video tag. <a href="media_asset/Frensify_Demo.mp4">Download the demo video</a>.
-</video>
+https://github.com/Jenil013/Frensify/raw/main/media_asset/Frensify_Demo.mp4
 
 ---
 
