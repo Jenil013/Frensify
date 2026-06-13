@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, Trophy, Flame, ChevronRight, BookOpen, Headphones, PenTool, Mic, TrendingUp, Calendar, ArrowUpRight } from "lucide-react";
+import { ChevronRight, ArrowUpRight } from "lucide-react";
 import { UserProfile, ExerciseItem } from "../types";
-import { fetchVocabularyStats } from "../lib/apiClient";
+import { fetchRecentTests, type RecentTestItem } from "../lib/apiClient";
+import { formatTakenDate, scorePillClass } from "../utils/recentTests";
 import { TCF_MODULE_REGISTRY } from "../tcfConstants";
 import { TEF_MODULE_REGISTRY } from "../tefConstants";
 
@@ -66,24 +67,14 @@ interface DashboardTabProps {
   profile: UserProfile;
   onNavigate: (tab: string) => void;
   onStartExercise: (exercise: ExerciseItem) => void;
-  onStartVocabularyReview: () => void;
-  vocabDailyComplete?: boolean;
-  onVocabDailyCompleteChange?: (complete: boolean) => void;
   recommendedExercise: ExerciseItem;
-  completedCount: number;
-  totalAvailable: number;
 }
 
 export default function DashboardTab({
   profile,
   onNavigate,
   onStartExercise,
-  onStartVocabularyReview,
-  vocabDailyComplete: vocabDailyCompleteProp,
-  onVocabDailyCompleteChange,
   recommendedExercise,
-  completedCount,
-  totalAvailable,
 }: DashboardTabProps) {
   // Calculate average score for display
   const averageScore = profile.mockTestScores.length > 0
@@ -91,22 +82,21 @@ export default function DashboardTab({
     : 84;
 
   const [animated, setAnimated] = useState(false);
-  const [vocabDailyCompleteLocal, setVocabDailyCompleteLocal] = useState(false);
-  const vocabDailyComplete = vocabDailyCompleteProp ?? vocabDailyCompleteLocal;
-
-  useEffect(() => {
-    void fetchVocabularyStats()
-      .then((stats) => {
-        setVocabDailyCompleteLocal(stats.dailyComplete);
-        onVocabDailyCompleteChange?.(stats.dailyComplete);
-      })
-      .catch(() => {});
-  }, [onVocabDailyCompleteChange]);
+  const [recentTests, setRecentTests] = useState<RecentTestItem[]>([]);
+  const [recentTestsLoading, setRecentTestsLoading] = useState(true);
 
   useEffect(() => {
     setAnimated(false);
     const t = setTimeout(() => setAnimated(true), 50);
     return () => clearTimeout(t);
+  }, [profile.targetExam]);
+
+  useEffect(() => {
+    setRecentTestsLoading(true);
+    void fetchRecentTests()
+      .then(setRecentTests)
+      .catch(() => setRecentTests([]))
+      .finally(() => setRecentTestsLoading(false));
   }, [profile.targetExam]);
 
   const registry = (
@@ -260,155 +250,72 @@ export default function DashboardTab({
         ))}
       </div>
 
-      {/* Bottom checklist & simulated history Notion Grid database */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Study list block */}
-        <div className="lg:col-span-4 bg-white border border-[#E9E9E7] rounded-2xl p-5 shadow-premium space-y-4">
-          <div className="pb-3 border-b border-[#F1F1EF] flex justify-between items-center">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#7A7A78]">DAILY ROUTINE CHECKLIST</h3>
-              <p className="text-[11px] text-[#9B9A97]">Targeting 30m structured prep</p>
-            </div>
-            <Trophy className="w-4 h-4 text-[#F59E0B]" />
-          </div>
-
-          <div className="space-y-2">
-            
-            <button
-              type="button"
-              onClick={onStartVocabularyReview}
-              className="w-full flex items-start gap-2.5 p-2.5 hover:bg-[#F1F1EF]/30 rounded-lg transition-all border border-transparent text-left cursor-pointer"
-            >
-              <input type="checkbox" checked={vocabDailyComplete} readOnly className="w-4 h-4 rounded text-[#1A73E8] focus:ring-[#1A73E8] border-[#E9E9E7] accent-[#1A73E8] mt-0.5 pointer-events-none" />
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium truncate ${vocabDailyComplete ? "line-through text-[#A1A1AA]" : "text-[#37352F]"}`}>
-                  Daily Vocabulary Flip (5 words)
-                </p>
-                <p className="text-[10px] text-[#7A7A78]">Active recall for exam connectors</p>
-              </div>
-              <span className="text-[9px] bg-[#F1F1EF] text-[#37352F] px-1.5 py-0.5 rounded font-mono shrink-0 font-medium">+2XP</span>
-            </button>
-
-            <div className="flex items-start gap-2.5 p-2.5 hover:bg-[#F1F1EF]/30 rounded-lg transition-all border border-transparent">
-              <input type="checkbox" checked={completedCount > 1} readOnly className="w-4 h-4 rounded text-[#1A73E8] focus:ring-[#1A73E8] border-[#E9E9E7] accent-[#1A73E8] mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium truncate ${completedCount > 1 ? "line-through text-[#A1A1AA]" : "text-[#37352F]"}`}>
-                  Complete Recommended Drill
-                </p>
-                <p className="text-[10px] text-[#7A7A78] truncate">{recommendedExercise.title}</p>
-              </div>
-              <span className="text-[9px] bg-[#F1F1EF] text-[#37352F] px-1.5 py-0.5 rounded font-mono shrink-0 font-medium">+10XP</span>
-            </div>
-
-            <div className="flex items-start gap-2.5 p-2.5 hover:bg-[#F1F1EF]/30 rounded-lg transition-all border border-transparent">
-              <input type="checkbox" checked={completedCount > 2} readOnly className="w-4 h-4 rounded text-[#1A73E8] focus:ring-[#1A73E8] border-[#E9E9E7] accent-[#1A73E8] mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium truncate ${completedCount > 2 ? "line-through text-[#A1A1AA]" : "text-[#37352F]"}`}>
-                  Interactive Oral Audits Response
-                </p>
-                <p className="text-[10px] text-[#7A7A78]">Listen to audio models and retry speaking</p>
-              </div>
-              <span className="text-[9px] bg-[#F1F1EF] text-[#37352F] px-1.5 py-0.5 rounded font-mono shrink-0 font-medium">+5XP</span>
-            </div>
-
-          </div>
-
-          <div className="bg-[#EAF5F1] border border-[#D1EBE1] rounded-xl p-3 flex gap-2 items-start mt-2">
-            <Sparkles className="w-4 h-4 text-[#2D6A53] shrink-0 mt-0.5" />
-            <p className="text-[11px] text-[#2D6A53] leading-relaxed">
-              <strong>Grammar Tip:</strong> Double check you employ <em>le participe présent</em> in formal briefs. These syntax models score up to 1.5x higher.
+      {/* Recent tests */}
+      <div className="bg-white border border-[#E9E9E7] rounded-2xl p-5 shadow-premium space-y-4">
+        <div className="flex justify-between items-center pb-3 border-b border-[#F1F1EF]">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#7A7A78]">
+              Recent Tests
+            </h3>
+            <p className="text-[11px] text-[#9B9A97]">
+              Mock simulations and practice sessions
             </p>
           </div>
+          <button
+            onClick={() => onNavigate("exams")}
+            className="text-[11px] font-bold text-[#1A73E8] hover:underline flex items-center gap-1"
+          >
+            View all <ArrowUpRight className="w-3 h-3" />
+          </button>
         </div>
 
-        {/* Real Notion Grid Database Simulation History! */}
-        <div className="lg:col-span-8 bg-white border border-[#E9E9E7] rounded-2xl p-5 shadow-premium space-y-4">
-          <div className="flex justify-between items-center pb-3 border-b border-[#F1F1EF]">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#7A7A78]">SIMULATION DATABASE INDEX</h3>
-              <p className="text-[11px] text-[#9B9A97]">Notion tabular display metadata</p>
-            </div>
-            <button
-              onClick={() => onNavigate("exams")}
-              className="text-[11px] font-bold text-[#1A73E8] hover:underline flex items-center gap-1"
-            >
-              Access Simulator <ArrowUpRight className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* Tabular Notion View */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-[#E9E9E7] text-[#9B9A97] font-semibold">
-                  <th className="py-2 px-3 font-normal">Aa Name</th>
-                  <th className="py-2 px-3 font-normal">📅 Date Taken</th>
-                  <th className="py-2 px-3 font-normal">🏷️ Pathway</th>
-                  <th className="py-2 px-3 font-normal">📊 Rating</th>
-                  <th className="py-2 px-3 font-normal text-right">⚙️ Rank</th>
+        <div className="max-h-72 overflow-y-auto overflow-x-auto -mx-1 px-1">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="sticky top-0 z-10 bg-white">
+              <tr className="border-b border-[#E9E9E7] text-[#9B9A97] font-semibold shadow-[0_1px_0_#E9E9E7]">
+                <th className="py-2 px-3 font-normal bg-white">Exam Name</th>
+                <th className="py-2 px-3 font-normal bg-white">Date Taken</th>
+                <th className="py-2 px-3 font-normal text-right bg-white">Score</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F1F1EF]">
+              {recentTestsLoading ? (
+                <tr>
+                  <td colSpan={3} className="py-6 px-3 text-center text-[#9B9A97]">
+                    Loading recent activity…
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F1F1EF]">
-                {profile.mockTestScores.map((score, idx) => {
-                  // Beautiful pastel background mappings based on index to replicate image tags
-                  const pathwayPill = profile.targetExam === "TEF" 
-                    ? "bg-[#EBF3FC] text-[#1D74B4] border-[#D2E7F6]" 
-                    : "bg-[#F1EEF9] text-[#7A5FC1] border-[#E3DDF3]";
-                  
-                  const scorePill = score.scorePct >= 80 ? "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]" : 
-                                    score.scorePct >= 70 ? "bg-[#FDF3E7] text-[#9A5013] border-[#FCE1CA]" : 
-                                    "bg-[#FCECF0] text-[#B83E5C] border-[#F8D4DE]";
-                  
-                  const cefrPill = score.cefr === "C1" ? "bg-[#F1EEF9] text-[#7A5FC1]" : "bg-[#EBF3FC] text-[#1D74B4]";
-
-                  return (
-                    <tr key={idx} className="hover:bg-[#FAFAF9] transition-all">
-                      <td className="py-3 px-3 font-medium text-[#37352F] max-w-[180px] truncate">
-                        {score.examName}
-                      </td>
-                      <td className="py-3 px-3 text-[#7A7A78] font-mono">
-                        {score.date}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md border ${pathwayPill}`}>
-                          {profile.targetExam}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`inline-block text-[10px] font-bold font-mono px-2 py-0.5 rounded-md border ${scorePill}`}>
-                          {score.scorePct}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <span className={`text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${cefrPill}`}>
-                          {score.cefr}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {profile.tier === "Free" && (
-            <div className="bg-[#FDF3E7] border border-[#FCE1CA] rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-2">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-wide text-[#9A5013]">FREE ACCESS LOCK active</p>
-                <p className="text-[11px] text-[#9A5013] mt-0.5">Upgrade for persistent metrics logs and live audio coaching response diagnostics.</p>
-              </div>
-              <button 
-                onClick={() => onNavigate("pricing")}
-                className="px-3.5 py-1.5 bg-[#9A5013] hover:bg-[#834310] text-white text-xs font-semibold rounded-lg transition-all shrink-0 cursor-pointer"
-              >
-                Display Pro Options
-              </button>
-            </div>
-          )}
-
+              ) : recentTests.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-6 px-3 text-center text-[#9B9A97]">
+                    No tests yet. Complete a practice module or mock simulation to see results here.
+                  </td>
+                </tr>
+              ) : (
+                recentTests.map((row) => (
+                  <tr key={row.id} className="hover:bg-[#FAFAF9] transition-all">
+                    <td className="py-3 px-3 max-w-[220px]">
+                      <p className="font-medium text-[#37352F] truncate">{row.examName}</p>
+                      {row.subtitle && (
+                        <p className="text-[10px] text-[#9B9A97] truncate mt-0.5">{row.subtitle}</p>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-[#7A7A78] whitespace-nowrap">
+                      {formatTakenDate(row.takenAt)}
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <span
+                        className={`inline-block text-[10px] font-bold font-mono px-2 py-0.5 rounded-md border ${scorePillClass(row.scorePct)}`}
+                      >
+                        {row.scoreLabel}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-
       </div>
 
     </div>

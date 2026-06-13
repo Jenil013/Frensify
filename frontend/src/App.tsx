@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Trophy, BookOpen, Headphones, PenTool, Mic, TrendingUp, 
@@ -9,7 +9,6 @@ import {
   UserProfile,
   UserSubscriptionTier,
   ExerciseItem,
-  VocabularyStats,
   FullExamReport,
   TcfMockModuleResult,
   TcfModuleId,
@@ -17,7 +16,11 @@ import {
 import { SAMPLE_EXERCISES } from "./constants";
 import { useAuth } from "./contexts/AuthContext";
 import { useApiProfile } from "./hooks/useApiProfile";
-import { mapApiProfileToUser } from "./lib/apiClient";
+import {
+  mapApiProfileToUser,
+  postMockTestScore,
+  postModuleScore,
+} from "./lib/apiClient";
 import AuthLoadingScreen from "./components/auth/AuthLoadingScreen";
 
 // Import tabs
@@ -61,8 +64,6 @@ export default function App() {
     category?: string;
     categories?: string[];
   }>({ mode: "review" });
-  const [vocabDailyComplete, setVocabDailyComplete] = useState(false);
-
   const email = user?.email ?? session?.user?.email ?? "";
   const profile = useMemo(() => {
     if (!apiProfile || !email) return null;
@@ -129,6 +130,13 @@ export default function App() {
       ...prev,
       mockTestScores: [newScore, ...prev.mockTestScores],
     }));
+
+    void postMockTestScore({
+      examName,
+      scorePct,
+      cefr,
+      moduleBreakdown,
+    }).catch(() => {});
   };
 
   const handleSaveModuleScore = (
@@ -137,7 +145,14 @@ export default function App() {
     maxScore: number,
     examContext: string
   ) => {
+    if (!profile) return;
+
     const todayStr = new Date().toISOString().split("T")[0];
+    const context: "practice" | "mock" =
+      examContext === "practice" || examContext === "Practice"
+        ? "practice"
+        : "mock";
+
     setProfileExtras((prev) => ({
       ...prev,
       moduleScores: [
@@ -145,6 +160,14 @@ export default function App() {
         ...prev.moduleScores,
       ],
     }));
+
+    void postModuleScore({
+      examType: profile.targetExam,
+      moduleId,
+      rawScore,
+      maxScore,
+      examContext: context,
+    }).catch(() => {});
   };
 
   const handleNavigateToVocabulary = (
@@ -158,10 +181,6 @@ export default function App() {
     });
     setActiveTab("vocabulary");
   };
-
-  const handleVocabStatsUpdated = useCallback((stats: VocabularyStats) => {
-    setVocabDailyComplete(stats.dailyComplete);
-  }, []);
 
   const handleStartExerciseInPracticeTab = (ex: ExerciseItem) => {
     setActiveTab("practice");
@@ -338,12 +357,7 @@ export default function App() {
               profile={profile}
               onNavigate={(tab) => setActiveTab(tab)}
               onStartExercise={handleStartExerciseInPracticeTab}
-              onStartVocabularyReview={() => handleNavigateToVocabulary("review")}
-              vocabDailyComplete={vocabDailyComplete}
-              onVocabDailyCompleteChange={setVocabDailyComplete}
               recommendedExercise={recommendedExercise}
-              completedCount={profile.completedActivities.length}
-              totalAvailable={SAMPLE_EXERCISES.length}
             />
           )}
 
@@ -351,6 +365,7 @@ export default function App() {
             <PracticeTab
               profile={profile}
               onNavigateToPricing={() => setActiveTab("pricing")}
+              onSaveModuleScore={handleSaveModuleScore}
             />
           )}
 
@@ -370,7 +385,6 @@ export default function App() {
               initialCategory={vocabNav.category}
               initialCategories={vocabNav.categories}
               onNavigateToPricing={() => setActiveTab("pricing")}
-              onStatsUpdated={handleVocabStatsUpdated}
             />
           )}
 

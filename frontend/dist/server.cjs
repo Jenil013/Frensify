@@ -56,16 +56,17 @@ async function startServer() {
     });
     const indexPath = import_node_path.default.resolve(process.cwd(), "index.html");
     app.use(async (req, res, next) => {
-      if (!shouldServeSpaShell(req.originalUrl)) {
+      const pathname = req.path || req.originalUrl.split("?")[0];
+      if (!shouldServeSpaShell(pathname)) {
         return next();
       }
       try {
         const template = import_node_fs.default.readFileSync(indexPath, "utf-8");
-        const html = await vite.transformIndexHtml(req.originalUrl, template);
-        res.status(200).set({ "Content-Type": "text/html" }).end(html);
+        const html = await vite.transformIndexHtml(pathname, template);
+        return res.status(200).set({ "Content-Type": "text/html" }).end(html);
       } catch (error) {
         vite.ssrFixStacktrace(error);
-        next(error);
+        return next(error);
       }
     });
     app.use(vite.middlewares);

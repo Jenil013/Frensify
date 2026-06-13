@@ -194,6 +194,86 @@ export async function fetchUsageLimits(): Promise<UsageLimitsResponse> {
   return mapUsageLimits(data);
 }
 
+export interface AnalyticsSummary {
+  recentMockScores: Array<{
+    score_pct: number;
+    cefr: string;
+    taken_at: string;
+    exam_name: string;
+  }>;
+  moduleHistory: Array<{
+    module_id: string;
+    raw_score: number;
+    max_score: number;
+    taken_at: string;
+    exam_context?: string | null;
+  }>;
+  weeklyUsage: {
+    writing_eval_count: number;
+    speaking_eval_count: number;
+    vocab_explain_count: number;
+  };
+  streakDays: number;
+  tier: string;
+}
+
+export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
+  return apiFetch<AnalyticsSummary>("/api/v1/analytics/summary");
+}
+
+export interface RecentTestItem {
+  id: string;
+  kind: "full_mock" | "practice" | "writing" | "speaking";
+  examName: string;
+  subtitle?: string | null;
+  takenAt: string;
+  scoreLabel: string;
+  scorePct: number | null;
+}
+
+export async function fetchRecentTests(): Promise<RecentTestItem[]> {
+  const data = await apiFetch<{ items: RecentTestItem[] }>(
+    "/api/v1/analytics/recent-tests"
+  );
+  return data.items;
+}
+
+export async function postMockTestScore(payload: {
+  examName: string;
+  scorePct: number;
+  cefr: string;
+  moduleBreakdown?: unknown;
+}): Promise<void> {
+  await apiFetch("/api/v1/exams/scores", {
+    method: "POST",
+    body: JSON.stringify({
+      exam_name: payload.examName,
+      score_pct: payload.scorePct,
+      cefr: payload.cefr,
+      module_breakdown: payload.moduleBreakdown ?? null,
+    }),
+  });
+}
+
+export async function postModuleScore(payload: {
+  examType: ExamPathway;
+  moduleId: string;
+  rawScore: number;
+  maxScore: number;
+  examContext: "practice" | "mock";
+}): Promise<void> {
+  await apiFetch("/api/v1/exams/module-scores", {
+    method: "POST",
+    body: JSON.stringify({
+      exam_type: payload.examType,
+      module_id: payload.moduleId,
+      raw_score: payload.rawScore,
+      max_score: payload.maxScore,
+      exam_context: payload.examContext,
+    }),
+  });
+}
+
 export async function fetchProfile(): Promise<ApiProfile> {
   return apiFetch<ApiProfile>("/api/v1/profile");
 }

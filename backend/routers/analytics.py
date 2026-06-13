@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends
 from database import get_db
 from dependencies import get_profile
+from services.recent_tests import build_recent_tests
 
 router = APIRouter(tags=["analytics"])
 
@@ -57,3 +58,11 @@ async def analytics_summary(
         "streakDays": profile.get("streak_days", 0),
         "tier": profile.get("tier"),
     }
+
+
+@router.get("/analytics/recent-tests")
+async def recent_tests(
+    profile: dict = Depends(get_profile),
+    db=Depends(get_db),
+):
+    return {"items": build_recent_tests(db, profile["id"])}

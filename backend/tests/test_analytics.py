@@ -27,3 +27,23 @@ def test_analytics_summary(client, auth_headers, mock_profile, mock_db):
     assert "streakDays" in data
     assert data["streakDays"] == mock_profile["streak_days"]
     assert data["tier"] == mock_profile["tier"]
+
+
+def test_recent_tests(client, auth_headers, mock_db, monkeypatch):
+    monkeypatch.setattr(
+        "routers.analytics.build_recent_tests",
+        lambda db, user_id: [
+            {
+                "id": "mock:1",
+                "kind": "full_mock",
+                "examName": "Full Mock",
+                "subtitle": "TCF Simulation",
+                "takenAt": "2026-06-10T10:00:00Z",
+                "scoreLabel": "80%",
+                "scorePct": 80,
+            }
+        ],
+    )
+    response = client.get("/api/v1/analytics/recent-tests", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json()["items"][0]["examName"] == "Full Mock"

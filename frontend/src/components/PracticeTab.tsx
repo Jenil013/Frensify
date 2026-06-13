@@ -33,11 +33,18 @@ import {
 interface PracticeTabProps {
   profile: UserProfile;
   onNavigateToPricing: () => void;
+  onSaveModuleScore?: (
+    moduleId: TcfModuleId,
+    rawScore: number,
+    maxScore: number,
+    examContext: string
+  ) => void;
 }
 
 export default function PracticeTab({
   profile,
   onNavigateToPricing,
+  onSaveModuleScore,
 }: PracticeTabProps) {
   const [activeSkill, setActiveSkill] = useState<SkillType>("reading");
   const [activeTcfModule, setActiveTcfModule] = useState<TcfModuleId | null>(null);
@@ -106,16 +113,22 @@ export default function PracticeTab({
     return true;
   };
 
+  const saveMcqModuleScore = (
+    moduleId: TcfModuleId,
+    mcq: McqModuleResult
+  ) => {
+    onSaveModuleScore?.(moduleId, mcq.rawScore, mcq.maxScore, "practice");
+  };
+
   const handleTcfModuleComplete = (result: TcfModuleCompletionResult) => {
     const completedModule = activeTcfModule;
     setActiveTcfModule(null);
 
-    if (
-      result.type === "mcq" &&
-      completedModule &&
-      openMcqResultsIfApplicable("TCF", completedModule, result.result)
-    ) {
-      return;
+    if (result.type === "mcq" && completedModule) {
+      saveMcqModuleScore(completedModule, result.result);
+      if (openMcqResultsIfApplicable("TCF", completedModule, result.result)) {
+        return;
+      }
     }
 
     if (result.type === "mcq") {
@@ -138,11 +151,14 @@ export default function PracticeTab({
 
     if (result.type === "mcq") {
       const mcq = result.result as McqModuleResult;
-      if (
-        completedModule &&
-        openMcqResultsIfApplicable("TEF", completedModule, mcq)
-      ) {
-        return;
+      if (completedModule) {
+        saveMcqModuleScore(
+          completedModule as unknown as TcfModuleId,
+          mcq
+        );
+        if (openMcqResultsIfApplicable("TEF", completedModule, mcq)) {
+          return;
+        }
       }
       setModuleCompleteMsg(
         `TEF module complete: ${mcq.rawScore}/${mcq.maxScore} (+1/0)`
