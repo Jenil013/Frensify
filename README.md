@@ -76,7 +76,10 @@ graph TD
 
 ## Demo
 
-https://github.com/Jenil013/Frensify/raw/main/media_asset/Frensify_Demo.mp4
+
+https://github.com/user-attachments/assets/5389c038-3bd6-438a-8eb5-c3d0460af879
+
+
 
 ---
 
