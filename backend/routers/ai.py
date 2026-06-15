@@ -1,6 +1,7 @@
+import json
 import uuid
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from database import get_db
 from dependencies import require_ai_cap, get_profile
 from models.ai import (
@@ -10,11 +11,14 @@ from models.ai import (
     SpeakingEvalRequest, AISpeakingSuggestion,
     SpeakingModuleEvalRequest, SpeakingModuleEvalResponse,
     SpeakingSectionFeedback,
+    SpeakingTurnRequest, SpeakingTurnResponse,
     VocabExplainRequest, VocabExplainResponse,
     SpeakingUploadUrlResponse,
 )
+from content.oral_examiner_personas import MAX_ORAL_TURNS_PER_SECTION
 from services.gemini_service import (
-    evaluate_writing, evaluate_speaking,
+    evaluate_writing, evaluate_speaking, evaluate_speaking_conversation,
+    generate_oral_turn,
     explain_vocab,
 )
 from services.usage_service import increment, write_audit_log
@@ -203,6 +207,40 @@ def _validate_speaking_module_sections(body: SpeakingModuleEvalRequest) -> None:
         )
 
 
+def _run_speaking_conversation_eval(
+    section,
+    exam_type: str,
+) -> AISpeakingSuggestion:
+    """Download all user-turn audios, evaluate conversation, delete blobs after success."""
+    if not section.user_turns:
+        raise HTTPException(status_code=422, detail="Section requires at least one user turn.")
+
+    paths = [t.storage_path for t in section.user_turns]
+    clips: list[tuple[bytes, str]] = []
+    try:
+        for turn in sorted(section.user_turns, key=lambda t: t.turn_index):
+            audio_bytes, mime_type = _download_audio(turn.storage_path)
+            clips.append((audio_bytes, mime_type))
+
+        feedback = evaluate_speaking_conversation(
+            clips,
+            prompt=section.prompt,
+            stimulus=section.stimulus,
+            exam_type=exam_type,
+            conversation=section.conversation,
+            duration_seconds=section.duration_seconds,
+            allocated_seconds=section.allocated_seconds,
+            seconds_remaining=section.seconds_remaining,
+        )
+    finally:
+        for path in paths:
+            try:
+                _delete_audio(path)
+            except Exception:
+                pass
+    return feedback
+
+
 def _run_speaking_module_eval(
     body: SpeakingModuleEvalRequest,
     profile: dict,
@@ -212,22 +250,23 @@ def _run_speaking_module_eval(
     _validate_speaking_module_sections(body)
     section_results: list[SpeakingSectionFeedback] = []
     for section in body.sections:
-        eval_body = SpeakingEvalRequest(
-            exercise_id=f"{body.exercise_id}-{section.section_id}",
-            storage_path=section.storage_path,
-            duration_seconds=section.duration_seconds,
-            exam_type=body.exam_type,
-            prompt=section.prompt,
-        )
-        feedback = _run_speaking_eval(eval_body)
+        if not section.user_turns:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Section {section.section_id} requires at least one user turn.",
+            )
+        feedback = _run_speaking_conversation_eval(section, body.exam_type)
+        exercise_id = f"{body.exercise_id}-{section.section_id}"
+        feedback_payload = feedback.model_dump()
+        feedback_payload["conversation"] = [t.model_dump() for t in section.conversation]
         db.table("speaking_sessions").insert({
             "user_id": profile["id"],
-            "exercise_id": eval_body.exercise_id,
+            "exercise_id": exercise_id,
             "transcript": None,
-            "recording_path": section.storage_path,
+            "recording_path": section.user_turns[0].storage_path,
             "duration_seconds": section.duration_seconds,
             "exam_type": body.exam_type,
-            "ai_feedback": feedback.model_dump(),
+            "ai_feedback": feedback_payload,
             "cefr_level": feedback.cefrLevel,
         }).execute()
         section_results.append(
@@ -256,6 +295,49 @@ async def speaking_upload_url(
     return SpeakingUploadUrlResponse(
         upload_url=upload_url,
         storage_path=storage_path,
+    )
+
+
+@router.post("/speaking/turn", response_model=SpeakingTurnResponse)
+async def speaking_turn(
+    audio: UploadFile = File(...),
+    metadata: str = Form(...),
+    profile: dict = Depends(get_profile),
+):
+    del profile  # auth gate only; no usage increment
+    try:
+        body = SpeakingTurnRequest.model_validate(json.loads(metadata))
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid metadata: {exc}") from exc
+
+    user_turn_count = sum(1 for t in body.history if t.role == "user")
+    if user_turn_count >= MAX_ORAL_TURNS_PER_SECTION:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Maximum {MAX_ORAL_TURNS_PER_SECTION} user turns per section reached.",
+        )
+
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=422, detail="Audio file is empty.")
+
+    mime_type = audio.content_type or "audio/webm"
+    try:
+        transcript, examiner_reply = generate_oral_turn(
+            audio_bytes,
+            mime_type,
+            exam_type=body.exam_type,
+            section_id=body.section_id,
+            prompt=body.prompt,
+            stimulus=body.stimulus,
+            history=body.history,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return SpeakingTurnResponse(
+        user_transcript=transcript,
+        examiner_reply=examiner_reply,
     )
 
 

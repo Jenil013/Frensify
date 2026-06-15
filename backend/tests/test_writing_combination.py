@@ -23,6 +23,27 @@ _COMBO_ROW = {
     ],
 }
 
+_TEF_COMBO_ROW = {
+    "id": "tef-combo-uuid-1",
+    "exam_type": "TEF",
+    "skill": "writing",
+    "module_id": "expression-ecrite",
+    "combination_index": 5,
+    "title": "Combinaison 5 — TEF expression écrite",
+    "tasks": [
+        {
+            "section_id": "A",
+            "prompt": "Terminez cet article (80 mots minimum).",
+            "stimulus": "Paris – Depuis la pandémie...",
+        },
+        {
+            "section_id": "B",
+            "prompt": "Écrivez une lettre au journal.",
+            "stimulus": "Le télétravail est la solution idéale.",
+        },
+    ],
+}
+
 
 def test_get_writing_combination_returns_three_sections(client, auth_headers, mock_db):
     (
@@ -40,6 +61,23 @@ def test_get_writing_combination_returns_three_sections(client, auth_headers, mo
     assert body["combinationIndex"] == 3
     assert set(body["sections"].keys()) == {"1", "2", "3"}
     assert body["sections"]["3"]["stimulus"].startswith("Document 1")
+
+
+def test_get_writing_combination_returns_tef_two_sections(client, auth_headers, mock_db):
+    (
+        mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.eq
+        .return_value.execute.return_value
+    ) = MagicMock(data=[_TEF_COMBO_ROW])
+
+    response = client.get(
+        "/api/v1/writing-combination?exam_type=TEF&module_id=expression-ecrite",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["combinationIndex"] == 5
+    assert set(body["sections"].keys()) == {"A", "B"}
+    assert body["sections"]["A"]["stimulus"].startswith("Paris")
 
 
 def test_get_writing_combination_404_when_empty(client, auth_headers, mock_db):

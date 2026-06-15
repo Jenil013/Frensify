@@ -6,9 +6,11 @@ from google import genai
 from google.genai import types
 
 from config import GEMINI_EVAL_MODEL, GEMINI_UTILS_MODEL, settings
+from content.oral_examiner_personas import get_persona
 from models.ai import (
     AIWritingCorrection,
     AISpeakingSuggestion,
+    ConversationTurn,
     VocabExplainResponse,
 )
 
@@ -218,6 +220,45 @@ _SPEAKING_SCHEMA = """{
   "modelSpokenDraft": "string"
 }"""
 
+_ORAL_TURN_SCHEMA = """{
+  "userTranscript": "string (French transcription of the candidate audio)",
+  "examinerReplyFr": "string (1-2 sentences in French, exam register)"
+}"""
+
+_ORAL_TURN_SYSTEM = """You are a TEF/TCF oral examiner in a live speaking simulation.
+
+You will receive:
+- The task prompt and opening scenario.
+- Conversation history so far.
+- The candidate's latest audio response.
+
+Your job:
+1. Transcribe the candidate's latest audio accurately in French.
+2. Generate ONE short follow-up reply in French as the examiner (1–2 sentences).
+
+Rules:
+- Reply ONLY in French for examinerReplyFr.
+- Stay in the assigned role for this section.
+- Do not evaluate or score the candidate.
+- Do not break character.
+- If the candidate's audio is unclear, transcribe what you can and ask a clarifying question.
+- Return only valid JSON matching the schema."""
+
+_SPEAKING_CONVERSATION_EXTRA = """
+You will receive:
+- The full task prompt and opening scenario.
+- A transcript of the entire conversation (examiner and candidate turns).
+- Multiple audio clips — each is ONE candidate turn in chronological order.
+
+Evaluate ONLY the candidate's spoken contributions across all clips.
+Use the full dialogue for task-fulfillment and interaction context.
+Base pronunciation and fluency judgments on the audio clips, not invented content.
+If the candidate submitted before the section timer expired, penalize task fulfillment
+and interaction depth accordingly; mention early submission in structureAnalysis.
+"""
+
+_CEFR_LEVELS = ("A1", "A2", "B1", "B2", "C1", "C2")
+
 
 T = TypeVar("T")
 
@@ -371,3 +412,158 @@ def evaluate_speaking(
         system_instruction=_SPEAKING_SYSTEM,
     )
     return _load_model(result, AISpeakingSuggestion)
+
+
+def _format_conversation(history: list[ConversationTurn]) -> str:
+    lines: list[str] = []
+    for turn in history:
+        label = "Examiner" if turn.role == "examiner" else "Candidate"
+        lines.append(f"{label}: {turn.text}")
+    return "\n".join(lines) if lines else "(no prior turns)"
+
+
+def early_submit_downgrade_levels(allocated_seconds: int, seconds_remaining: int) -> int:
+    """Return how many CEFR levels to downgrade when the section ended early."""
+    if seconds_remaining <= 0 or allocated_seconds <= 0:
+        return 0
+    remaining_ratio = seconds_remaining / allocated_seconds
+    if remaining_ratio >= 0.50:
+        return 2
+    if remaining_ratio >= 0.20:
+        return 1
+    return 0
+
+
+def _downgrade_cefr(level: str, steps: int) -> str:
+    normalized = level.strip().upper()
+    if normalized not in _CEFR_LEVELS:
+        return level
+    index = _CEFR_LEVELS.index(normalized)
+    return _CEFR_LEVELS[max(0, index - steps)]
+
+
+def apply_early_submit_penalty(
+    feedback: AISpeakingSuggestion,
+    allocated_seconds: int,
+    seconds_remaining: int,
+) -> AISpeakingSuggestion:
+    steps = early_submit_downgrade_levels(allocated_seconds, seconds_remaining)
+    if steps == 0:
+        return feedback
+
+    minutes_left = max(0, seconds_remaining) // 60
+    secs_left = max(0, seconds_remaining) % 60
+    allocated_minutes = max(1, allocated_seconds // 60)
+    note = (
+        f"The candidate ended this section early with {minutes_left}m {secs_left}s "
+        f"remaining of a {allocated_minutes}-minute slot. In a real TEF/TCF oral exam, "
+        f"the section runs for the full allotted time; ending early limits interaction "
+        f"depth and affects task fulfillment."
+    )
+    structure = feedback.structureAnalysis
+    if note not in structure:
+        structure = f"{note} {structure}"
+
+    return feedback.model_copy(
+        update={
+            "cefrLevel": _downgrade_cefr(feedback.cefrLevel, steps),
+            "structureAnalysis": structure,
+        }
+    )
+
+
+def generate_oral_turn(
+    audio_bytes: bytes,
+    audio_mime_type: str,
+    *,
+    exam_type: str,
+    section_id: str,
+    prompt: str,
+    stimulus: str | None,
+    history: list[ConversationTurn],
+) -> tuple[str, str]:
+    """Transcribe candidate turn and generate examiner follow-up. Returns (transcript, reply)."""
+    persona = get_persona(exam_type, section_id)
+    history_text = _format_conversation(history)
+    stimulus_block = f"Opening scenario: {stimulus}\n" if stimulus else ""
+    text_part = (
+        f"Exam: {exam_type}\n"
+        f"Section: {section_id}\n"
+        f"Task instructions: {prompt}\n"
+        f"{stimulus_block}"
+        f"Examiner role: {persona}\n\n"
+        f"Conversation so far:\n{history_text}\n\n"
+        "Transcribe the candidate's latest audio above and generate your follow-up.\n"
+        f"Return JSON matching this schema:\n{_ORAL_TURN_SCHEMA}"
+    )
+    contents = [
+        types.Part.from_bytes(data=audio_bytes, mime_type=audio_mime_type),
+        text_part,
+    ]
+    result = _generate_json(
+        model=GEMINI_UTILS_MODEL,
+        api_key=settings.gemini_api_key_utils,
+        contents=contents,
+        system_instruction=_ORAL_TURN_SYSTEM,
+    )
+    payload = _parse_json_payload(result)
+    transcript = str(payload.get("userTranscript", "")).strip()
+    reply = str(payload.get("examinerReplyFr", "")).strip()
+    if not transcript or not reply:
+        raise ValueError("Gemini oral turn response missing transcript or examiner reply.")
+    return transcript, reply
+
+
+def evaluate_speaking_conversation(
+    user_audio_clips: list[tuple[bytes, str]],
+    *,
+    prompt: str,
+    stimulus: str | None,
+    exam_type: str,
+    conversation: list[ConversationTurn],
+    duration_seconds: int,
+    allocated_seconds: int,
+    seconds_remaining: int = 0,
+) -> AISpeakingSuggestion:
+    """Evaluate all candidate turns with full conversation context."""
+    if not user_audio_clips:
+        raise ValueError("At least one user audio clip is required for conversation eval.")
+
+    stimulus_block = f"Opening scenario: {stimulus}\n" if stimulus else ""
+    conv_text = _format_conversation(conversation)
+    early_note = ""
+    if seconds_remaining > 0 and allocated_seconds > 0:
+        early_note = (
+            f"Section ended early: {seconds_remaining}s remaining of "
+            f"{allocated_seconds}s allocated.\n"
+        )
+    text_part = (
+        f"Exam: {exam_type}\n"
+        f"Task instructions: {prompt}\n"
+        f"{stimulus_block}"
+        f"Section time allocated: {allocated_seconds} seconds\n"
+        f"{early_note}"
+        f"Total candidate speaking time: {duration_seconds} seconds\n"
+        f"Number of candidate turns: {len(user_audio_clips)}\n\n"
+        f"Full conversation:\n{conv_text}\n\n"
+        "The audio clips above are the candidate's turns in order (turn 1, turn 2, …).\n"
+        "Evaluate ONLY the candidate's spoken contributions.\n"
+        f"Return JSON matching this schema:\n{_SPEAKING_SCHEMA}"
+    )
+    contents: list = []
+    for index, (audio_bytes, mime_type) in enumerate(user_audio_clips, start=1):
+        contents.append(
+            types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
+        )
+        contents.append(f"[Candidate turn {index} audio]")
+    contents.append(text_part)
+
+    system = _SPEAKING_SYSTEM + _SPEAKING_CONVERSATION_EXTRA
+    result = _generate_json(
+        model=GEMINI_EVAL_MODEL,
+        api_key=settings.gemini_api_key_eval,
+        contents=contents,
+        system_instruction=system,
+    )
+    feedback = _load_model(result, AISpeakingSuggestion)
+    return apply_early_submit_penalty(feedback, allocated_seconds, seconds_remaining)

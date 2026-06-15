@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Literal, Optional, List
 
 
 # --- Writing ---
@@ -87,11 +87,39 @@ class AISpeakingSuggestion(BaseModel):
     modelSpokenDraft: str
 
 
+class ConversationTurn(BaseModel):
+    role: Literal["examiner", "user"]
+    text: str
+
+
+class SpeakingTurnAudio(BaseModel):
+    turn_index: int
+    storage_path: str
+    duration_seconds: int
+
+
+class SpeakingTurnRequest(BaseModel):
+    exam_type: str
+    section_id: str
+    prompt: str
+    stimulus: Optional[str] = None
+    history: List[ConversationTurn] = Field(default_factory=list)
+
+
+class SpeakingTurnResponse(BaseModel):
+    user_transcript: str
+    examiner_reply: str
+
+
 class SpeakingSectionInput(BaseModel):
     section_id: str
     prompt: str
-    storage_path: str
+    stimulus: Optional[str] = None
+    conversation: List[ConversationTurn]
+    user_turns: List[SpeakingTurnAudio]
     duration_seconds: int
+    allocated_seconds: int
+    seconds_remaining: int = 0
 
 
 class SpeakingModuleEvalRequest(BaseModel):

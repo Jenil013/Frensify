@@ -1,6 +1,11 @@
 import React, { useEffect } from "react";
 import { Award, ChevronRight, X } from "lucide-react";
-import type { AISpeakingSuggestion, ExamPathway, OralSectionResult } from "../types";
+import type {
+  AISpeakingSuggestion,
+  ConversationTurn,
+  ExamPathway,
+  OralSectionResult,
+} from "../types";
 
 export interface SpeakingResultsPayload {
   examType: ExamPathway;
@@ -18,10 +23,12 @@ interface SpeakingResultsModalProps {
 function SectionReview({
   label,
   cue,
+  conversation,
   feedback,
 }: {
   label: string;
   cue?: string;
+  conversation?: ConversationTurn[];
   feedback: AISpeakingSuggestion;
 }) {
   return (
@@ -35,9 +42,25 @@ function SectionReview({
 
       {cue && (
         <p className="text-xs text-[#5F5E5B] bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-3 leading-relaxed">
-          <span className="font-bold text-[#37352F]">Examiner cue: </span>
+          <span className="font-bold text-[#37352F]">Opening cue: </span>
           {cue}
         </p>
+      )}
+
+      {conversation && conversation.length > 0 && (
+        <div className="text-xs bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-3 space-y-1.5 max-h-40 overflow-y-auto">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] mb-1">
+            Conversation
+          </p>
+          {conversation.map((turn, index) => (
+            <p key={`${turn.role}-${index}`} className="text-[#37352F] leading-relaxed">
+              <span className="font-bold">
+                {turn.role === "examiner" ? "Examiner" : "You"}:
+              </span>{" "}
+              {turn.text}
+            </p>
+          ))}
+        </div>
       )}
 
       <div className="space-y-2 text-xs text-[#37352F] leading-relaxed">
@@ -203,6 +226,7 @@ export default function SpeakingResultsModal({
                 key={section.sectionId}
                 label={payload.sectionLabels[idx] ?? section.sectionId}
                 cue={section.examinerCue}
+                conversation={section.conversation}
                 feedback={section.feedback}
               />
             ) : null

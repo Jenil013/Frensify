@@ -154,6 +154,12 @@ export interface OralSectionResult {
   durationSeconds: number;
   feedback?: AISpeakingSuggestion;
   examinerCue?: string;
+  conversation?: ConversationTurn[];
+}
+
+export interface ConversationTurn {
+  role: "examiner" | "user";
+  text: string;
 }
 
 export interface OralModuleResult {

@@ -102,8 +102,12 @@ export async function evaluateWritingModule(
 export interface SpeakingSectionUpload {
   section_id: string;
   prompt: string;
-  blob: Blob;
+  stimulus?: string;
+  conversation: import("./types").ConversationTurn[];
+  user_turns: { blob: Blob; duration_seconds: number }[];
   duration_seconds: number;
+  allocated_seconds: number;
+  seconds_remaining: number;
 }
 
 export async function evaluateSpeakingModule(
@@ -115,13 +119,26 @@ export async function evaluateSpeakingModule(
 ): Promise<OralSectionResult[]> {
   const uploaded = await Promise.all(
     sections.map(async (section) => {
-      const { upload_url, storage_path } = await fetchSpeakingUploadUrl();
-      await uploadSpeakingAudio(upload_url, section.blob);
+      const userTurns = await Promise.all(
+        section.user_turns.map(async (turn, index) => {
+          const { upload_url, storage_path } = await fetchSpeakingUploadUrl();
+          await uploadSpeakingAudio(upload_url, turn.blob);
+          return {
+            turn_index: index,
+            storage_path,
+            duration_seconds: turn.duration_seconds,
+          };
+        })
+      );
       return {
         section_id: section.section_id,
         prompt: section.prompt,
-        storage_path,
+        stimulus: section.stimulus,
+        conversation: section.conversation,
+        user_turns: userTurns,
         duration_seconds: section.duration_seconds,
+        allocated_seconds: section.allocated_seconds,
+        seconds_remaining: section.seconds_remaining,
       };
     })
   );
@@ -136,12 +153,17 @@ export async function evaluateSpeakingModule(
 
   return response.sections.map((section) => {
     const input = sections.find((s) => s.section_id === section.section_id)!;
+    const userTranscript = input.conversation
+      .filter((t) => t.role === "user")
+      .map((t) => t.text)
+      .join(" ");
     return {
       sectionId: section.section_id,
-      transcript: "",
+      transcript: userTranscript,
       durationSeconds: input.duration_seconds,
       feedback: section.feedback,
-      examinerCue: input.prompt,
+      examinerCue: input.conversation.find((t) => t.role === "examiner")?.text,
+      conversation: input.conversation,
     };
   });
 }

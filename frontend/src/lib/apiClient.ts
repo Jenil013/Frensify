@@ -72,13 +72,17 @@ async function doFetch(
   options: RequestInit,
   token: string
 ): Promise<Response> {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
   return fetch(`${FASTAPI_BASE_URL}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
+    headers,
   });
 }
 
@@ -437,11 +441,52 @@ export async function uploadSpeakingAudio(
 
 export type SpeakingEvalContext = "practice" | "mock";
 
+export interface ConversationTurnPayload {
+  role: "examiner" | "user";
+  text: string;
+}
+
+export interface SpeakingTurnMetadata {
+  exam_type: string;
+  section_id: string;
+  prompt: string;
+  stimulus?: string;
+  history: ConversationTurnPayload[];
+}
+
+export interface SpeakingTurnResponse {
+  user_transcript: string;
+  examiner_reply: string;
+}
+
+export async function submitSpeakingTurn(
+  audio: Blob,
+  metadata: SpeakingTurnMetadata
+): Promise<SpeakingTurnResponse> {
+  const form = new FormData();
+  form.append("audio", audio, "turn.webm");
+  form.append("metadata", JSON.stringify(metadata));
+  return apiFetch<SpeakingTurnResponse>("/api/v1/ai/speaking/turn", {
+    method: "POST",
+    body: form,
+  });
+}
+
+export interface SpeakingUserTurnPayload {
+  turn_index: number;
+  storage_path: string;
+  duration_seconds: number;
+}
+
 export interface SpeakingSectionPayload {
   section_id: string;
   prompt: string;
-  storage_path: string;
+  stimulus?: string;
+  conversation: ConversationTurnPayload[];
+  user_turns: SpeakingUserTurnPayload[];
   duration_seconds: number;
+  allocated_seconds: number;
+  seconds_remaining: number;
 }
 
 export interface SpeakingSectionFeedbackResponse {

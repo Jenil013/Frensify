@@ -21,6 +21,11 @@ _EXPECTED_ORAL_SECTIONS = {
     "TEF": 2,
 }
 
+_EXPECTED_WRITING_SECTIONS = {
+    "TCF": 3,
+    "TEF": 2,
+}
+
 router = APIRouter(tags=["practice"])
 
 
@@ -63,7 +68,9 @@ def _map_writing_combination(row: dict) -> WritingCombinationResponse:
             prompt=task["prompt"],
             stimulus=task.get("stimulus"),
         )
-    if len(sections) < 3:
+    exam_key = str(row.get("exam_type", "TCF")).upper()
+    expected = _EXPECTED_WRITING_SECTIONS.get(exam_key, 3)
+    if len(sections) < expected:
         raise HTTPException(status_code=500, detail="Invalid writing combination in database.")
 
     return WritingCombinationResponse(
@@ -109,6 +116,34 @@ def _section_from_task(task: dict) -> OralCombinationSection:
     return OralCombinationSection(
         prompt=task["prompt"],
         stimulus=task.get("stimulus"),
+    )
+
+
+def _build_tef_oral_from_pool(rows: list[dict]) -> OralCombinationResponse:
+    section_a_rows = [r for r in rows if _task_section_from_row(r) == "A"]
+    section_b_rows = [r for r in rows if _task_section_from_row(r) == "B"]
+    if not section_a_rows or not section_b_rows:
+        raise HTTPException(
+            status_code=404,
+            detail="TEF oral task pools are empty. Run import_tef_speaking_questions.py.",
+        )
+
+    section_a_row = random.choice(section_a_rows)
+    section_b_row = random.choice(section_b_rows)
+    section_a = _section_from_task(section_a_row["tasks"][0])
+    section_b = _section_from_task(section_b_row["tasks"][0])
+
+    return OralCombinationResponse(
+        id=f"{section_a_row['id']}+{section_b_row['id']}",
+        combinationIndex=section_a_row.get("combination_index") or 0,
+        title=(
+            f"TEF Expression orale — {section_a_row.get('title', 'Section A')} + "
+            f"{section_b_row.get('title', 'Section B')}"
+        ),
+        sections={
+            "A": section_a,
+            "B": section_b,
+        },
     )
 
 
@@ -203,13 +238,16 @@ async def get_oral_combination(
             detail="No TCF oral task pools or full combinations found.",
         )
 
+    pool_rows = [r for r in rows if _task_section_from_row(r) in {"A", "B"}]
     full_rows = [
         r for r in rows
         if len(r.get("tasks") or []) >= _EXPECTED_ORAL_SECTIONS.get(exam_key, 2)
     ]
-    if not full_rows:
-        raise HTTPException(
-            status_code=404,
-            detail="No oral combinations found for this exam and module.",
-        )
-    return _map_oral_combination(random.choice(full_rows), exam_type)
+    if pool_rows:
+        return _build_tef_oral_from_pool(pool_rows)
+    if full_rows:
+        return _map_oral_combination(random.choice(full_rows), exam_type)
+    raise HTTPException(
+        status_code=404,
+        detail="No oral combinations found for this exam and module.",
+    )

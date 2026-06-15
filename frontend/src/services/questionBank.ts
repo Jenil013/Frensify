@@ -29,7 +29,8 @@ const PLACEHOLDER_LISTENING_IMAGE = "/fevicon_Logo.svg";
  *
  * - reading_questions: exam_type, module_id, prompt, passage, choices, correct_index, …
  * - listening_questions: exam_type, module_id, prompt, audio_path, image_path, choices, …
- * - exercise_items (writing): module_id, combination_index, tasks jsonb (3 tâches per row)
+ * - exercise_items (writing): module_id, combination_index, tasks jsonb
+ *   (TCF: 3 tâches per row; TEF: Section A + B per row)
  */
 
 export function isSupabaseConfigured(): boolean {
@@ -223,6 +224,26 @@ export async function loadTefModule(
         return attachTefMcqQuestions(moduleId, questions);
       }
       return attachTefMcqQuestions(moduleId, placeholderTefListeningQuestions());
+    }
+    case "expression-ecrite": {
+      const base = TEF_MODULE_REGISTRY[moduleId];
+      if (isSupabaseConfigured()) {
+        try {
+          const combo = await fetchWritingCombination("TEF", moduleId);
+          return {
+            ...base,
+            sections: combo.sections,
+            combinationId: combo.id,
+            combinationTitle: combo.title,
+          };
+        } catch (err) {
+          console.warn(
+            `[questionBank] Writing combination load failed for TEF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
+      }
+      return { ...base };
     }
     case "expression-orale": {
       const base = TEF_MODULE_REGISTRY[moduleId];

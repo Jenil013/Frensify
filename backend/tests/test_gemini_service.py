@@ -4,9 +4,13 @@ from services.gemini_service import (
     explain_vocab,
     evaluate_writing,
     evaluate_speaking,
+    evaluate_speaking_conversation,
+    generate_oral_turn,
+    apply_early_submit_penalty,
+    early_submit_downgrade_levels,
     _load_model,
 )
-from models.ai import AIWritingCorrection
+from models.ai import AIWritingCorrection, AISpeakingSuggestion, ConversationTurn
 
 
 _VOCAB_JSON = json.dumps({
@@ -42,6 +46,35 @@ _WRITING_JSON = json.dumps({
     ],
     "improvedVersion": "Je suis alle(e) au marche ce matin.",
 })
+
+_SPEAKING_FEEDBACK = AISpeakingSuggestion(
+    cefrLevel="B2",
+    fluencyFeedback="OK.",
+    grammarAndVocab="Some errors.",
+    structureAnalysis="Good.",
+    pronunciationTips=["Watch vowels."],
+    suggestedPhrases=[{"french": "En effet", "english": "Indeed", "context": "Agreement"}],
+    modelSpokenDraft="En effet...",
+)
+
+
+def test_early_submit_downgrade_levels():
+    assert early_submit_downgrade_levels(300, 0) == 0
+    assert early_submit_downgrade_levels(300, 30) == 0
+    assert early_submit_downgrade_levels(300, 60) == 1
+    assert early_submit_downgrade_levels(300, 180) == 2
+
+
+def test_apply_early_submit_penalty_downgrades_cefr():
+    penalized = apply_early_submit_penalty(_SPEAKING_FEEDBACK, 300, 180)
+    assert penalized.cefrLevel == "A2"
+    assert "ended this section early" in penalized.structureAnalysis
+
+
+def test_apply_early_submit_penalty_skips_when_time_used():
+    unchanged = apply_early_submit_penalty(_SPEAKING_FEEDBACK, 300, 0)
+    assert unchanged.cefrLevel == "B2"
+
 
 _SPEAKING_JSON = json.dumps({
     "cefrLevel": "B1",
@@ -107,6 +140,67 @@ def test_evaluate_speaking_returns_suggestion(mock_generate):
     contents = mock_generate.call_args.kwargs["contents"]
     assert isinstance(contents, list)
     assert len(contents) == 2
+
+
+_ORAL_TURN_JSON = json.dumps({
+    "userTranscript": "Je m'appelle Paul.",
+    "examinerReplyFr": "Enchanté. D'où venez-vous ?",
+})
+
+
+@patch("services.gemini_service._generate_json", return_value=_ORAL_TURN_JSON)
+def test_generate_oral_turn_returns_transcript_and_reply(mock_generate):
+    transcript, reply = generate_oral_turn(
+        b"audio",
+        "audio/webm",
+        exam_type="TCF",
+        section_id="1",
+        prompt="Interview",
+        stimulus="Présentez-vous",
+        history=[ConversationTurn(role="examiner", text="Présentez-vous")],
+    )
+    assert transcript == "Je m'appelle Paul."
+    assert reply.startswith("Enchanté")
+    mock_generate.assert_called_once()
+
+
+@patch("services.gemini_service._generate_json", return_value=_SPEAKING_JSON)
+def test_evaluate_speaking_conversation_returns_suggestion(mock_generate):
+    result = evaluate_speaking_conversation(
+        [(b"clip1", "audio/webm"), (b"clip2", "audio/webm")],
+        prompt="Role-play",
+        stimulus="Annonce",
+        exam_type="TEF",
+        conversation=[
+            ConversationTurn(role="examiner", text="Bonjour"),
+            ConversationTurn(role="user", text="Quel est le prix ?"),
+        ],
+        duration_seconds=45,
+        allocated_seconds=300,
+        seconds_remaining=0,
+    )
+    assert result.cefrLevel == "B1"
+    contents = mock_generate.call_args.kwargs["contents"]
+    assert len(contents) >= 4
+
+
+@patch("services.gemini_service._generate_json", return_value=_SPEAKING_JSON)
+def test_evaluate_speaking_conversation_applies_early_submit_penalty(mock_generate):
+    result = evaluate_speaking_conversation(
+        [(b"clip1", "audio/webm")],
+        prompt="Role-play",
+        stimulus="Annonce",
+        exam_type="TEF",
+        conversation=[
+            ConversationTurn(role="examiner", text="Bonjour"),
+            ConversationTurn(role="user", text="Bonjour"),
+        ],
+        duration_seconds=20,
+        allocated_seconds=300,
+        seconds_remaining=200,
+    )
+    assert result.cefrLevel == "A1"
+    assert "ended this section early" in result.structureAnalysis
 
 
 def test_load_model_tolerates_trailing_json_noise():

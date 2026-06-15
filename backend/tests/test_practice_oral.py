@@ -4,7 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from content.tcf_oral_task1 import TCF_TASK1_FOLLOWUPS
-from routers.practice import _build_tcf_oral_from_pool
+from routers.practice import _build_tcf_oral_from_pool, _build_tef_oral_from_pool
 
 
 def _task2_row(row_id: str, stimulus: str) -> dict:
@@ -54,7 +54,7 @@ def test_build_tcf_oral_from_pool_has_three_sections():
 
     assert set(combo.sections.keys()) == {"1", "2", "3"}
     assert "Présentez-vous" in combo.sections["1"].stimulus
-    assert TCF_TASK1_FOLLOWUPS[2]["fr"] in combo.sections["1"].stimulus
+    assert TCF_TASK1_FOLLOWUPS[2]["fr"] not in combo.sections["1"].stimulus
     assert combo.sections["2"].stimulus == "Scenario B"
     assert combo.sections["3"].stimulus == "Sujet : Topic B"
     assert combo.id == "task1-hobbies+t2-b+t3-b"
@@ -63,6 +63,55 @@ def test_build_tcf_oral_from_pool_has_three_sections():
 def test_build_tcf_oral_from_pool_empty_raises():
     with pytest.raises(HTTPException) as exc:
         _build_tcf_oral_from_pool([_task2_row("t2", "Only task 2")])
+    assert exc.value.status_code == 404
+
+
+def test_build_tef_oral_from_pool_has_two_sections():
+    rows = [
+        {
+            "id": "a-1",
+            "combination_index": 1,
+            "title": "TEF Expression orale — Section A — Q1",
+            "tasks": [
+                {
+                    "section_id": "A",
+                    "prompt": "Section A prompt",
+                    "stimulus": "Situation : Demander des renseignements à une banque.",
+                }
+            ],
+        },
+        {
+            "id": "b-1",
+            "combination_index": 39,
+            "title": "TEF Expression orale — Section B — Q1",
+            "tasks": [
+                {
+                    "section_id": "B",
+                    "prompt": "Section B prompt",
+                    "stimulus": "Situation : Convaincre un ami d'assister à un spectacle d'opéra.",
+                }
+            ],
+        },
+    ]
+    combo = _build_tef_oral_from_pool(rows)
+    assert set(combo.sections.keys()) == {"A", "B"}
+    assert "banque" in combo.sections["A"].stimulus
+    assert "opéra" in combo.sections["B"].stimulus
+    assert combo.id == "a-1+b-1"
+
+
+def test_build_tef_oral_from_pool_empty_raises():
+    with pytest.raises(HTTPException) as exc:
+        _build_tef_oral_from_pool(
+            [
+                {
+                    "id": "a-only",
+                    "combination_index": 1,
+                    "title": "Section A only",
+                    "tasks": [{"section_id": "A", "prompt": "A", "stimulus": "S"}],
+                }
+            ]
+        )
     assert exc.value.status_code == 404
 
 

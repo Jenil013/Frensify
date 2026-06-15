@@ -10,7 +10,9 @@ import AiEvaluatingModal from "./AiEvaluatingModal";
 import { useExaminerTts } from "../hooks/useExaminerTts";
 import { useSpeakingRecorder } from "../hooks/useSpeakingRecorder";
 import { evaluateSpeakingModule } from "../api";
+import { submitSpeakingTurn } from "../lib/apiClient";
 import {
+  ConversationTurn,
   ExamPathway,
   OralModuleResult,
   TcfExpressionSection,
@@ -39,7 +41,18 @@ interface OralSimulationRunnerProps {
   examMode?: boolean;
 }
 
+interface SectionRecording {
+  conversation: ConversationTurn[];
+  userTurns: { blob: Blob; durationSeconds: number }[];
+  prompt: string;
+  stimulus?: string;
+  durationSeconds: number;
+  allocatedSeconds: number;
+  secondsRemaining: number;
+}
+
 const TCF_TASK2_PREP_SECONDS = 60;
+const MAX_TURN_RECORDING_SEC = 120;
 
 function buildEvalPrompt(content: TcfExpressionSection): string {
   if (content.stimulus) {
@@ -74,8 +87,14 @@ export default function OralSimulationRunner({
   const [examinerReady, setExaminerReady] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recordings, setRecordings] = useState<
-    Record<string, { blob: Blob; durationSeconds: number }>
+  const [processingTurn, setProcessingTurn] = useState(false);
+  const [timerExpired, setTimerExpired] = useState(false);
+  const [conversation, setConversation] = useState<ConversationTurn[]>([]);
+  const [userTurnAudios, setUserTurnAudios] = useState<
+    { blob: Blob; durationSeconds: number }[]
+  >([]);
+  const [completedSections, setCompletedSections] = useState<
+    Record<string, SectionRecording>
   >({});
 
   const examinerSpokeRef = useRef(false);
@@ -85,46 +104,64 @@ export default function OralSimulationRunner({
   const sectionId = sectionIds[currentIndex];
   const meta = sectionMetas[currentIndex];
   const content = sectionContent[sectionId];
-  const maxRecordingSec = meta.durationMinutes * 60;
   const isTcfTask2Prep =
     examType === "TCF" && sectionId === "2" && prepSecondsLeft != null;
 
   const recorder = useSpeakingRecorder({
-    maxSeconds: maxRecordingSec,
+    maxSeconds: MAX_TURN_RECORDING_SEC,
     onMaxDuration: () => {
       void stopRecordingRef.current();
     },
   });
   const { reset: resetRecorder } = recorder;
 
-  const taskRecording = recordings[sectionId];
-  const candidateState: CandidateState = recorder.isRecording
-    ? "listening"
-    : taskRecording
-      ? "recorded"
+  const userTurnCount = conversation.filter((t) => t.role === "user").length;
+  const sectionSubmitted = Boolean(completedSections[sectionId]);
+
+  const candidateState: CandidateState = processingTurn
+    ? "processing"
+    : recorder.isRecording
+      ? "listening"
       : "idle";
+
+  const resetSectionState = useCallback(() => {
+    setConversation([]);
+    setUserTurnAudios([]);
+    setExaminerReady(false);
+    setProcessingTurn(false);
+    setTimerExpired(false);
+    examinerSpokeRef.current = false;
+    resetRecorder();
+  }, [resetRecorder]);
 
   useEffect(() => {
     setSecondsLeft(meta.durationMinutes * 60);
-    setExaminerReady(false);
-    examinerSpokeRef.current = false;
-    resetRecorder();
+    resetSectionState();
 
     if (examType === "TCF" && sectionId === "2") {
       setPrepSecondsLeft(TCF_TASK2_PREP_SECONDS);
     } else {
       setPrepSecondsLeft(null);
     }
-  }, [currentIndex, meta.durationMinutes, sectionId, examType, resetRecorder]);
+  }, [currentIndex, meta.durationMinutes, sectionId, examType, resetSectionState]);
 
   useEffect(() => {
-    if (!precheckDone || prepSecondsLeft != null) return;
+    if (!precheckDone || prepSecondsLeft != null || sectionSubmitted) return;
     if (examinerSpokeRef.current) return;
+    if (conversation.length > 0) return;
 
     examinerSpokeRef.current = true;
-    const text = examinerSpokenText(content);
-    speak(text, () => setExaminerReady(true));
-  }, [precheckDone, prepSecondsLeft, content, speak]);
+    const opening = examinerSpokenText(content);
+    setConversation([{ role: "examiner", text: opening }]);
+    speak(opening, () => setExaminerReady(true));
+  }, [
+    precheckDone,
+    prepSecondsLeft,
+    content,
+    speak,
+    conversation.length,
+    sectionSubmitted,
+  ]);
 
   useEffect(() => {
     if (prepSecondsLeft == null || prepSecondsLeft <= 0) return;
@@ -138,63 +175,145 @@ export default function OralSimulationRunner({
   }, [prepSecondsLeft]);
 
   useEffect(() => {
-    if (secondsLeft <= 0) return;
+    if (secondsLeft <= 0) {
+      setTimerExpired(true);
+      if (recorder.isRecording) {
+        void stopRecordingRef.current();
+      }
+      return;
+    }
     const t = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearInterval(t);
-  }, [secondsLeft]);
+  }, [secondsLeft, recorder.isRecording]);
 
   useEffect(() => {
     return () => cancel();
   }, [cancel]);
 
   const handleRespond = useCallback(async () => {
+    if (timerExpired || sectionSubmitted) return;
     setError(null);
     await recorder.startRecording();
-  }, [recorder]);
+  }, [recorder, sectionSubmitted, timerExpired]);
 
   const handleStopRecording = useCallback(async () => {
+    if (sectionSubmitted) return;
     const result = await recorder.stopRecording();
-    if (result) {
-      setRecordings((prev) => ({
+    if (!result) return;
+
+    setProcessingTurn(true);
+    setError(null);
+
+    try {
+      const history = conversation;
+      const response = await submitSpeakingTurn(result.blob, {
+        exam_type: examType,
+        section_id: sectionId,
+        prompt: buildEvalPrompt(content),
+        stimulus: content.stimulus,
+        history,
+      });
+
+      setUserTurnAudios((prev) => [
         ...prev,
-        [sectionId]: {
-          blob: result.blob,
-          durationSeconds: result.durationSeconds,
-        },
-      }));
+        { blob: result.blob, durationSeconds: result.durationSeconds },
+      ]);
+      setConversation((prev) => [
+        ...prev,
+        { role: "user", text: response.user_transcript },
+        { role: "examiner", text: response.examiner_reply },
+      ]);
+
+      speak(response.examiner_reply, () => setExaminerReady(true));
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not process your response. Please try again."
+      );
+      setExaminerReady(true);
+    } finally {
+      setProcessingTurn(false);
     }
-  }, [recorder, sectionId]);
+  }, [recorder, conversation, examType, sectionId, content, speak, sectionSubmitted]);
 
   stopRecordingRef.current = handleStopRecording;
 
-  const handleReplayExaminer = useCallback(() => {
-    speak(examinerSpokenText(content), () => setExaminerReady(true));
-  }, [content, speak]);
+  const handleReplayTurn = useCallback(
+    (index: number) => {
+      const turn = conversation[index];
+      if (!turn || turn.role !== "examiner") return;
+      speak(turn.text, () => setExaminerReady(true));
+    },
+    [conversation, speak]
+  );
 
-  const allRecorded = sectionIds.every((id) => recordings[id]);
+  const completeCurrentSection = useCallback(() => {
+    const totalDuration = userTurnAudios.reduce(
+      (sum, t) => sum + t.durationSeconds,
+      0
+    );
+    setCompletedSections((prev) => ({
+      ...prev,
+      [sectionId]: {
+        conversation: [...conversation],
+        userTurns: [...userTurnAudios],
+        prompt: buildEvalPrompt(content),
+        stimulus: content.stimulus,
+        durationSeconds: totalDuration,
+        allocatedSeconds: meta.durationMinutes * 60,
+        secondsRemaining: secondsLeft,
+      },
+    }));
+  }, [userTurnAudios, conversation, sectionId, content, meta.durationMinutes, secondsLeft]);
+
+  const handleSubmitSection = useCallback(() => {
+    if (userTurnCount < 1 || sectionSubmitted) return;
+    completeCurrentSection();
+  }, [userTurnCount, sectionSubmitted, completeCurrentSection]);
+
+  const allSectionsComplete = sectionIds.every((id) => completedSections[id]);
   const isLastTask = currentIndex === sectionIds.length - 1;
 
   const buildEvalSections = useCallback(
     () =>
-      sectionIds.map((id) => ({
-        section_id: id,
-        prompt: buildEvalPrompt(sectionContent[id]),
-        blob: recordings[id].blob,
-        duration_seconds: recordings[id].durationSeconds,
-      })),
-    [sectionIds, sectionContent, recordings]
+      sectionIds.map((id) => {
+        const section = completedSections[id];
+        return {
+          section_id: id,
+          prompt: section.prompt,
+          stimulus: section.stimulus,
+          conversation: section.conversation,
+          user_turns: section.userTurns.map((t) => ({
+            blob: t.blob,
+            duration_seconds: t.durationSeconds,
+          })),
+          duration_seconds: section.durationSeconds,
+          allocated_seconds: section.allocatedSeconds,
+          seconds_remaining: section.secondsRemaining,
+        };
+      }),
+    [sectionIds, completedSections]
   );
 
   const buildDraftResult = useCallback(
     (): OralModuleResult => ({
-      sections: sectionIds.map((id) => ({
-        sectionId: id,
-        transcript: "",
-        durationSeconds: recordings[id].durationSeconds,
-        examinerCue: examinerSpokenText(sectionContent[id]),
-      })),
+      sections: sectionIds.map((id) => {
+        const section = completedSections[id];
+        const userTranscript = section.conversation
+          .filter((t) => t.role === "user")
+          .map((t) => t.text)
+          .join(" ");
+        return {
+          sectionId: id,
+          transcript: userTranscript,
+          durationSeconds: section.durationSeconds,
+          examinerCue: section.conversation.find((t) => t.role === "examiner")?.text,
+          conversation: section.conversation,
+        };
+      }),
     }),
-    [sectionIds, sectionContent, recordings]
+    [sectionIds, completedSections]
   );
 
   const submitModule = useCallback(async () => {
@@ -243,13 +362,13 @@ export default function OralSimulationRunner({
   ]);
 
   const advanceOrSubmit = useCallback(async () => {
-    if (!taskRecording) return;
+    if (!completedSections[sectionId]) return;
     if (isLastTask) {
       await submitModule();
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [taskRecording, isLastTask, submitModule]);
+  }, [completedSections, sectionId, isLastTask, submitModule]);
 
   const footer = (
     <div className="flex flex-col items-end gap-2">
@@ -258,12 +377,17 @@ export default function OralSimulationRunner({
           {error}
         </p>
       )}
+      {timerExpired && !sectionSubmitted && userTurnCount > 0 && (
+        <p className="text-xs text-[#5F5E5B] w-full">
+          Time is up — submit this section to continue.
+        </p>
+      )}
       <button
         type="button"
         disabled={
           (!examMode && evaluating) ||
-          !taskRecording ||
-          (isLastTask && !allRecorded)
+          !completedSections[sectionId] ||
+          (isLastTask && !allSectionsComplete)
         }
         onClick={() => void advanceOrSubmit()}
         className={`px-4 py-2 text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer ${
@@ -297,63 +421,79 @@ export default function OralSimulationRunner({
   }
 
   const taskLabels = sectionMetas.map((s) => s.label.split("—")[0].trim());
+  const canRespond =
+    examinerReady &&
+    !isSpeaking &&
+    !recorder.isRecording &&
+    !processingTurn &&
+    !sectionSubmitted &&
+    !timerExpired &&
+    secondsLeft > 0;
 
   return (
     <>
-    <AiEvaluatingModal open={!examMode && evaluating} />
+      <AiEvaluatingModal open={!examMode && evaluating} />
 
-    <ModuleSessionShell
-      title={title}
-      objective={objective}
-      secondsRemaining={secondsLeft}
-      progressLabel={`Task ${currentIndex + 1}/${sectionIds.length}`}
-      onAbort={onAbort}
-      footer={footer}
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-4">
-        <div className="space-y-3">
-          <p className="text-xs font-bold text-[#37352F]">{meta.label}</p>
+      <ModuleSessionShell
+        title={title}
+        objective={objective}
+        secondsRemaining={secondsLeft}
+        progressLabel={`Task ${currentIndex + 1}/${sectionIds.length}`}
+        onAbort={onAbort}
+        footer={footer}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-4">
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-[#37352F]">{meta.label}</p>
 
-          {isTcfTask2Prep && (
-            <div className="bg-[#FEF9E7] border border-[#F5E6A8] rounded-lg px-4 py-3 text-xs text-[#37352F]">
-              <span className="font-bold">Preparation time: </span>
-              {prepSecondsLeft}s remaining — read the scenario, then the examiner
-              will speak.
-            </div>
-          )}
+            {isTcfTask2Prep && (
+              <div className="bg-[#FEF9E7] border border-[#F5E6A8] rounded-lg px-4 py-3 text-xs text-[#37352F]">
+                <span className="font-bold">Preparation time: </span>
+                {prepSecondsLeft}s remaining — read the scenario, then the examiner
+                will speak.
+              </div>
+            )}
 
-          {!examMode && (
-            <p className="text-xs text-[#5F5E5B] leading-relaxed">{content.prompt}</p>
-          )}
+            {!examMode && (
+              <p className="text-xs text-[#5F5E5B] leading-relaxed">{content.prompt}</p>
+            )}
 
-          <SpeakingConversationPanel
-            examinerCue={examinerSpokenText(content)}
-            isExaminerSpeaking={isSpeaking}
-            candidateState={candidateState}
-            recordingSeconds={
-              recorder.isRecording
-                ? recorder.recordingSeconds
-                : taskRecording?.durationSeconds ?? 0
-            }
-            audioLevel={recorder.audioLevel}
-            onRespond={() => void handleRespond()}
-            onStopRecording={() => void handleStopRecording()}
-            onReplayExaminer={handleReplayExaminer}
-            canRespond={
-              examinerReady && !isSpeaking && !recorder.isRecording && !taskRecording
-            }
-            voiceUnavailable={!hasFrenchVoice}
+            <SpeakingConversationPanel
+              turns={conversation}
+              isExaminerSpeaking={isSpeaking}
+              isProcessingTurn={processingTurn}
+              candidateState={candidateState}
+              recordingSeconds={recorder.recordingSeconds}
+              audioLevel={recorder.audioLevel}
+              onRespond={() => void handleRespond()}
+              onStopRecording={() => void handleStopRecording()}
+              onReplayTurn={handleReplayTurn}
+              onSubmitSection={handleSubmitSection}
+              canRespond={canRespond}
+              canSubmitSection={
+                userTurnCount >= 1 &&
+                !sectionSubmitted &&
+                !recorder.isRecording &&
+                !processingTurn
+              }
+              voiceUnavailable={!hasFrenchVoice}
+            />
+
+            {sectionSubmitted && (
+              <p className="text-xs text-[#2D6A53] font-medium text-center">
+                Section submitted — use Next task below to continue.
+              </p>
+            )}
+          </div>
+
+          <SpeakingTaskProgress
+            taskLabels={taskLabels}
+            currentIndex={currentIndex}
+            precheckDone={precheckDone}
+            sectionSecondsLeft={secondsLeft}
           />
         </div>
-
-        <SpeakingTaskProgress
-          taskLabels={taskLabels}
-          currentIndex={currentIndex}
-          precheckDone={precheckDone}
-          sectionSecondsLeft={secondsLeft}
-        />
-      </div>
-    </ModuleSessionShell>
+      </ModuleSessionShell>
     </>
   );
 }

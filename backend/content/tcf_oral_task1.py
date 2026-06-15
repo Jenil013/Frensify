@@ -61,10 +61,10 @@ TCF_TASK1_BASE_PROMPT = (
 
 
 def build_tcf_task1_section() -> tuple[OralCombinationSection, str]:
-    """Return Task 1 section and follow-up topic id for combination tracing."""
+    """Return Task 1 section (intro only) and topic id for combination tracing."""
     followup = random.choice(TCF_TASK1_FOLLOWUPS)
-    stimulus = f"{TCF_TASK1_INTRO_FR}\n\n{followup['fr']}"
-    prompt = f"{TCF_TASK1_BASE_PROMPT} Follow-up topic: {followup['en']}"
+    stimulus = TCF_TASK1_INTRO_FR
+    prompt = f"{TCF_TASK1_BASE_PROMPT} Follow-up topics may include: {followup['en']}"
     return (
         OralCombinationSection(prompt=prompt, stimulus=stimulus),
         followup["id"],

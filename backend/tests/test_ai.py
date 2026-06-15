@@ -173,21 +173,61 @@ _TCF_SPEAKING_MODULE_PAYLOAD = {
     "sections": [
         {
             "section_id": "1",
-            "prompt": "Examiner cue: Presentez-vous.",
-            "storage_path": "user-uuid-123/a1.webm",
+            "prompt": "Structured interview.",
+            "stimulus": "Présentez-vous.",
+            "conversation": [
+                {"role": "examiner", "text": "Présentez-vous."},
+                {"role": "user", "text": "Je m'appelle Marie."},
+                {"role": "examiner", "text": "Merci. Que faites-vous ?"},
+            ],
+            "user_turns": [
+                {
+                    "turn_index": 0,
+                    "storage_path": "user-uuid-123/a1.webm",
+                    "duration_seconds": 30,
+                }
+            ],
             "duration_seconds": 30,
+            "allocated_seconds": 120,
+            "seconds_remaining": 0,
         },
         {
             "section_id": "2",
             "prompt": "Role-play scenario.",
-            "storage_path": "user-uuid-123/a2.webm",
+            "stimulus": "Annonce : cours de français.",
+            "conversation": [
+                {"role": "examiner", "text": "Bonjour."},
+                {"role": "user", "text": "Quels sont les horaires ?"},
+            ],
+            "user_turns": [
+                {
+                    "turn_index": 0,
+                    "storage_path": "user-uuid-123/a2.webm",
+                    "duration_seconds": 45,
+                }
+            ],
             "duration_seconds": 45,
+            "allocated_seconds": 360,
+            "seconds_remaining": 120,
         },
         {
             "section_id": "3",
             "prompt": "Argument topic.",
-            "storage_path": "user-uuid-123/a3.webm",
+            "stimulus": "Sujet : réseaux sociaux.",
+            "conversation": [
+                {"role": "examiner", "text": "Qu'en pensez-vous ?"},
+                {"role": "user", "text": "Je suis pour l'interdiction."},
+            ],
+            "user_turns": [
+                {
+                    "turn_index": 0,
+                    "storage_path": "user-uuid-123/a3.webm",
+                    "duration_seconds": 60,
+                }
+            ],
             "duration_seconds": 60,
+            "allocated_seconds": 300,
+            "seconds_remaining": 0,
         },
     ],
 }
@@ -195,7 +235,7 @@ _TCF_SPEAKING_MODULE_PAYLOAD = {
 
 def test_speaking_module_practice(client, auth_headers, mock_db):
     _setup_cap_mock(mock_db)
-    with patch("routers.ai._run_speaking_eval", return_value=_SPEAKING_FEEDBACK) as mock_eval, \
+    with patch("routers.ai._run_speaking_conversation_eval", return_value=_SPEAKING_FEEDBACK) as mock_eval, \
          patch("routers.ai.write_audit_log") as mock_audit, \
          patch("routers.ai.increment") as mock_increment:
         mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{}])
@@ -211,6 +251,41 @@ def test_speaking_module_practice(client, auth_headers, mock_db):
     assert mock_eval.call_count == 3
     mock_increment.assert_called_once()
     mock_audit.assert_called_once()
+
+
+def test_speaking_turn(client, auth_headers):
+    with patch("routers.ai.generate_oral_turn", return_value=("Bonjour.", "Très bien.")):
+        response = client.post(
+            "/api/v1/ai/speaking/turn",
+            headers=auth_headers,
+            data={
+                "metadata": (
+                    '{"exam_type":"TCF","section_id":"1","prompt":"Interview",'
+                    '"stimulus":"Présentez-vous","history":[]}'
+                ),
+            },
+            files={"audio": ("turn.webm", b"fake-audio", "audio/webm")},
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["user_transcript"] == "Bonjour."
+    assert body["examiner_reply"] == "Très bien."
+
+
+def test_speaking_turn_max_turns(client, auth_headers):
+    history = [{"role": "user", "text": f"turn {i}"} for i in range(15)]
+    response = client.post(
+        "/api/v1/ai/speaking/turn",
+        headers=auth_headers,
+        data={
+            "metadata": (
+                '{"exam_type":"TCF","section_id":"1","prompt":"Interview",'
+                f'"history":{history}}}'
+            ),
+        },
+        files={"audio": ("turn.webm", b"fake-audio", "audio/webm")},
+    )
+    assert response.status_code == 422
 
 
 def test_speaking_module_wrong_section_count(client, auth_headers, mock_db):
