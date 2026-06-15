@@ -46,7 +46,7 @@ graph TD
 
 ## Demo
 
-[https://github.com/user-attachments/assets/5389c038-3bd6-438a-8eb5-c3d0460af879](https://github.com/user-attachments/assets/5389c038-3bd6-438a-8eb5-c3d0460af879)
+https://github.com/user-attachments/assets/5389c038-3bd6-438a-8eb5-c3d0460af879
 
 ---
 
@@ -191,6 +191,3 @@ Frensify is built to feel **calm, elegant, and exam-focused**:
 - Encouraging tone that respects the seriousness of immigration and admission goals
 
 The product is for students who want structure without overwhelm — and feedback that sounds like a trained examiner, not a chatbot.
-
----
-
