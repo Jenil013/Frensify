@@ -9,35 +9,35 @@ Frensify is a premium French exam preparation platform for students targeting Ca
 ## Architecture
 
 ```mermaid
-graph TD
-    Browser["🌐 Browser"]
+flowchart TD
+    Browser[Browser]
 
-    subgraph Frontend["React Frontend"]
-        Pages["Dashboard · Practice · Mock Tests · Vocabulary · Analytics"]
+    subgraph frontend [React Frontend]
+        Pages[Dashboard, Practice, Mocks, Vocabulary, Analytics]
     end
 
-    subgraph API["FastAPI Backend"]
-        Routers["Routers: profile · practice · exams · vocabulary · ai · analytics"]
-        Services["Services: gemini_service · usage_service"]
-        Auth["Auth: JWT validation — python-jose HS256"]
-        Config["Config: pydantic-settings .env"]
+    subgraph api [FastAPI Backend]
+        Routers[Routers: profile, practice, exams, vocabulary, ai, analytics]
+        Services[Services: gemini_service, usage_service]
+        Auth[JWT validation via python-jose HS256]
     end
 
-    subgraph Supabase["Supabase Cloud"]
-        SupaAuth["Auth — JWT issuer"]
-        SupaDB["Postgres DB"]
-        SupaStorage["Storage — audio"]
+    subgraph supabase [Supabase Cloud]
+        SupaStack[Auth, Postgres, Storage]
     end
 
-    subgraph Gemini["Google Gemini API"]
-        EvalModel["eval model — writing & speaking"]
-        UtilsModel["utils model — vocab"]
+    subgraph gemini [Google Gemini API]
+        EvalModel[Eval model: writing and speaking]
+        UtilsModel[Utils model: vocabulary]
     end
 
-    Browser -->|HTTPS| Frontend
-    Frontend -->|"REST — Bearer JWT"| API
-    API -->|SQL & auth| Supabase
-    API -->|AI calls| Gemini
+    Browser -->|HTTPS| Pages
+    Pages -->|REST Bearer JWT| Routers
+    Routers --> Services
+    Routers --> Auth
+    Routers -->|SQL and auth| SupaStack
+    Services -->|AI calls| EvalModel
+    Services --> UtilsModel
 ```
 
 

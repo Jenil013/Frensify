@@ -1,0 +1,7 @@
+Combination 1:
+Section A: "Vous écrivez un article sur Montréal. <<La ville de Montréal accueille des milliers de nouveaux arrivants chaque année.>>"
+Section B: "Vous répondez à un ami. <<Il vous demande de l'argent pour un voyage.>>"
+
+Combination 2:
+Section A: "Martin, un étudiant en informatique à l'université, « doit rédiger un mémoire sur les réseaux sociaux » avant la fin du semestre."
+Section B: "Répondez à cette annonce dans un journal local."
