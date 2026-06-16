@@ -1,4 +1,8 @@
+# Python
 .venv/
 __pycache__/
-.env.example
-.env
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+*.egg-info/

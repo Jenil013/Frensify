@@ -28,7 +28,7 @@ flowchart TD
 
     subgraph gemini [Google Gemini API]
         EvalModel[Eval model: writing and speaking]
-        UtilsModel[Utils model: vocabulary]
+        UtilsModel[Utils model: vocabulary and Speaking Follow-Ups]
     end
 
     Browser -->|HTTPS| Pages

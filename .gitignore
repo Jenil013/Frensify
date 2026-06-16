@@ -1,11 +1,14 @@
-confidential.txt
-media/
+# IDE
 .cursor/
-.superpowers/
-CLAUDE.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Repo-specific (not tracked)
+media/
 docs/
-frontend/node_modules/
-.claude/
+CLAUDE.md
 
 # Environment files (secrets)
 .env
@@ -14,20 +17,10 @@ frontend/node_modules/
 .env.production
 .env.development
 
-# Supabase
-supabase/.temp/
-supabase/.branches/
-
-# Python
-__pycache__/
-*.pyc
-.venv/
-
 # Seed output (regenerable)
 supabase/seed/*.json
 
-
-#docker
+# Docker
 docker-compose.yml
 frontend/Dockerfile
 frontend/.dockerignore
