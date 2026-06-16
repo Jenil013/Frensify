@@ -10,4 +10,5 @@
 #helpers
 seed/
 question_bank/
-migrations/
+# Local-only seed migration (not applied to hosted Supabase)
+migrations/20260521000007_seed_tef_reading_questions.sql
