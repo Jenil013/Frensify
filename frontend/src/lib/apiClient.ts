@@ -24,6 +24,7 @@ export interface ApiProfile {
   current_level: string | null;
   streak_days: number;
   last_active_date: string | null;
+  exam_date: string | null;
   tier: string;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
@@ -36,6 +37,7 @@ export interface ProfileUpdatePayload {
   target_exam?: ExamPathway;
   target_score?: CefrLevel;
   current_level?: CefrLevel;
+  exam_date?: string | null;
 }
 
 /** Refresh slightly before expiry so we never send an effectively-expired token. */
@@ -198,33 +200,6 @@ export async function fetchUsageLimits(): Promise<UsageLimitsResponse> {
   return mapUsageLimits(data);
 }
 
-export interface AnalyticsSummary {
-  recentMockScores: Array<{
-    score_pct: number;
-    cefr: string;
-    taken_at: string;
-    exam_name: string;
-  }>;
-  moduleHistory: Array<{
-    module_id: string;
-    raw_score: number;
-    max_score: number;
-    taken_at: string;
-    exam_context?: string | null;
-  }>;
-  weeklyUsage: {
-    writing_eval_count: number;
-    speaking_eval_count: number;
-    vocab_explain_count: number;
-  };
-  streakDays: number;
-  tier: string;
-}
-
-export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
-  return apiFetch<AnalyticsSummary>("/api/v1/analytics/summary");
-}
-
 export interface RecentTestItem {
   id: string;
   kind: "full_mock" | "practice" | "writing" | "speaking";
@@ -240,6 +215,23 @@ export async function fetchRecentTests(): Promise<RecentTestItem[]> {
     "/api/v1/analytics/recent-tests"
   );
   return data.items;
+}
+
+export interface ModuleAccuracyEntry {
+  accuracyPct: number | null;
+  cefr: string | null;
+  sampleSize: number;
+  hasData: boolean;
+}
+
+export async function fetchModuleAccuracy(
+  examType: ExamPathway
+): Promise<Record<string, ModuleAccuracyEntry>> {
+  const data = await apiFetch<{
+    examType: ExamPathway;
+    modules: Record<string, ModuleAccuracyEntry>;
+  }>(`/api/v1/analytics/module-accuracy?exam_type=${examType}`);
+  return data.modules;
 }
 
 export async function postMockTestScore(payload: {
@@ -711,6 +703,7 @@ export function mapApiProfileToUser(
     currentLevel: (api.current_level as CefrLevel) ?? "B1",
     streakDays: api.streak_days,
     lastActiveDate: api.last_active_date ?? today,
+    examDate: api.exam_date ?? null,
     tier: api.tier as UserSubscriptionTier,
     completedActivities: extras?.completedActivities ?? [],
     mockTestScores: extras?.mockTestScores ?? [],

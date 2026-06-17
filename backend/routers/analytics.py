@@ -1,8 +1,11 @@
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends
+from typing import Literal
+from fastapi import APIRouter, Depends, Query
 from database import get_db
 from dependencies import get_profile
 from services.recent_tests import build_recent_tests
+from services.streak_service import get_display_streak
+from services.module_accuracy import build_module_accuracy
 
 router = APIRouter(tags=["analytics"])
 
@@ -55,7 +58,7 @@ async def analytics_summary(
         "recentMockScores": recent_mocks.data,
         "moduleHistory": module_history.data,
         "weeklyUsage": weekly_usage,
-        "streakDays": profile.get("streak_days", 0),
+        "streakDays": get_display_streak(db, profile),
         "tier": profile.get("tier"),
     }
 
@@ -66,3 +69,13 @@ async def recent_tests(
     db=Depends(get_db),
 ):
     return {"items": build_recent_tests(db, profile["id"])}
+
+
+@router.get("/analytics/module-accuracy")
+async def module_accuracy(
+    exam_type: Literal["TEF", "TCF"] = Query(...),
+    profile: dict = Depends(get_profile),
+    db=Depends(get_db),
+):
+    modules = build_module_accuracy(db, profile["id"], exam_type)
+    return {"examType": exam_type.upper(), "modules": modules}

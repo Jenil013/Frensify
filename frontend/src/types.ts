@@ -69,6 +69,7 @@ export interface UserProfile {
   currentLevel: CefrLevel;
   streakDays: number;
   lastActiveDate: string; // YYYY-MM-DD
+  examDate: string | null; // YYYY-MM-DD official exam date
   tier: UserSubscriptionTier;
   completedActivities: string[]; // ids of exercises completed
   mockTestScores: MockTestScore[];

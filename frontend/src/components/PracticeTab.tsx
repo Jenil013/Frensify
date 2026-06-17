@@ -241,6 +241,52 @@ export default function PracticeTab({
   const tcfModuleMeta = TCF_MODULE_REGISTRY[skillToTcfModule[activeSkill]];
   const tefModuleMeta = TEF_MODULE_REGISTRY[skillToTefModule[activeSkill]];
   const isTcf = profile.targetExam === "TCF";
+  const moduleMeta = isTcf ? tcfModuleMeta.meta : tefModuleMeta.meta;
+  const examLabel = isTcf ? "TCF" : "TEF";
+
+  const skillFlashcard = {
+    reading: {
+      Icon: BookOpen,
+      accent: "border-[#FCE1CA] bg-[#FDF8F3]",
+      badge: "bg-[#FDF3E7] text-[#9A5013] border-[#FCE1CA]",
+      iconWrap: "bg-[#FDF3E7] text-[#9A5013]",
+      button: "bg-[#9A5013] hover:bg-[#7A4010] text-white",
+      pill: "bg-white/80 text-[#9A5013] border-[#FCE1CA]",
+    },
+    listening: {
+      Icon: Headphones,
+      accent: "border-[#D1EBE1] bg-[#F5FAF8]",
+      badge: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]",
+      iconWrap: "bg-[#EAF5F1] text-[#2D6A53]",
+      button: "bg-[#2D6A53] hover:bg-[#204E3C] text-white",
+      pill: "bg-white/80 text-[#2D6A53] border-[#D1EBE1]",
+    },
+    speaking: {
+      Icon: Mic,
+      accent: "border-[#F8D4DE] bg-[#FDF6F8]",
+      badge: "bg-[#FCECF0] text-[#B83E5C] border-[#F8D4DE]",
+      iconWrap: "bg-[#FCECF0] text-[#B83E5C]",
+      button: "bg-[#B83E5C] hover:bg-[#9A3350] text-white",
+      pill: "bg-white/80 text-[#B83E5C] border-[#F8D4DE]",
+    },
+    writing: {
+      Icon: PenTool,
+      accent: "border-[#D2E7F6] bg-[#F5F9FD]",
+      badge: "bg-[#E8F3FC] text-[#1D74B4] border-[#D2E7F6]",
+      iconWrap: "bg-[#E8F3FC] text-[#1D74B4]",
+      button: "bg-[#1D74B4] hover:bg-[#155A8F] text-white",
+      pill: "bg-white/80 text-[#1D74B4] border-[#D2E7F6]",
+    },
+  }[activeSkill];
+
+  const SkillIcon = skillFlashcard.Icon;
+
+  const formatMeta =
+    moduleMeta.questionCount != null
+      ? `${moduleMeta.questionCount} questions (+1/0)`
+      : moduleMeta.sections
+        ? `${moduleMeta.sections.length === 2 ? "Sections A & B" : `${moduleMeta.sections.length} tasks`}`
+        : null;
 
   return (
     <div id="practice-tab" className="space-y-6 animate-fade-in text-[#37352F]">
@@ -306,57 +352,61 @@ export default function PracticeTab({
         </div>
       )}
 
-      {isTcf ? (
-        <div className="bg-[#EBF3FC] border border-[#D2E7F6] rounded-xl p-5 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
-          <div>
-            <p className="text-[10px] font-bold uppercase text-[#1D74B4] tracking-wide">
-              Full TCF module
-            </p>
-            <h3 className="text-sm font-bold text-[#1E3A8A] mt-1">
-              {tcfModuleMeta.meta.labelFr}
+      <div
+        className={`rounded-2xl border shadow-premium overflow-hidden ${skillFlashcard.accent}`}
+      >
+        <div className="p-6 sm:p-7 space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <span
+              className={`text-[9px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full border ${skillFlashcard.badge}`}
+            >
+              Full {examLabel} module
+            </span>
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${skillFlashcard.iconWrap}`}
+            >
+              <SkillIcon className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold tracking-tight text-[#37352F]">
+              {moduleMeta.labelFr}
             </h3>
-            <p className="text-xs text-[#3B4C7C] mt-1 max-w-xl">
-              {tcfModuleMeta.meta.objective} — {tcfModuleMeta.meta.durationMinutes} min
-              {tcfModuleMeta.meta.questionCount
-                ? ` · ${tcfModuleMeta.meta.questionCount} questions (+1/0)`
-                : tcfModuleMeta.meta.sections
-                ? ` · ${tcfModuleMeta.meta.sections.length} tasks`
-                : ""}
+            <p className="text-sm text-[#5F5E5B] leading-relaxed max-w-2xl">
+              {moduleMeta.objective}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={startFullModule}
-            className="px-4 py-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white text-xs font-bold rounded-lg cursor-pointer shrink-0"
-          >
-            Start full module
-          </button>
-        </div>
-      ) : (
-        <div className="bg-[#EEEFFC] border border-[#DDE0FA] rounded-xl p-5 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
-          <div>
-            <p className="text-[10px] font-bold uppercase text-[#4A55A2] tracking-wide">
-              Full TEF module
-            </p>
-            <h3 className="text-sm font-bold text-[#3D4A8C] mt-1">
-              {tefModuleMeta.meta.labelFr}
-            </h3>
-            <p className="text-xs text-[#5A6199] mt-1 max-w-xl">
-              {tefModuleMeta.meta.objective} — {tefModuleMeta.meta.durationMinutes} min
-              {tefModuleMeta.meta.questionCount
-                ? ` · ${tefModuleMeta.meta.questionCount} questions (+1/0)`
-                : " · Sections A & B"}
-            </p>
+
+          <div className="flex flex-wrap gap-2">
+            <span
+              className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${skillFlashcard.pill}`}
+            >
+              {moduleMeta.durationMinutes} min
+            </span>
+            {formatMeta && (
+              <span
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${skillFlashcard.pill}`}
+              >
+                {formatMeta}
+              </span>
+            )}
+            <span
+              className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${skillFlashcard.pill}`}
+            >
+              Timed practice
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={startFullModule}
-            className="px-4 py-2 bg-[#4A55A2] hover:bg-[#3D4A8C] text-white text-xs font-bold rounded-lg cursor-pointer shrink-0"
-          >
-            Start full module
-          </button>
         </div>
-      )}
+
+        <button
+          type="button"
+          onClick={startFullModule}
+          className={`w-full py-3.5 text-sm font-bold tracking-wide transition-colors cursor-pointer ${skillFlashcard.button}`}
+        >
+          Start Test
+        </button>
+      </div>
     </div>
   );
 }

@@ -26,6 +26,8 @@ _EXPECTED_WRITING_SECTIONS = {
     "TEF": 2,
 }
 
+from services.streak_service import record_practice_day
+
 router = APIRouter(tags=["practice"])
 
 
@@ -54,6 +56,7 @@ async def complete_exercise(
     db.table("completed_exercises").insert(
         {"user_id": profile["id"], "exercise_id": exercise_id}
     ).execute()
+    record_practice_day(db, profile)
     return {"message": "Exercise marked complete."}
 
 

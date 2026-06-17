@@ -3,6 +3,7 @@ from typing import List, Literal, Optional, Any
 from pydantic import BaseModel, Field
 from database import get_db
 from dependencies import get_profile
+from services.streak_service import record_practice_day
 
 router = APIRouter(tags=["exams"])
 
@@ -56,6 +57,7 @@ async def post_score(
         )
         .execute()
     )
+    record_practice_day(db, profile)
     return result.data[0]
 
 
@@ -85,4 +87,5 @@ async def post_module_score(
         )
         .execute()
     )
+    record_practice_day(db, profile)
     return result.data[0]

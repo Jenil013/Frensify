@@ -10,6 +10,12 @@ import type { CefrLevel } from "../tefConstants";
 
 const CEFR_LEVELS: CefrLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
+function defaultExamDateInput(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 2);
+  return d.toISOString().split("T")[0];
+}
+
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -23,6 +29,7 @@ export default function OnboardingPage() {
   const [targetExam, setTargetExam] = useState<ExamPathway>("TEF");
   const [currentLevel, setCurrentLevel] = useState<CefrLevel>("B1");
   const [targetScore, setTargetScore] = useState<CefrLevel>("B2");
+  const [examDate, setExamDate] = useState(defaultExamDateInput);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,6 +49,7 @@ export default function OnboardingPage() {
         target_exam: targetExam,
         current_level: currentLevel,
         target_score: targetScore,
+        exam_date: examDate || null,
       });
       setCachedProfile(updated);
       navigate("/app", { replace: true });
@@ -151,6 +159,22 @@ export default function OnboardingPage() {
               </select>
             </label>
           </div>
+
+          <label className="block">
+            <span className="text-xs font-semibold text-[#5F5E5B] uppercase tracking-wide">
+              Exam date
+            </span>
+            <input
+              type="date"
+              value={examDate}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) => setExamDate(e.target.value)}
+              className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[#E9E9E7] text-sm focus:outline-none focus:ring-2 focus:ring-[#002D62]/20 focus:border-[#002D62]"
+            />
+            <p className="mt-1 text-[11px] text-[#7A7A78]">
+              We will count down the days until your official exam on your dashboard.
+            </p>
+          </label>
 
           {error && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 space-y-1">

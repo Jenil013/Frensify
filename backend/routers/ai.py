@@ -22,6 +22,7 @@ from services.gemini_service import (
     explain_vocab,
 )
 from services.usage_service import increment, write_audit_log
+from services.streak_service import record_practice_day
 from config import settings
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -59,6 +60,7 @@ async def writing_practice(
     }).execute()
     increment(db, profile["id"], _monday(), "writing_eval")
     write_audit_log(db, profile["id"], "writing_eval", "practice")
+    record_practice_day(db, profile)
     return feedback
 
 
@@ -86,6 +88,7 @@ async def writing_mock(
         "score_range": feedback.scoreRange,
     }).execute()
     write_audit_log(db, profile["id"], "writing_eval", "mock")
+    record_practice_day(db, profile)
     return feedback
 
 
@@ -139,6 +142,7 @@ def _run_writing_module_eval(
     if context == "practice":
         increment(db, profile["id"], _monday(), "writing_eval")
     write_audit_log(db, profile["id"], "writing_eval", context)
+    record_practice_day(db, profile)
     return WritingModuleEvalResponse(sections=section_results)
 
 
@@ -275,6 +279,7 @@ def _run_speaking_module_eval(
     if context == "practice":
         increment(db, profile["id"], _monday(), "speaking_eval")
     write_audit_log(db, profile["id"], "speaking_eval", context)
+    record_practice_day(db, profile)
     return SpeakingModuleEvalResponse(sections=section_results)
 
 
@@ -360,6 +365,7 @@ async def speaking_practice(
     }).execute()
     increment(db, profile["id"], _monday(), "speaking_eval")
     write_audit_log(db, profile["id"], "speaking_eval", "practice")
+    record_practice_day(db, profile)
     return feedback
 
 
@@ -381,6 +387,7 @@ async def speaking_mock(
         "cefr_level": feedback.cefrLevel,
     }).execute()
     write_audit_log(db, profile["id"], "speaking_eval", "mock")
+    record_practice_day(db, profile)
     return feedback
 
 

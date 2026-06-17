@@ -1,19 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Trophy, BookOpen, Headphones, PenTool, Mic, TrendingUp, 
-  Settings, CreditCard, Shield, Sparkles, User, GraduationCap, Flame, Star, Zap, LogOut
+  Trophy, BookOpen, CreditCard, User, GraduationCap, Flame, Zap, LogOut
 } from "lucide-react";
 
 import {
   UserProfile,
   UserSubscriptionTier,
-  ExerciseItem,
   FullExamReport,
   TcfMockModuleResult,
   TcfModuleId,
 } from "./types";
-import { SAMPLE_EXERCISES } from "./constants";
 import { useAuth } from "./contexts/AuthContext";
 import { useApiProfile } from "./hooks/useApiProfile";
 import {
@@ -21,6 +18,7 @@ import {
   postMockTestScore,
   postModuleScore,
 } from "./lib/apiClient";
+import { examCountdownPhrase, formatStreakLabel } from "./lib/examDate";
 import AuthLoadingScreen from "./components/auth/AuthLoadingScreen";
 
 // Import tabs
@@ -28,7 +26,6 @@ import DashboardTab from "./components/DashboardTab";
 import PracticeTab from "./components/PracticeTab";
 import ExamsTab from "./components/ExamsTab";
 import VocabularyTab from "./components/VocabularyTab";
-import AnalyticsTab from "./components/AnalyticsTab";
 import PricingTab from "./components/PricingTab";
 import AccountTab from "./components/AccountTab";
 import FrensifyLogo from "./components/FrensifyLogo";
@@ -57,8 +54,6 @@ export default function App() {
   });
   const [profileOverrides, setProfileOverrides] = useState<Partial<UserProfile>>({});
   const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
-  const [activeExerciseToLaunch, setActiveExerciseToLaunch] =
-    useState<ExerciseItem | null>(null);
   const [vocabNav, setVocabNav] = useState<{
     mode: "review" | "browse";
     category?: string;
@@ -136,7 +131,9 @@ export default function App() {
       scorePct,
       cefr,
       moduleBreakdown,
-    }).catch(() => {});
+    })
+      .then(() => refresh())
+      .catch(() => {});
   };
 
   const handleSaveModuleScore = (
@@ -167,32 +164,9 @@ export default function App() {
       rawScore,
       maxScore,
       examContext: context,
-    }).catch(() => {});
-  };
-
-  const handleNavigateToVocabulary = (
-    mode: "review" | "browse" = "review",
-    options?: { category?: string; categories?: string[] }
-  ) => {
-    setVocabNav({
-      mode,
-      category: options?.category,
-      categories: options?.categories,
-    });
-    setActiveTab("vocabulary");
-  };
-
-  const handleStartExerciseInPracticeTab = (ex: ExerciseItem) => {
-    setActiveTab("practice");
-    setTimeout(() => {
-      const practiceEl = document.getElementById("practice-tab");
-      if (practiceEl) {
-        const drillBtn = document.getElementById("btn-start-recommended");
-        if (drillBtn) {
-          // Trigger handled cleanly inside component by selecting the recommended exercise
-        }
-      }
-    }, 50);
+    })
+      .then(() => refresh())
+      .catch(() => {});
   };
 
   if (profileError) {
@@ -214,9 +188,7 @@ export default function App() {
     return <AuthLoadingScreen message="Loading your workspace…" />;
   }
 
-  const recommendedExercise = SAMPLE_EXERCISES.find(
-    ex => ex.examType === profile.targetExam && ex.skill === "speaking"
-  ) || SAMPLE_EXERCISES[0];
+  const examCountdown = examCountdownPhrase(profile.targetExam, profile.examDate);
 
   return (
     <div className="flex min-h-screen bg-white text-[#37352F] font-sans selection:bg-[#E3E2E0]/70">
@@ -237,7 +209,6 @@ export default function App() {
               { id: "practice", label: "Practice Drills", icon: BookOpen },
               { id: "exams", label: "Full Simulations", icon: GraduationCap },
               { id: "vocabulary", label: "Vocabulary Builder", icon: Zap },
-              { id: "analytics", label: "Diagnostic Trends", icon: TrendingUp },
               { id: "pricing", label: "Subscription Pricing", icon: CreditCard },
               { id: "account", label: "Candidate Settings", icon: User },
             ].map((tab) => {
@@ -321,7 +292,14 @@ export default function App() {
               Bonjour, {profile.name}
             </h1>
             <p className="text-xs text-[#7A7A78] mt-0.5">
-              Aujourd'hui &bull; Your official {profile.targetExam} pathway examination is in <strong className="text-[#37352F]">42 days</strong>
+              {examCountdown.prefix}
+              {examCountdown.highlight ? (
+                <>
+                  {" "}
+                  <strong className="text-[#37352F]">{examCountdown.highlight}</strong>
+                </>
+              ) : null}
+              {examCountdown.suffix ? ` ${examCountdown.suffix}` : null}
             </p>
           </div>
 
@@ -329,7 +307,7 @@ export default function App() {
             <div className="text-right shrink-0">
               <span className="text-[9px] uppercase tracking-wider text-[#7A7A78] font-bold block">Current streak</span>
               <p className="text-sm font-bold text-[#37352F] flex items-center gap-1.5">
-                {profile.streakDays} Days <Flame className="w-4 h-4 text-[#F97316] fill-[#F97316]" />
+                {formatStreakLabel(profile.streakDays)} <Flame className="w-4 h-4 text-[#F97316] fill-[#F97316]" />
               </p>
             </div>
 
@@ -353,11 +331,9 @@ export default function App() {
         {/* TAB CONDITIONAL RENDERING */}
         <div id="workspace-view">
           {activeTab === "dashboard" && (
-            <DashboardTab 
+            <DashboardTab
               profile={profile}
               onNavigate={(tab) => setActiveTab(tab)}
-              onStartExercise={handleStartExerciseInPracticeTab}
-              recommendedExercise={recommendedExercise}
             />
           )}
 
@@ -385,14 +361,6 @@ export default function App() {
               initialCategory={vocabNav.category}
               initialCategories={vocabNav.categories}
               onNavigateToPricing={() => setActiveTab("pricing")}
-            />
-          )}
-
-          {activeTab === "analytics" && (
-            <AnalyticsTab 
-              profile={profile}
-              completedCount={profile.completedActivities.length}
-              onNavigateToVocabulary={handleNavigateToVocabulary}
             />
           )}
 

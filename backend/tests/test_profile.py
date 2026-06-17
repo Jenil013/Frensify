@@ -20,3 +20,16 @@ def test_patch_profile(client, auth_headers, mock_profile, mock_db):
     )
     assert response.status_code == 200
     assert response.json()["name"] == "Updated Name"
+
+
+def test_patch_profile_exam_date(client, auth_headers, mock_profile, mock_db):
+    updated = {**mock_profile, "exam_date": "2026-09-15"}
+    mock_db.table.return_value.update.return_value.eq.return_value.execute.return_value = \
+        MagicMock(data=[updated])
+    response = client.patch(
+        "/api/v1/profile",
+        headers=auth_headers,
+        json={"exam_date": "2026-09-15"},
+    )
+    assert response.status_code == 200
+    assert response.json()["exam_date"] == "2026-09-15"

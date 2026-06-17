@@ -9,6 +9,9 @@ import {
 } from "../tefConstants";
 import TefGradingScheme from "./tef/TefGradingScheme";
 import TefScoreEquivalenceTable from "./tef/TefScoreEquivalenceTable";
+import { updateProfile } from "../lib/apiClient";
+import { useApiProfile } from "../hooks/useApiProfile";
+import { daysUntilExamDate } from "../lib/examDate";
 
 interface AccountTabProps {
   profile: UserProfile;
@@ -19,28 +22,50 @@ export default function AccountTab({
   profile,
   onUpdateProfile,
 }: AccountTabProps) {
+  const { setProfile: setCachedProfile } = useApiProfile();
   const [name, setName] = useState(profile.name);
   const [preferredExam, setPreferredExam] = useState<ExamPathway>(profile.targetExam);
   const [motivation, setMotivation] = useState("Canada Immigration (Express Entry)");
   const [targetLevel, setTargetLevel] = useState<CefrLevel>(
     parseCefrTarget(profile.targetScore)
   );
+  const [examDate, setExamDate] = useState(profile.examDate ?? "");
   const [showToast, setShowToast] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     setTargetLevel(parseCefrTarget(profile.targetScore));
-  }, [profile.targetScore]);
+    setExamDate(profile.examDate ?? "");
+  }, [profile.targetScore, profile.examDate]);
 
   const selectedTargetMeta = TEF_TARGET_OPTIONS.find((o) => o.value === targetLevel);
+  const daysRemaining = examDate ? daysUntilExamDate(examDate) : null;
 
-  const handleSave = () => {
-    onUpdateProfile({
-      name,
-      targetExam: preferredExam,
-      targetScore: targetLevel,
-    });
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+  const handleSave = async () => {
+    setSaveError(null);
+    setSaving(true);
+    try {
+      const updated = await updateProfile({
+        name: name.trim() || undefined,
+        target_exam: preferredExam,
+        target_score: targetLevel,
+        exam_date: examDate || null,
+      });
+      setCachedProfile(updated);
+      onUpdateProfile({
+        name,
+        targetExam: preferredExam,
+        targetScore: targetLevel,
+        examDate: examDate || null,
+      });
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save profile.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -126,7 +151,37 @@ export default function AccountTab({
                 </p>
               )}
             </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] block">
+                Official exam date
+              </label>
+              <input
+                type="date"
+                value={examDate}
+                onChange={(e) => setExamDate(e.target.value)}
+                className="w-full text-xs px-3 py-2 bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg outline-none focus:border-[#1A73E8] focus:bg-white text-[#37352F]"
+              />
+              {daysRemaining !== null && daysRemaining >= 0 && (
+                <p className="text-[10px] text-[#7A7A78]">
+                  {daysRemaining === 0
+                    ? "Your exam is today."
+                    : `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining.`}
+                </p>
+              )}
+              {daysRemaining !== null && daysRemaining < 0 && (
+                <p className="text-[10px] text-[#7A7A78]">
+                  This date is in the past — update it if you have a new sitting scheduled.
+                </p>
+              )}
+            </div>
           </div>
+
+          {saveError && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {saveError}
+            </div>
+          )}
 
           {showToast && (
             <div className="bg-[#EAF5F1] border border-[#D1EBE1] text-xs p-3.5 rounded-lg text-[#2D6A53] flex gap-2 items-center animate-fade-in font-mono">
@@ -140,10 +195,11 @@ export default function AccountTab({
           <div className="pt-2 flex justify-end">
             <button
               id="btn-save-profile"
-              onClick={handleSave}
-              className="px-4 py-2 bg-[#2D6A53] hover:bg-[#204E3C] text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+              onClick={() => void handleSave()}
+              disabled={saving}
+              className="px-4 py-2 bg-[#2D6A53] hover:bg-[#204E3C] text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer disabled:opacity-60"
             >
-              Save Profile Configuration
+              {saving ? "Saving…" : "Save Profile Configuration"}
             </button>
           </div>
         </div>
@@ -160,8 +216,10 @@ export default function AccountTab({
 
               <div className="text-xs text-[#5F5E5B] leading-relaxed font-mono space-y-1">
                 <p><strong>Candidate:</strong> {profile.email}</p>
-                <p><strong>Examiner Locale:</strong> FR Paris GMT+1</p>
                 <p><strong>CEFR Target:</strong> {getTefTargetLabel(parseCefrTarget(profile.targetScore))}</p>
+                {profile.examDate && (
+                  <p><strong>Exam date:</strong> {profile.examDate}</p>
+                )}
               </div>
             </div>
           </div>

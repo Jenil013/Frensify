@@ -1,52 +1,65 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ChevronRight, ArrowUpRight } from "lucide-react";
-import { UserProfile, ExerciseItem } from "../types";
-import { fetchRecentTests, type RecentTestItem } from "../lib/apiClient";
+import { UserProfile } from "../types";
+import {
+  fetchRecentTests,
+  fetchModuleAccuracy,
+  type ModuleAccuracyEntry,
+  type RecentTestItem,
+} from "../lib/apiClient";
 import { formatTakenDate, scorePillClass } from "../utils/recentTests";
 import { TCF_MODULE_REGISTRY } from "../tcfConstants";
-import { TEF_MODULE_REGISTRY } from "../tefConstants";
+import {
+  TEF_MODULE_REGISTRY,
+  cefrProgressPercent,
+  parseCefrTarget,
+  type CefrLevel,
+} from "../tefConstants";
+import {
+  DASHBOARD_MODULE_ORDER,
+  countModulesAtTarget,
+  getWeakestModule,
+} from "../lib/learningInsights";
 
-const MODULE_ORDER = [
-  "comprehension-orale",
-  "comprehension-ecrite",
-  "expression-ecrite",
-  "expression-orale",
-] as const;
+const MODULE_ORDER = DASHBOARD_MODULE_ORDER;
 
 type ModuleKey = (typeof MODULE_ORDER)[number];
 
 const SKILL_STYLE: Record<ModuleKey, {
-  pct: number;
-  cefr: string;
   badgeClass: string;
   barFrom: string;
   barTo: string;
   glow: string;
 }> = {
   "comprehension-orale": {
-    pct: 90, cefr: "C1",
     badgeClass: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]",
     barFrom: "#2D6A53", barTo: "#4CAF82",
     glow: "rgba(45,106,83,0.35)",
   },
   "comprehension-ecrite": {
-    pct: 72, cefr: "B2",
     badgeClass: "bg-[#FDF3E7] text-[#9A5013] border-[#FCE1CA]",
     barFrom: "#9A5013", barTo: "#D4873C",
     glow: "rgba(154,80,19,0.35)",
   },
   "expression-ecrite": {
-    pct: 85, cefr: "C1",
     badgeClass: "bg-[#E8F3FC] text-[#1D74B4] border-[#D2E7F6]",
     barFrom: "#1D74B4", barTo: "#4AAEE0",
     glow: "rgba(29,116,180,0.35)",
   },
   "expression-orale": {
-    pct: 60, cefr: "B1",
     badgeClass: "bg-[#FCECF0] text-[#B83E5C] border-[#F8D4DE]",
     barFrom: "#B83E5C", barTo: "#E07090",
     glow: "rgba(184,62,92,0.35)",
   },
+};
+
+const CEFR_BADGE: Record<string, string> = {
+  A1: "bg-[#F1F1EF] text-[#5F5E5B] border-[#E9E9E7]",
+  A2: "bg-[#F1F1EF] text-[#5F5E5B] border-[#E9E9E7]",
+  B1: "bg-[#FCECF0] text-[#B83E5C] border-[#F8D4DE]",
+  B2: "bg-[#FDF3E7] text-[#9A5013] border-[#FCE1CA]",
+  C1: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]",
+  C2: "bg-[#E8F3FC] text-[#1D74B4] border-[#D2E7F6]",
 };
 
 type RegistryMeta = {
@@ -63,27 +76,162 @@ function getModuleSuffix(meta: RegistryMeta): string {
   return count === 2 ? "(A+B)" : `(${count} tâches)`;
 }
 
+function moduleLabels(
+  registry: Record<string, { meta: RegistryMeta }>
+): Record<string, string> {
+  return Object.fromEntries(
+    MODULE_ORDER.map((id) => [
+      id,
+      `${registry[id].meta.labelFr} ${getModuleSuffix(registry[id].meta)}`,
+    ])
+  );
+}
+
+interface DashboardFocusCardProps {
+  loading: boolean;
+  focus: ReturnType<typeof getWeakestModule>;
+  badgeClass: string;
+  onPractice: () => void;
+}
+
+function DashboardFocusCard({
+  loading,
+  focus,
+  badgeClass,
+  onPractice,
+}: DashboardFocusCardProps) {
+  return (
+    <div
+      id="focus-widget"
+      className="lg:col-span-8 bg-white border border-[#E9E9E7] rounded-2xl p-6 flex flex-col justify-between min-h-[260px] shadow-premium"
+    >
+      <div className="space-y-3">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78]">
+          Today&apos;s focus
+        </span>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-xl font-bold tracking-tight text-[#37352F]">
+            {loading ? "…" : focus.label}
+          </h2>
+          <span
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border shrink-0 ${badgeClass}`}
+          >
+            {loading ? "…" : focus.cefr}
+          </span>
+        </div>
+        <p className="text-xs text-[#5F5E5B] leading-relaxed max-w-xl">
+          {loading ? "Loading your practice insights…" : focus.insight}
+        </p>
+        {!loading && focus.hasData && (
+          <p className="text-[11px] text-[#7A7A78]">
+            Recent accuracy estimate:{" "}
+            <span className="font-semibold text-[#37352F]">{focus.pct}%</span>
+            <span className="text-[#B0B0AE]"> · based on your last sessions</span>
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-4 items-center justify-between pt-4 border-t border-[#F1F1EF] mt-4">
+        <button
+          type="button"
+          id="btn-practice-focus"
+          onClick={onPractice}
+          className="px-4 py-2 bg-[#2D6A53] hover:bg-[#204E3C] text-white rounded-lg font-bold transition-all flex items-center gap-2 text-xs shadow-sm cursor-pointer"
+        >
+          Practice this module <ChevronRight className="w-4 h-4" />
+        </button>
+        <span className="text-[11px] text-[#7A7A78]">
+          {profilePathHint(focus.moduleId)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function profilePathHint(moduleId: ModuleKey): string {
+  if (moduleId === "comprehension-orale" || moduleId === "comprehension-ecrite") {
+    return "Timed MCQ · +1/0 scoring";
+  }
+  return "AI-evaluated · exam rubric";
+}
+
+interface DashboardPathCardProps {
+  loading: boolean;
+  targetLabel: CefrLevel;
+  currentLabel: CefrLevel;
+  trajectoryPct: number;
+  modulesAtTarget: number;
+  totalModules: number;
+}
+
+function DashboardPathCard({
+  loading,
+  targetLabel,
+  currentLabel,
+  trajectoryPct,
+  modulesAtTarget,
+  totalModules,
+}: DashboardPathCardProps) {
+  return (
+    <div
+      id="path-widget"
+      className="lg:col-span-4 bg-white border border-[#E9E9E7] rounded-2xl p-6 flex flex-col gap-5 shadow-premium"
+    >
+      <div className="space-y-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78]">
+          Path to {targetLabel}
+        </span>
+        <p className="text-[11px] text-[#9B9A97]">
+          From {currentLabel} toward your target band
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-[#7A7A78] mb-2">
+            <span>Level trajectory</span>
+            <span className="text-[#37352F]">
+              {loading ? "…" : `${trajectoryPct}%`}
+            </span>
+          </div>
+          <div className="h-2 w-full bg-[#F1F1EF] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#2D6A53] rounded-full transition-all duration-700 ease-out"
+              style={{ width: loading ? "0%" : `${trajectoryPct}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-[#9B9A97] mt-1.5">
+            Estimate from your stated current and target levels — not a guarantee.
+          </p>
+        </div>
+
+        <p className="text-xs text-[#5F5E5B]">
+          <span className="font-semibold text-[#37352F]">
+            {loading ? "…" : `${modulesAtTarget} of ${totalModules}`}
+          </span>{" "}
+          modules at or above {targetLabel}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 interface DashboardTabProps {
   profile: UserProfile;
   onNavigate: (tab: string) => void;
-  onStartExercise: (exercise: ExerciseItem) => void;
-  recommendedExercise: ExerciseItem;
 }
 
 export default function DashboardTab({
   profile,
   onNavigate,
-  onStartExercise,
-  recommendedExercise,
 }: DashboardTabProps) {
-  // Calculate average score for display
-  const averageScore = profile.mockTestScores.length > 0
-    ? Math.round(profile.mockTestScores.reduce((acc, curr) => acc + curr.scorePct, 0) / profile.mockTestScores.length)
-    : 84;
-
   const [animated, setAnimated] = useState(false);
   const [recentTests, setRecentTests] = useState<RecentTestItem[]>([]);
   const [recentTestsLoading, setRecentTestsLoading] = useState(true);
+  const [moduleAccuracy, setModuleAccuracy] = useState<
+    Record<string, ModuleAccuracyEntry> | null
+  >(null);
+  const [accuracyLoading, setAccuracyLoading] = useState(true);
 
   useEffect(() => {
     setAnimated(false);
@@ -99,20 +247,59 @@ export default function DashboardTab({
       .finally(() => setRecentTestsLoading(false));
   }, [profile.targetExam]);
 
+  useEffect(() => {
+    setAccuracyLoading(true);
+    void fetchModuleAccuracy(profile.targetExam)
+      .then(setModuleAccuracy)
+      .catch(() => setModuleAccuracy(null))
+      .finally(() => setAccuracyLoading(false));
+  }, [profile.targetExam]);
+
   const registry = (
     profile.targetExam === "TEF" ? TEF_MODULE_REGISTRY : TCF_MODULE_REGISTRY
   ) as Record<string, { meta: RegistryMeta }>;
 
+  const labels = useMemo(
+    () =>
+      moduleLabels(
+        (profile.targetExam === "TEF"
+          ? TEF_MODULE_REGISTRY
+          : TCF_MODULE_REGISTRY) as Record<string, { meta: RegistryMeta }>
+      ),
+    [profile.targetExam]
+  );
+
+  const targetLabel = parseCefrTarget(profile.targetScore);
+  const currentLabel = parseCefrTarget(profile.currentLevel);
+  const trajectoryPct = cefrProgressPercent(currentLabel, targetLabel);
+
+  const focus = useMemo(
+    () => getWeakestModule(moduleAccuracy, labels, profile.targetScore),
+    [moduleAccuracy, labels, profile.targetScore]
+  );
+
+  const modulesAtTarget = useMemo(
+    () => countModulesAtTarget(moduleAccuracy, profile.targetScore),
+    [moduleAccuracy, profile.targetScore]
+  );
+
+  const focusBadgeClass =
+    CEFR_BADGE[focus.cefr] ?? SKILL_STYLE[focus.moduleId].badgeClass;
+
   const skillData = MODULE_ORDER.map((id) => {
     const mod = registry[id];
     const style = SKILL_STYLE[id];
+    const accuracy = moduleAccuracy?.[id];
+    const pct = accuracy?.hasData ? (accuracy.accuracyPct ?? 0) : 0;
+    const cefr = accuracy?.hasData ? (accuracy.cefr ?? "A1") : "A1";
+    const badgeClass = CEFR_BADGE[cefr] ?? style.badgeClass;
     return {
       id,
-      name: `${mod.meta.labelFr} ${getModuleSuffix(mod.meta)}`,
+      name: labels[id],
       description: mod.meta.objective,
-      cefr: style.cefr,
-      pct: style.pct,
-      badgeClass: style.badgeClass,
+      cefr,
+      pct,
+      badgeClass,
       barFrom: style.barFrom,
       barTo: style.barTo,
       glow: style.glow,
@@ -121,94 +308,22 @@ export default function DashboardTab({
 
   return (
     <div id="dashboard-tab" className="space-y-6 animate-fade-in text-[#37352F]">
-      
-      {/* Recommended Action & Score Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Recommended Action Widget (Attio/Notion Callout style) */}
-        <div id="hero-widget" className="lg:col-span-8 bg-[#EBF3FC] rounded-2xl p-6 border border-[#D2E7F6] flex flex-col justify-between min-h-[260px] relative overflow-hidden shadow-premium">
-          <div className="space-y-3 relative z-10">
-            <div className="flex items-center gap-2">
-              <span className="bg-white/95 text-[#1D74B4] border border-[#CCE2F4] px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase">
-                RECOMMENDED DAILY SYLLABUS
-              </span>
-              <span className="bg-[#E4E4E7] text-[#3F3F46] border border-[#D4D4D8] text-[9px] px-2 py-0.5 rounded font-bold uppercase">
-                {recommendedExercise.difficulty} MODE
-              </span>
-            </div>
-            
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-[#1E3A8A]">
-              {recommendedExercise.title}
-            </h2>
-            <p className="text-[#3B4C7C] text-xs leading-relaxed max-w-xl">
-              {recommendedExercise.skill === "speaking" 
-                ? "TCF oral module: Section A (5 min, obtain info) and Section B (10 min, convince). Practice full 15-minute format."
-                : "TCF reading module: 39 MCQs in 60 minutes with +1/0 scoring. Run a full module from Practice or Simulations."}
-            </p>
-          </div>
-          
-          <div className="relative z-10 flex flex-wrap gap-4 items-center justify-between pt-4 border-t border-[#1D74B4]/10 mt-4">
-            <button
-              id="btn-start-recommended"
-              onClick={() => onStartExercise(recommendedExercise)}
-              className="px-4 py-2 bg-[#1A73E8] hover:bg-[#1557B0] active:translate-y-[1px] text-white rounded-lg font-bold transition-all flex items-center gap-2 text-xs shadow-sm cursor-pointer"
-            >
-              Launch Drill Workspace <ChevronRight className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-3 text-[11px] text-[#55698B] font-medium">
-              <span>⏱️ Timed : {recommendedExercise.durationMinutes} min</span>
-              <span>•</span>
-              <span className="capitalize">{recommendedExercise.skill} criteria tracker</span>
-            </div>
-          </div>
-          
-          {/* Subtle decor representing Notion curves */}
-          <div className="absolute right-0 bottom-0 w-32 h-32 bg-[#D1E6F9]/30 rounded-full blur-2xl pointer-events-none"></div>
-        </div>
 
-        {/* Readiness Index */}
-        <div id="readiness-widget" className="lg:col-span-4 bg-white border border-[#E9E9E7] rounded-2xl p-6 flex flex-col items-center justify-between shadow-premium">
-          <div className="text-center w-full pb-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78]">ESTIMATED CANADIAN CLB INDEX</span>
-            <p className="text-[11px] text-[#7A7A78] mt-0.5">Continuous evaluation database</p>
-          </div>
-
-          <div className="relative w-32 h-32 flex items-center justify-center my-2">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle
-                cx="64"
-                cy="64"
-                r="52"
-                stroke="#F1F1EF"
-                strokeWidth="8"
-                fill="transparent"
-              />
-              <circle
-                cx="64"
-                cy="64"
-                r="52"
-                stroke="#10B981"
-                strokeWidth="8"
-                fill="transparent"
-                strokeDasharray="327"
-                strokeDashoffset={327 - (327 * averageScore) / 100}
-                strokeLinecap="round"
-                className="transition-all duration-1000 ease-out"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold tracking-tight text-[#37352F]">{averageScore}%</span>
-              <span className="text-[9px] text-[#10B981] font-bold uppercase tracking-widest mt-0.5">READY</span>
-            </div>
-          </div>
-
-          <div className="text-center mt-2">
-            <p className="text-[11px] text-[#5F5E5B] italic leading-normal px-2">
-              You are within the C1 band of {profile.targetExam} criteria. Secure consistency over basic auxiliary prepositions.
-            </p>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:items-start">
+        <DashboardFocusCard
+          loading={accuracyLoading}
+          focus={focus}
+          badgeClass={focusBadgeClass}
+          onPractice={() => onNavigate("practice")}
+        />
+        <DashboardPathCard
+          loading={accuracyLoading}
+          targetLabel={targetLabel}
+          currentLabel={currentLabel}
+          trajectoryPct={trajectoryPct}
+          modulesAtTarget={modulesAtTarget}
+          totalModules={MODULE_ORDER.length}
+        />
       </div>
 
       {/* Module skill cards — dynamic TEF/TCF */}
@@ -223,7 +338,7 @@ export default function DashboardTab({
                 {skill.name}
               </span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border shrink-0 ${skill.badgeClass}`}>
-                {skill.cefr}
+                {accuracyLoading ? "…" : skill.cefr}
               </span>
             </div>
 
@@ -232,8 +347,12 @@ export default function DashboardTab({
             </p>
 
             <div className="flex items-baseline gap-1.5 mb-2.5">
-              <span className="text-2xl font-extrabold text-[#37352F] leading-none">{skill.pct}%</span>
-              <span className="text-[9px] text-[#B0B0AE] uppercase font-bold tracking-wide">Accuracy</span>
+              <span className="text-2xl font-extrabold text-[#37352F] leading-none">
+                {accuracyLoading ? "…" : `${skill.pct}%`}
+              </span>
+              <span className="text-[9px] text-[#B0B0AE] uppercase font-bold tracking-wide">
+                Accuracy
+              </span>
             </div>
 
             <div className="h-[7px] w-full bg-[#F1F1EF] rounded-full overflow-hidden">
@@ -262,6 +381,7 @@ export default function DashboardTab({
             </p>
           </div>
           <button
+            type="button"
             onClick={() => onNavigate("exams")}
             className="text-[11px] font-bold text-[#1A73E8] hover:underline flex items-center gap-1"
           >

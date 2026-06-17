@@ -38,7 +38,7 @@ export type { VocabExplanation } from "./types";
  *    ---------------------------------------------------------
  * 
  * 2. SUPABASE TABLE SCHEMAS (Suggested):
- *    - profiles: { id_user (uuid, fk auth), name (text), target_exam (text), target_score (text), streak_days (int) }
+ *    - profiles: { id_user (uuid, fk auth), name (text), target_exam (text), target_score (text), exam_date (date), streak_days (int) }
  *    - completed_exercises: { id (uuid), user_id (uuid), exercise_id (text), completed_at (timestamptz) }
  *    - scores: { id (uuid), user_id (uuid), exam_id (text), score_pct (int), cefr_level (text) }
  * 

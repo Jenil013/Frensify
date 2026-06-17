@@ -11,6 +11,7 @@ from services.vocabulary_service import (
     merge_card_with_progress,
     select_review_cards,
 )
+from services.streak_service import record_practice_day
 
 router = APIRouter(tags=["vocabulary"])
 
@@ -195,6 +196,9 @@ async def update_vocab_card(
         ).eq("card_id", card_id).execute()
     else:
         db.table("user_vocabulary_progress").insert(patch).execute()
+
+    if update.review_result:
+        record_practice_day(db, profile)
 
     merged_cards = _merged_list(db, user_id)
     updated = next((c for c in merged_cards if c["id"] == card_id), None)
