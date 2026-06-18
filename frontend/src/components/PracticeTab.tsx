@@ -283,7 +283,7 @@ export default function PracticeTab({
 
   const formatMeta =
     moduleMeta.questionCount != null
-      ? `${moduleMeta.questionCount} questions (+1/0)`
+      ? `${moduleMeta.questionCount} questions`
       : moduleMeta.sections
         ? `${moduleMeta.sections.length === 2 ? "Sections A & B" : `${moduleMeta.sections.length} tasks`}`
         : null;
@@ -378,21 +378,21 @@ export default function PracticeTab({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full gap-2">
             <span
-              className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${skillFlashcard.pill}`}
+              className={`flex-1 text-center text-xs sm:text-sm font-semibold px-3 py-2.5 rounded-xl border ${skillFlashcard.pill}`}
             >
-              {moduleMeta.durationMinutes} min
+              Duration: {moduleMeta.durationMinutes} min
             </span>
             {formatMeta && (
               <span
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${skillFlashcard.pill}`}
+                className={`flex-1 text-center text-xs sm:text-sm font-semibold px-3 py-2.5 rounded-xl border ${skillFlashcard.pill}`}
               >
                 {formatMeta}
               </span>
             )}
             <span
-              className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${skillFlashcard.pill}`}
+              className={`flex-1 text-center text-xs sm:text-sm font-semibold px-3 py-2.5 rounded-xl border ${skillFlashcard.pill}`}
             >
               Timed practice
             </span>

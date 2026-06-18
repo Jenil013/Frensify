@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Lock, Play } from "lucide-react";
+import { GraduationCap, Lock, Play } from "lucide-react";
 import {
   UserProfile,
   FullExamReport,
@@ -32,6 +32,11 @@ import {
   mockExamLimitBlock,
   type UsageLimitBlock,
 } from "../utils/usageLimits";
+import {
+  getExamModuleCards,
+  getExamTotalDurationMinutes,
+} from "../lib/examModuleBreakdown";
+import ExamModulePartGrid from "./ExamModulePartGrid";
 
 interface ExamsTabProps {
   profile: UserProfile;
@@ -124,6 +129,16 @@ function buildTefModuleBreakdown(
   });
 }
 
+function getExamFlashcard(_examType: "TEF" | "TCF") {
+  return {
+    accent: "border-[#A8A8A8] bg-[#F7F7F5]",
+    badge: "bg-white/90 text-[#37352F] border-[#A8A8A8]",
+    iconWrap: "bg-white/90 text-[#37352F]",
+    button: "bg-[#1E1E2E] hover:bg-[#161622] text-white",
+    buttonLocked: "bg-[#F1F1EF] hover:bg-[#E9E9E7] text-[#7B7B79]",
+  };
+}
+
 function aggregateScorePct(breakdown: (TcfMockModuleResult | TefMockModuleResult)[]): number {
   const mcq = breakdown.filter((b) => b.maxScore != null && b.rawScore != null);
   if (mcq.length === 0) return 0;
@@ -160,7 +175,7 @@ export default function ExamsTab({
       onNavigateToPricing();
       return;
     }
-    if (exam.isMaxOnly && profile.tier !== "Max") {
+    if ("isMaxOnly" in exam && exam.isMaxOnly && profile.tier !== "Max") {
       onNavigateToPricing();
       return;
     }
@@ -323,8 +338,6 @@ export default function ExamsTab({
   const activeModuleId = activeModuleOrder[currentModuleIndex];
   const getActiveLabel = isTefSession ? getTefModuleLabel : getModuleLabel;
 
-  const isTef = profile.targetExam === "TEF";
-
   return (
     <div id="exams-tab" className="space-y-6 animate-fade-in text-[#37352F]">
       <UsageLimitModal
@@ -352,16 +365,9 @@ export default function ExamsTab({
       />
       {!activeSessionExam ? (
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-[#37352F]">
-              Exam Simulations
-            </h2>
-            <p className="text-xs text-[#7A7A78]">
-              {isTef
-                ? "Official-format TEF modules: 40+40 MCQs, written A/B, oral A/B (~175 min total)."
-                : "Official-format TCF modules: 39+39 MCQs, 3 writing tasks, 3 oral tasks (~167 min total)."}
-            </p>
-          </div>
+          <h2 className="text-xl font-bold tracking-tight text-[#37352F]">
+            Exam Simulations
+          </h2>
 
           {profile.tier === "Free" && (
             <div className="bg-[#FDF3E7] border border-[#FCE1CA] rounded-xl p-5 flex flex-col md:flex-row gap-5 justify-between items-start md:items-center">
@@ -386,50 +392,74 @@ export default function ExamsTab({
 
           <div className="grid grid-cols-1 gap-4">
             {matchedExams.map((exam) => {
-              const maxLocked = exam.isMaxOnly && profile.tier !== "Max";
+              const maxLocked =
+                "isMaxOnly" in exam &&
+                exam.isMaxOnly &&
+                profile.tier !== "Max";
               const normalLocked = profile.tier === "Free";
               const locked = normalLocked || maxLocked;
+              const flashcard = getExamFlashcard(exam.examType);
 
               return (
                 <div
                   key={exam.id}
-                  className="bg-white border border-[#E9E9E7] rounded-xl p-5 shadow-premium flex flex-col md:flex-row justify-between gap-6"
+                  className={`rounded-2xl border shadow-premium overflow-hidden ${flashcard.accent}`}
                 >
-                  <div className="space-y-1.5 flex-1">
-                    <span className="text-[9px] font-bold uppercase bg-[#F1F1EF] px-2 py-0.5 rounded border">
-                      {exam.examType}
-                    </span>
-                    <h3 className="text-sm font-bold">{exam.name}</h3>
-                    <p className="text-xs text-[#7A7A78] leading-relaxed">
-                      {exam.description}
-                    </p>
-                    <div className="flex flex-wrap gap-2 text-[10px] text-[#9B9A97] font-mono pt-1">
-                      <span>⏱️ {exam.estimatedDurationMin} min</span>
-                      <span>📖 {exam.readingsCount} reading</span>
-                      <span>🎧 {exam.listeningsCount} listening</span>
-                      <span>✍️ {exam.writingCount} writing sections</span>
-                      <span>🎤 {exam.speakingCount} oral sections</span>
+                  <div className="p-6 sm:p-7 space-y-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <span
+                        className={`text-[9px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full border ${flashcard.badge}`}
+                      >
+                        Full {exam.examType} simulation
+                      </span>
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${flashcard.iconWrap}`}
+                      >
+                        <GraduationCap className="w-5 h-5" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <h3 className="text-xl font-bold tracking-tight text-[#37352F]">
+                          {exam.name}
+                        </h3>
+                        <p className="text-sm text-[#5F5E5B] leading-relaxed max-w-2xl">
+                          This complete simulation includes all four competencies
+                          presented in the same sequence as the actual exam.
+                        </p>
+                      </div>
+                      <ExamModulePartGrid
+                        cards={getExamModuleCards(exam.examType)}
+                      />
+                      <p className="text-sm text-[#5F5E5B] leading-relaxed max-w-2xl">
+                        Note: Ensure you are in a quiet environment with a
+                        working microphone for the speaking section. The test
+                        will approximately take{" "}
+                        {getExamTotalDurationMinutes(exam.examType)} mins.
+                      </p>
                     </div>
                   </div>
-                  <div className="shrink-0">
-                    {locked ? (
-                      <button
-                        type="button"
-                        onClick={onNavigateToPricing}
-                        className="px-4 py-2 border rounded-lg text-xs font-bold text-[#7B7B79] flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Lock className="w-3.5 h-3.5" /> Unlock
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleStartExam(exam)}
-                        className="px-4 py-2 bg-[#2D6A53] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Play className="w-3 h-3 fill-white" /> Start {exam.examType} mock
-                      </button>
-                    )}
-                  </div>
+
+                  {locked ? (
+                    <button
+                      type="button"
+                      onClick={onNavigateToPricing}
+                      className={`w-full py-3.5 text-sm font-bold tracking-wide transition-colors cursor-pointer flex items-center justify-center gap-2 ${flashcard.buttonLocked}`}
+                    >
+                      <Lock className="w-4 h-4" />
+                      Unlock simulation
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleStartExam(exam)}
+                      className={`w-full py-3.5 text-sm font-bold tracking-wide transition-colors cursor-pointer flex items-center justify-center gap-2 ${flashcard.button}`}
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                      Start {exam.examType} mock
+                    </button>
+                  )}
                 </div>
               );
             })}
