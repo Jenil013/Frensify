@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, Sparkles } from "lucide-react";
+import { Check, Flame, Sparkles, Zap } from "lucide-react";
 import { UserProfile, UserSubscriptionTier } from "../types";
 import { createCheckoutSession, openBillingPortal } from "../lib/apiClient";
 
@@ -25,21 +25,17 @@ export default function PricingTab({
       name: "Free" as UserSubscriptionTier,
       price: "$0",
       period: "forever",
-      description: "Build foundational skills and explore simple mock exercises.",
-      badge: "Foundation Builder",
-      badgeColor: "bg-[#F1F1EF] text-[#5F5E5B] border-[#E9E9E7]",
+      description: "Build foundational skills and explore core practice drills.",
       cta: "Current Tier",
       features: [
-        "Select static vocabulary lists",
-        "Elementary static level practice drills",
-        "Limited daily questions",
-        "Self-graded multiple choice keys",
+        "15 Listening practice drill questions",
+        "15 Reading practice drill questions",
+        "Basic vocabulary practice",
       ],
       notIncluded: [
-        "AI Writing correction and analysis",
-        "AI Speaking accent & fluency evaluation",
-        "Official full length mock tests",
-        "Progress trend analytics dashboards",
+        "AI Writing evaluation",
+        "AI Speaking evaluation",
+        "Full mock exam simulations",
       ],
     },
     {
@@ -47,39 +43,40 @@ export default function PricingTab({
       price: "$19.99",
       period: "per month",
       description:
-        "Structured timeline preparation equipped with AI feedback algorithms.",
-      badge: "Most Popular Value",
-      badgeColor: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]",
+        "Structured exam preparation with AI feedback on expression skills.",
+      topBadge: { label: "Best Choice", Icon: Zap },
+      badgeColor: "bg-[#E0E7FF] text-[#1E3A8A] border-[#C7D2FE]",
       cta: "Promote to Pro",
       features: [
-        "Include all Free essentials",
-        "2 full-length TCF simulations (~175 min, 4 modules)",
-        "AI Writing Correction & grading analysis",
-        "Interactive analytics and readiness tracking",
+        "Full Listening practice drills",
+        "Full Reading practice drills",
+        "2 Writing practice drills with AI evaluation",
+        "2 Speaking practice drills with AI evaluation",
+        "2 full mock exams",
+        "Expanded vocabulary practice",
       ],
       notIncluded: [
-        "Unlimited speaking sound recorder analysis",
-        "Unlimited exam simulation iterations",
-        "Custom priority model spoken drafts",
+        "4 Writing & Speaking evaluations",
+        "4 full mock exams",
+        "Highest vocabulary practice access",
       ],
-      customAccent: "border-[#1A73E8] shadow-premium-lg",
     },
     {
       name: "Max" as UserSubscriptionTier,
       price: "$29.99",
       period: "per month",
       description:
-        "Completely unlimited drills and advanced conversational simulations.",
-      badge: "Absolute Mastery Class",
-      badgeColor: "bg-[#EEEFFC] text-[#4A55A2] border-[#DDE0FA]",
+        "Maximum practice volume for intensive TEF/TCF preparation.",
+      topBadge: { label: "Most Value", Icon: Flame },
+      badgeColor: "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]",
       cta: "Accelerate to Max",
       features: [
-        "Include all Pro benefits",
-        "Unlimited simulated Full Mock exams",
-        "Unlimited speaking audio recordings analyzed",
-        "Advanced conversational speaking simulations",
-        "AI speaking accent pronunciation models",
-        "Priority VIP Gemini response channels",
+        "Full Listening practice drills",
+        "Full Reading practice drills",
+        "4 Writing practice drills with AI evaluation",
+        "4 Speaking practice drills with AI evaluation",
+        "4 full mock exams",
+        "Highest vocabulary practice access",
       ],
       notIncluded: [],
     },
@@ -151,14 +148,24 @@ export default function PricingTab({
         {tiers.map((t) => {
           const isActive = profile.tier === t.name;
           const isLoading = loadingTier === t.name;
-          const isPaidTier = t.name === "Pro" || t.name === "Max";
 
           return (
+            <div key={t.name} className="relative pt-4">
+              {"topBadge" in t && t.topBadge && (
+                <div className="absolute top-0 left-1/4 z-10 -translate-x-1/2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] uppercase font-bold tracking-wider rounded border shadow-sm ${t.badgeColor}`}
+                  >
+                    <t.topBadge.Icon className="w-3 h-3" strokeWidth={2.25} />
+                    {t.topBadge.label}
+                  </span>
+                </div>
+              )}
+
             <div
-              key={t.name}
-              className={`bg-white border text-left rounded-xl p-5 md:p-6 flex flex-col justify-between transition-all relative overflow-hidden ${
-                t.customAccent || "border-[#E9E9E7] shadow-premium"
-              } ${isActive ? "border-2 border-[#37352F]" : ""}`}
+              className={`bg-white border text-left rounded-xl p-5 md:p-6 flex flex-col justify-between transition-all relative h-full ${
+                "border-[#E9E9E7] shadow-premium"
+              } ${isActive ? "border-[3px] border-black" : ""}`}
             >
               {isActive && (
                 <div className="absolute right-0 top-0 bg-[#37352F] text-white px-3 py-0.5 rounded-bl text-[9px] font-bold uppercase tracking-wider">
@@ -168,15 +175,10 @@ export default function PricingTab({
 
               <div className="space-y-5">
                 <div>
-                  <span
-                    className={`inline-block px-2 py-0.5 text-[9px] uppercase font-bold tracking-wide rounded border ${t.badgeColor} mb-2.5`}
-                  >
-                    {t.badge}
-                  </span>
-                  <h3 className="text-base font-bold text-[#37352F]">
-                    {t.name} Plan
+                  <h3 className="text-2xl font-bold text-[#37352F] text-center">
+                    {t.name}
                   </h3>
-                  <p className="text-xs text-[#7A7A78] mt-1 leading-relaxed">
+                  <p className="text-xs text-[#7A7A78] mt-1.5 leading-relaxed text-center">
                     {t.description}
                   </p>
                 </div>
@@ -239,11 +241,12 @@ export default function PricingTab({
                       ? "Included"
                       : isLoading
                         ? "Redirecting…"
-                        : isPaidTier
-                          ? t.cta
+                        : t.name === "Pro" && profile.tier === "Max"
+                          ? "Demote to Pro"
                           : t.cta}
                 </button>
               </div>
+            </div>
             </div>
           );
         })}
