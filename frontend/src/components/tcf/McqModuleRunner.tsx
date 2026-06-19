@@ -149,12 +149,12 @@ export default function McqModuleRunner({
           )}
 
           {!isListening && q.passage && (
-            <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-xs leading-relaxed max-h-48 overflow-y-auto">
+            <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-sm text-[#37352F] leading-relaxed max-h-48 overflow-y-auto">
               {q.passage}
             </div>
           )}
 
-          <p className="text-xs font-bold text-[#7A7A78] uppercase">{q.prompt}</p>
+          <p className="text-sm font-semibold text-[#37352F] leading-snug">{q.prompt}</p>
 
           <div className="space-y-2">
             {q.choices.map((choice, i) => (

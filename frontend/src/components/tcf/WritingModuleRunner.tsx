@@ -34,7 +34,7 @@ function Task3Stimulus({ text }: { text: string }) {
   const parts = text.split(DOC2_SPLIT_RE).map((p) => p.trim()).filter(Boolean);
   if (parts.length < 2) {
     return (
-      <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-xs italic leading-relaxed whitespace-pre-wrap">
+      <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-sm font-semibold text-[#37352F] leading-relaxed whitespace-pre-wrap">
         {text}
       </div>
     );
@@ -52,7 +52,7 @@ function Task3Stimulus({ text }: { text: string }) {
             className={index > 0 ? "pt-5 border-t border-[#E9E9E7]" : undefined}
           >
             <p className="text-xs font-bold not-italic text-[#37352F] mb-2">{label}</p>
-            <p className="text-xs italic leading-relaxed whitespace-pre-wrap">{body}</p>
+            <p className="text-sm font-semibold text-[#37352F] leading-relaxed whitespace-pre-wrap">{body}</p>
           </div>
         );
       })}
@@ -264,7 +264,7 @@ export default function WritingModuleRunner({
 
         <p className="text-xs font-bold text-[#37352F]">{meta.label}</p>
         {content.stimulus && <Task3Stimulus text={content.stimulus} />}
-        <p className="text-xs text-[#5F5E5B]">{content.prompt}</p>
+        <p className="text-xs text-[#5F5E5B] leading-relaxed">{content.prompt}</p>
         <textarea
           value={activeText}
           onChange={(e) => updateText(e.target.value)}

@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Trophy, BookOpen, CreditCard, User, GraduationCap, Flame, Zap, LogOut
-} from "lucide-react";
+import { Flame, LogOut, Menu } from "lucide-react";
 
 import {
   UserProfile,
@@ -20,6 +18,8 @@ import {
 } from "./lib/apiClient";
 import { examCountdownPhrase, formatStreakLabel } from "./lib/examDate";
 import AuthLoadingScreen from "./components/auth/AuthLoadingScreen";
+import AppSidebar from "./components/AppSidebar";
+import { useSidebarState } from "./hooks/useSidebarState";
 
 // Import tabs
 import DashboardTab from "./components/DashboardTab";
@@ -28,7 +28,6 @@ import ExamsTab from "./components/ExamsTab";
 import VocabularyTab from "./components/VocabularyTab";
 import PricingTab from "./components/PricingTab";
 import AccountTab from "./components/AccountTab";
-import FrensifyLogo from "./components/FrensifyLogo";
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -43,6 +42,9 @@ export default function App() {
   const navigate = useNavigate();
   const { user, session, signOut } = useAuth();
   const { profile: apiProfile, error: profileError, refresh } = useApiProfile();
+
+  const { collapsed, isMobile, isExpanded, mobileOpen, toggleSidebar, closeMobile } =
+    useSidebarState();
 
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [profileExtras, setProfileExtras] = useState<
@@ -192,119 +194,56 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-white text-[#37352F] font-sans selection:bg-[#E3E2E0]/70">
-      
-      {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className="w-64 bg-[#F1F1EF] border-r border-[#E9E9E7] flex flex-col justify-between p-6 shrink-0">
-        
-        {/* Logo block */}
-        <div className="space-y-8">
-          <div className="px-1 py-1">
-            <FrensifyLogo height={40} showSubtext={true} />
-          </div>
-
-          {/* Nav list */}
-          <nav className="space-y-0.5">
-            {[
-              { id: "dashboard", label: "Dashboard", icon: Trophy },
-              { id: "practice", label: "Practice Drills", icon: BookOpen },
-              { id: "exams", label: "Full Simulations", icon: GraduationCap },
-              { id: "vocabulary", label: "Vocabulary Builder", icon: Zap },
-              { id: "pricing", label: "Subscription Pricing", icon: CreditCard },
-              { id: "account", label: "Candidate Settings", icon: User },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-left ${
-                    isActive 
-                      ? "bg-[#E3E2E0]/50 text-[#37352F] font-semibold" 
-                      : "text-[#5F5E5B] hover:text-[#37352F] hover:bg-[#E3E2E0]/20"
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-[#37352F]" : "text-[#7B7B79]"}`} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Dynamic Upgrade box */}
-        <div className="space-y-4">
-          <div className="bg-[#E9F3FC] rounded-2xl p-4.5 border border-[#D2E7F6] shadow-sm">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-[#1D74B4] block mb-1.5">Upgrade Status</span>
-            <p className="text-[11px] text-[#2563EB] leading-relaxed mb-3">
-              {profile.tier === "Free" 
-                ? "Get unlimited argumentative mock evaluations and AI voice coach suggestions." 
-                : profile.tier === "Pro" 
-                ? "You have 2 Mock simulations. Upgrade to Max for unlimited speaking booth advice."
-                : "Aviation-Speed AI channels active. Unlimited simulated examinations unlocked."}
-            </p>
-            {profile.tier !== "Max" ? (
-              <button 
-                onClick={() => setActiveTab("pricing")}
-                className="w-full py-1.5 bg-[#1F2937] hover:bg-black text-white rounded-lg text-xs font-semibold transition-all shadow-sm"
-              >
-                {profile.tier === "Free" ? "Become Pro" : "Ascend to Max"}
-              </button>
-            ) : (
-              <div className="bg-[#E5F2EE] border border-[#CDDFD9] p-2 rounded-lg text-center text-[10px] font-bold text-[#2D6A53]">
-                👑 Max Coaching Active
-              </div>
-            )}
-          </div>
-
-          {/* Interactive Tier Switchers under administrative constraints for evaluators */}
-          <div className="bg-white border border-[#E9E9E7] rounded-xl p-2.5 text-center shadow-sm">
-            <span className="text-[9px] font-bold uppercase text-[#7A7A78] block mb-1.5">Demo Tier Selector</span>
-            <div className="flex gap-1">
-              {(["Free", "Pro", "Max"] as UserSubscriptionTier[]).map((tier) => (
-                <button
-                  key={tier}
-                  onClick={() => handleUpdateTier(tier)}
-                  className={`flex-1 text-[9px] py-1 rounded-md font-bold uppercase tracking-wider transition-all border ${
-                    profile.tier === tier 
-                      ? "bg-[#37352F] text-white border-[#37352F]" 
-                      : "bg-white text-[#7B7B79] border-[#E9E9E7] hover:bg-[#F1F1EF]"
-                  }`}
-                >
-                  {tier}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-      </aside>
+      <AppSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        profile={profile}
+        onUpdateTier={handleUpdateTier}
+        collapsed={collapsed}
+        isMobile={isMobile}
+        isExpanded={isExpanded}
+        mobileOpen={mobileOpen}
+        onToggle={toggleSidebar}
+        onCloseMobile={closeMobile}
+      />
 
       {/* MAIN WORKSPACE WRAPPER */}
-      <main className="flex-1 p-8 lg:p-12 overflow-y-auto max-w-6xl mx-auto space-y-8 bg-[#FAFAF9]">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-12 overflow-y-auto max-w-6xl mx-auto space-y-8 bg-[#FAFAF9]">
         
         {/* Dynamic header row containing calendar/day and user profile properties */}
         <header className="flex justify-between items-end pb-4 border-b border-[#E9E9E7] gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#37352F]">
-              Bonjour, {profile.name}
-            </h1>
-            <p className="text-xs text-[#7A7A78] mt-0.5">
-              {examCountdown.prefix}
-              {examCountdown.highlight ? (
-                <>
-                  {" "}
-                  <strong className="text-[#37352F]">{examCountdown.highlight}</strong>
-                </>
-              ) : null}
-              {examCountdown.suffix ? ` ${examCountdown.suffix}` : null}
-            </p>
+          <div className="flex items-start gap-3 min-w-0">
+            {isMobile && (
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                aria-expanded={mobileOpen}
+                aria-controls="app-sidebar"
+                aria-label="Open navigation menu"
+                className="mt-0.5 p-2 -ml-2 text-[#7A7A78] hover:text-[#37352F] hover:bg-[#F1F1EF] rounded-lg transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#37352F]/20"
+              >
+                <Menu className="w-5 h-5" aria-hidden="true" />
+              </button>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#37352F] truncate">
+                Bonjour, {profile.name}
+              </h1>
+              <p className="text-xs text-[#7A7A78] mt-0.5">
+                {examCountdown.prefix}
+                {examCountdown.highlight ? (
+                  <>
+                    {" "}
+                    <strong className="text-[#37352F]">{examCountdown.highlight}</strong>
+                  </>
+                ) : null}
+                {examCountdown.suffix ? ` ${examCountdown.suffix}` : null}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="text-right shrink-0">
+          <div className="flex items-center gap-3 sm:gap-6 shrink-0">
+            <div className="text-right shrink-0 hidden sm:block">
               <span className="text-[9px] uppercase tracking-wider text-[#7A7A78] font-bold block">Current streak</span>
               <p className="text-sm font-bold text-[#37352F] flex items-center gap-1.5">
                 {formatStreakLabel(profile.streakDays)} <Flame className="w-4 h-4 text-[#F97316] fill-[#F97316]" />

@@ -219,11 +219,11 @@ export default function TefWritingModuleRunner({
 
         <p className="text-xs font-bold text-[#37352F]">{activeMeta.label}</p>
         {activeContent.stimulus && (
-          <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-xs italic leading-relaxed">
+          <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-sm font-semibold text-[#37352F] leading-relaxed">
             {activeContent.stimulus}
           </div>
         )}
-        <p className="text-xs text-[#5F5E5B]">{activeContent.prompt}</p>
+        <p className="text-xs text-[#5F5E5B] leading-relaxed">{activeContent.prompt}</p>
         <textarea
           value={activeText}
           onChange={(e) => setActiveText(e.target.value)}
