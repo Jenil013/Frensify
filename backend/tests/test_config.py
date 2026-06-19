@@ -1,4 +1,4 @@
-from config import TIER_CAPS, MOCK_CAPS, Settings
+from config import TIER_CAPS, MOCK_CAPS, Settings, cors_allow_origins
 
 
 def test_tier_caps_all_tiers_present():
@@ -29,3 +29,9 @@ def test_mock_caps_all_tiers():
     assert MOCK_CAPS["Free"] == 0
     assert MOCK_CAPS["Pro"] == 2
     assert MOCK_CAPS["Max"] == 4
+
+
+def test_cors_allow_origins_includes_localhost():
+    origins = cors_allow_origins()
+    assert "http://localhost:3000" in origins
+    assert "http://localhost:5173" in origins

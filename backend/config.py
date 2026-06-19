@@ -15,11 +15,24 @@ class Settings(BaseSettings):
     stripe_price_id_pro: str = ""
     stripe_price_id_max: str = ""
     frontend_url: str = "http://localhost:3000"
+    # Optional comma-separated extra origins (e.g. Cloudflare preview URLs).
+    cors_origins: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
 settings = Settings()
+
+_LOCAL_CORS_ORIGINS = ("http://localhost:3000", "http://localhost:5173")
+
+
+def cors_allow_origins() -> list[str]:
+    origins: list[str] = list(_LOCAL_CORS_ORIGINS)
+    for candidate in (settings.frontend_url, *settings.cors_origins.split(",")):
+        origin = candidate.strip().rstrip("/")
+        if origin and origin not in origins:
+            origins.append(origin)
+    return origins
 
 GEMINI_EVAL_MODEL = settings.gemini_eval_model
 GEMINI_UTILS_MODEL = settings.gemini_utils_model
