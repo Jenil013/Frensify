@@ -78,7 +78,7 @@ export default function SpeakingConversationPanel({
           turn.role === "examiner" ? (
             <div key={`${index}-examiner`} className="flex justify-start">
               <div className="max-w-[85%] bg-white border border-[#E9E9E7] rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-                <p className="text-xs text-[#37352F] leading-relaxed">{turn.text}</p>
+                <p className="text-sm font-semibold text-[#37352F] leading-relaxed">{turn.text}</p>
                 <div className="flex items-center justify-between gap-2 mt-2">
                   <span className="text-[10px] text-[#9B9A97]">{formatTime()}</span>
                   <button

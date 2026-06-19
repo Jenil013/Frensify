@@ -455,7 +455,7 @@ export default function OralSimulationRunner({
             )}
 
             {!examMode && (
-              <p className="text-xs text-[#5F5E5B] leading-relaxed">{content.prompt}</p>
+              <p className="text-sm font-semibold text-[#37352F] leading-relaxed">{content.prompt}</p>
             )}
 
             <SpeakingConversationPanel
