@@ -8,11 +8,9 @@ import {
   Zap,
   PanelLeftClose,
   PanelLeftOpen,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
-import { UserProfile, UserSubscriptionTier } from "../types";
 import FrensifyLogo from "./FrensifyLogo";
 
 const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
@@ -27,8 +25,6 @@ const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
 interface AppSidebarProps {
   activeTab: string;
   onTabChange: (tabId: string) => void;
-  profile: UserProfile;
-  onUpdateTier: (tier: UserSubscriptionTier) => void;
   collapsed: boolean;
   isMobile: boolean;
   isExpanded: boolean;
@@ -52,8 +48,6 @@ function NavTooltip({ label, show }: { label: string; show: boolean }) {
 export default function AppSidebar({
   activeTab,
   onTabChange,
-  profile,
-  onUpdateTier,
   collapsed,
   isMobile,
   isExpanded,
@@ -89,7 +83,7 @@ export default function AppSidebar({
         aria-label="Main navigation"
         style={{ width: sidebarWidth }}
         className={[
-          "bg-[#F1F1EF] border-[#E9E9E7] flex flex-col justify-between shrink-0",
+          "bg-[#F1F1EF] border-[#E9E9E7] flex flex-col shrink-0",
           "transition-[width,transform,padding] duration-300 ease-in-out",
           sidebarPadding,
           isMobile
@@ -173,77 +167,6 @@ export default function AppSidebar({
               );
             })}
           </nav>
-        </div>
-
-        <div className={`space-y-4 ${!showLabels ? "space-y-2" : ""}`}>
-          {showLabels ? (
-            <>
-              <div className="bg-[#E9F3FC] rounded-2xl p-4.5 border border-[#D2E7F6] shadow-sm">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-[#1D74B4] block mb-1.5">
-                  Upgrade Status
-                </span>
-                <p className="text-[11px] text-[#2563EB] leading-relaxed mb-3">
-                  {profile.tier === "Free"
-                    ? "Get unlimited argumentative mock evaluations and AI voice coach suggestions."
-                    : profile.tier === "Pro"
-                      ? "You have 2 Mock simulations. Upgrade to Max for unlimited speaking booth advice."
-                      : "Aviation-Speed AI channels active. Unlimited simulated examinations unlocked."}
-                </p>
-                {profile.tier !== "Max" ? (
-                  <button
-                    type="button"
-                    onClick={() => handleTabClick("pricing")}
-                    className="w-full py-1.5 bg-[#1F2937] hover:bg-black text-white rounded-lg text-xs font-semibold transition-all shadow-sm"
-                  >
-                    {profile.tier === "Free" ? "Become Pro" : "Ascend to Max"}
-                  </button>
-                ) : (
-                  <div className="bg-[#E5F2EE] border border-[#CDDFD9] p-2 rounded-lg text-center text-[10px] font-bold text-[#2D6A53]">
-                    👑 Max Coaching Active
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white border border-[#E9E9E7] rounded-xl p-2.5 text-center shadow-sm">
-                <span className="text-[9px] font-bold uppercase text-[#7A7A78] block mb-1.5">
-                  Demo Tier Selector
-                </span>
-                <div className="flex gap-1">
-                  {(["Free", "Pro", "Max"] as UserSubscriptionTier[]).map((tier) => (
-                    <button
-                      key={tier}
-                      type="button"
-                      onClick={() => onUpdateTier(tier)}
-                      className={`flex-1 text-[9px] py-1 rounded-md font-bold uppercase tracking-wider transition-all border ${
-                        profile.tier === tier
-                          ? "bg-[#37352F] text-white border-[#37352F]"
-                          : "bg-white text-[#7B7B79] border-[#E9E9E7] hover:bg-[#F1F1EF]"
-                      }`}
-                    >
-                      {tier}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {profile.tier !== "Max" && (
-                <div className="relative group flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => handleTabClick("pricing")}
-                    title="Upgrade plan"
-                    aria-label="Upgrade plan"
-                    className="p-2.5 rounded-xl bg-[#E9F3FC] border border-[#D2E7F6] text-[#1D74B4] hover:bg-[#D2E7F6]/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#37352F]/20"
-                  >
-                    <Sparkles className="w-4 h-4" aria-hidden="true" />
-                  </button>
-                  <NavTooltip label="Upgrade plan" show={showTooltips} />
-                </div>
-              )}
-            </>
-          )}
         </div>
       </aside>
     </>

@@ -4,7 +4,6 @@ import { Flame, LogOut, Menu } from "lucide-react";
 
 import {
   UserProfile,
-  UserSubscriptionTier,
   FullExamReport,
   TcfMockModuleResult,
   TcfModuleId,
@@ -101,10 +100,6 @@ export default function App() {
     setProfileOverrides((prev) => ({ ...prev, ...updated }));
   };
 
-  const handleUpdateTier = (newTier: UserSubscriptionTier) => {
-    setProfileOverrides((prev) => ({ ...prev, tier: newTier }));
-  };
-
   const handleSaveMockScore = (
     examId: string,
     examName: string,
@@ -197,8 +192,6 @@ export default function App() {
       <AppSidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        profile={profile}
-        onUpdateTier={handleUpdateTier}
         collapsed={collapsed}
         isMobile={isMobile}
         isExpanded={isExpanded}
