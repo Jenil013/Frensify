@@ -22,7 +22,7 @@ export default function CoreFeatures() {
             The Skills That Unlock Canada
           </h2>
           <p className="text-sm text-[#7A7A78] max-w-lg mx-auto">
-            Every module you master on Frensify maps directly to a CLB benchmark — and to a real outcome in your Canadian future.
+            Every module you master on Frensify maps directly to a CEFR benchmark, and to a real outcome in your Canadian future.
           </p>
         </motion.div>
 

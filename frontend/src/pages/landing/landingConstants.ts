@@ -21,8 +21,8 @@ export const FEATURE_MODULES: FeatureModule[] = [
     labelFr: "Compréhension Orale",
     labelEn: "Listening",
     description:
-      "Understand real-world French conversations, workplace dialogue, and exam audio at full speed — with zero hesitation.",
-    outcome: "Earns CLB points in oral comprehension",
+      "Understand real-world French conversations, workplace dialogue, and exam audio at full speed, with zero hesitation.",
+    outcome: "Builds B1-level oral comprehension",
     icon: Headphones,
     color: "#2D6A53",
     bgColor: "#EAF5F1",
@@ -45,7 +45,7 @@ export const FEATURE_MODULES: FeatureModule[] = [
     labelFr: "Expression Orale",
     labelEn: "Speaking",
     description:
-      "Communicate naturally in interviews, oral exams, and everyday Canadian life — with AI feedback on every response.",
+      "Communicate naturally in interviews, oral exams, and everyday Canadian life, with AI feedback on every response.",
     outcome: "Builds fluency for life in Canada",
     icon: Mic,
     color: "#B83E5C",
@@ -92,16 +92,16 @@ export const JOURNEY_STEPS: JourneyStep[] = [
     level: "B1",
     title: "Intermediate",
     description: "Express yourself on familiar topics. Understand workplace and educational French with confidence.",
-    milestone: "CLB 5–6 range",
+    milestone: "B1 band",
   },
   {
     level: "B2",
     title: "Exam Ready",
     description: "Handle complex French across all four exam modules. Simulate real TEF and TCF conditions.",
-    milestone: "CLB 7 target",
+    milestone: "B2 target",
   },
   {
-    level: "CLB 7",
+    level: "B2",
     title: "Immigration Score",
     description: "Achieve the language benchmark recognized by IRCC. Maximize your Express Entry CRS score.",
     milestone: "Express Entry eligible",
@@ -109,7 +109,7 @@ export const JOURNEY_STEPS: JourneyStep[] = [
   {
     level: "🇨🇦",
     title: "Canada",
-    description: "Your Canadian future begins. PR invitation, university admission, or bilingual career — your goal, unlocked.",
+    description: "Your Canadian future begins. PR invitation, university admission, or bilingual career, your goal, unlocked.",
     milestone: "Destination reached",
   },
 ];
@@ -127,19 +127,19 @@ export const AI_FEATURES: AIFeature[] = [
     icon: Target,
     title: "Detects Score-Limiting Mistakes",
     description:
-      "Pinpoints the exact errors holding your CLB score back — grammar patterns, structure gaps, and pronunciation habits that cost you points.",
+      "Pinpoints the exact errors holding your score back, grammar patterns, structure gaps, and pronunciation habits that cost you points.",
   },
   {
     icon: TrendingUp,
     title: "Predicts Your Exam Readiness",
     description:
-      "Tracks your performance across all four modules and tells you — in CLB terms — exactly how close you are to your immigration target.",
+      "Tracks your performance across all four modules and tells you, in CEFR terms, exactly how close you are to your immigration target.",
   },
   {
     icon: MapPin,
     title: "Builds Your Personal Roadmap",
     description:
-      "Generates a week-by-week study plan calibrated to your weakest modules, your target exam date, and your CLB goal.",
+      "Generates a week-by-week study plan calibrated to your weakest modules, your target exam date, and your CEFR goal.",
   },
 ];
 
@@ -182,7 +182,7 @@ export const CANADA_REASONS: CanadaReason[] = [
     icon: Home,
     title: "Quebec & Francophone Communities",
     description:
-      "Prepare for life, work, and integration in Quebec and other French-speaking regions. Speak the language of the community you're joining — not just the exam.",
+      "Prepare for life, work, and integration in Quebec and other French-speaking regions. Speak the language of the community you're joining, not just the exam.",
     color: "#B83E5C",
     bgColor: "#FCECF0",
   },
@@ -221,23 +221,23 @@ export const PRICING_TIERS: PricingTier[] = [
     price: "$19.99",
     period: "per month",
     tagline: "The plan serious candidates choose.",
-    badge: "Most Popular — 87% choose Pro",
+    badge: "Most Popular",
     badgeColor: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]",
     highlighted: true,
     features: [
       "Everything in Free",
       "AI-powered writing corrections",
       "2 full-length mock exams per month",
-      "CLB progress tracking dashboard",
+      "CEFR progress tracking dashboard",
       "Personalized weak-module drills",
     ],
-    result: "Average: +1–2 CLB levels in 8 weeks",
+    result: "Average: +1 to 2 CEFR levels in 8 weeks",
   },
   {
     name: "Max",
     price: "$29.99",
     period: "per month",
-    tagline: "Everything you need to reach CLB 7.",
+    tagline: "Everything you need to reach B2.",
     badge: "Full Readiness",
     badgeColor: "bg-[#EEEFFC] text-[#4A55A2] border-[#DDE0FA]",
     features: [
@@ -256,8 +256,6 @@ export const PRICING_TIERS: PricingTier[] = [
 export interface Testimonial {
   quote: string;
   name: string;
-  flag: string;
-  location: string;
   initials: string;
   context: string;
   result: string;
@@ -269,23 +267,19 @@ export interface Testimonial {
 export const TESTIMONIALS: Testimonial[] = [
   {
     quote:
-      "I went from failing my TEF practice tests to receiving my PR invitation. Frensify's AI drills showed me exactly which reading patterns were costing me CLB points — and fixed them.",
+      "I went from failing my TEF practice tests to receiving my PR invitation. Frensify's AI drills showed me exactly which writing patterns were costing me exam points, and fixed them.",
     name: "Khushbu T.",
-    flag: "🇮🇳",
-    location: "Houston, Texas",
     initials: "KT",
     context: "TEF Canada · Express Entry",
-    result: "CLB 4 → CLB 7",
+    result: "A2 → B2",
     resultDetail: "+43 CRS Points",
     color: "#2D6A53",
     bgColor: "#EAF5F1",
   },
   {
     quote:
-      "My university admission required B2. Frensify's mock exams felt identical to the real TCF — by exam day, I wasn't nervous. I was ready.",
+      "My university admission required B2. Frensify's mock exams felt identical to the real TCF, by exam day, I wasn't nervous. I was ready.",
     name: "Ana M.",
-    flag: "🇧🇷",
-    location: "São Paulo, Brazil",
     initials: "AM",
     context: "TCF · University Admission",
     result: "B1 → B2",
@@ -295,13 +289,11 @@ export const TESTIMONIALS: Testimonial[] = [
   },
   {
     quote:
-      "The speaking coach identified my accent patterns and gave me specific fixes, not generic advice. My TEF oral score jumped 78 points. PR invitation followed 3 months later.",
+      "The speaking feedbacks identified my accent patterns and gave me specific fixes, not generic advice. PR invitation within few months.",
     name: "Karim A.",
-    flag: "🇲🇦",
-    location: "Casablanca, Morocco",
     initials: "KA",
     context: "TEF Canada · Permanent Residency",
-    result: "+78 TEF Points",
+    result: "+50 PR Points",
     resultDetail: "PR Invitation Received",
     color: "#B83E5C",
     bgColor: "#FCECF0",
@@ -324,12 +316,12 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "How many CRS points can French language scores add?",
     answer:
-      "Strong French scores can add significant CRS points to your Express Entry profile. A CLB 7 or higher in French, combined with an English score, can add up to 50 additional points for bilingualism alone. For candidates applying through French-language streams, the impact can be even greater. Frensify tracks your estimated CLB level so you always know where you stand.",
+      "Strong French scores can add significant CRS points to your Express Entry profile. B2 or higher in French, combined with an English score, can add up to 50 additional points for bilingualism alone. For candidates applying through French-language streams, the impact can be even greater. Frensify tracks your estimated CEFR level so you always know where you stand.",
   },
   {
     question: "How does AI feedback work for writing and speaking?",
     answer:
-      "Our AI engine analyzes your writing for grammar, structure, coherence, and exam-specific rubric criteria — then provides targeted corrections with clear explanations. For speaking, it evaluates your recorded responses for fluency, pronunciation, and natural expression. Every correction is tied to specific CLB criteria, not generic tips.",
+      "Our AI engine analyzes your writing for grammar, structure, coherence, and exam-specific rubric criteria, then provides targeted corrections with clear explanations. For speaking, it evaluates your recorded responses for fluency, pronunciation, and natural expression. Every correction is tied to specific CEFR criteria, not generic tips.",
   },
   {
     question: "Can I switch between TEF and TCF preparation?",
@@ -339,16 +331,16 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "How realistic are the mock exams?",
     answer:
-      "Our mock exams mirror the official TEF and TCF format, timing, and difficulty level precisely. Each simulation covers all four modules — listening, reading, writing, and speaking — under real exam conditions, so the actual test day feels familiar, not frightening.",
+      "Our mock exams mirror the official TEF and TCF format, timing, and difficulty level precisely. Each simulation covers all four modules, listening, reading, writing, and speaking, under real exam conditions, so the actual test day feels familiar, not frightening.",
   },
   {
-    question: "What CLB level do I need for Canadian immigration?",
+    question: "What CEFR level do I need for Canadian immigration?",
     answer:
-      "Most Federal Skilled Worker and Express Entry programs require a minimum of CLB 7 (equivalent to CEFR B2) in all four skills. Higher scores — CLB 9 or above — can earn substantially more CRS points. Frensify tracks your CLB estimate continuously so you always know your standing relative to your immigration target.",
+      "Most Federal Skilled Worker and Express Entry programs require a minimum of B2 in all four skills. Higher scores, C1 or above, can earn substantially more CRS points. Frensify tracks your CEFR estimate continuously so you always know your standing relative to your immigration target.",
   },
   {
     question: "Is there a free trial for Pro or Max?",
     answer:
-      "The Free plan gives you permanent access to a placement test, sample exercises, and limited daily practice — enough to understand your starting point before committing. Pro and Max subscriptions are month-to-month and can be cancelled anytime with no penalty.",
+      "The Free plan gives you permanent access to a placement test, sample exercises, and limited daily practice, enough to understand your starting point before committing. Pro and Max subscriptions are month-to-month and can be cancelled anytime with no penalty.",
   },
 ];

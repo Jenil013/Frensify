@@ -25,7 +25,7 @@ export default function PricingPreview() {
           </h2>
           <p className="text-sm text-[#7A7A78] max-w-lg mx-auto">
             Start free. Upgrade when you're ready to move faster.
-            Every plan is designed around one goal: your CLB target.
+            Every plan is designed around one goal: your CEFR target.
           </p>
         </motion.div>
 
@@ -38,8 +38,7 @@ export default function PricingPreview() {
         >
           {[
             { value: "⭐⭐⭐⭐⭐", label: "Rated 4.9 by learners" },
-            { value: "87%", label: "of learners choose Pro" },
-            { value: "+1–2 CLB", label: "average improvement in 8 weeks" },
+            { value: "+1 to 2 levels", label: "average CEFR improvement in 8 weeks" },
           ].map((item, i) => (
             <div key={i} className="text-center">
               <p className="text-sm font-bold text-[#37352F]">{item.value}</p>
@@ -95,7 +94,7 @@ export default function PricingPreview() {
 
               {/* Outcome note */}
               {tier.result && (
-                <div className="mb-4 px-3 py-2 rounded-lg bg-[#FAFAF9] border border-[#E9E9E7]">
+                <div className="mb-4 px-3 py-2 rounded-lg bg-[#FAF9F7] border border-[#E9E9E7]">
                   <p className="text-[10px] text-[#5F5E5B] text-center font-medium">
                     {tier.result}
                   </p>

@@ -7,7 +7,7 @@ export default function Testimonials() {
   const { ref, isInView } = useScrollReveal();
 
   return (
-    <section ref={ref} className="py-16 md:py-24 bg-[#FAFAF9]">
+    <section ref={ref} className="py-16 md:py-24 bg-[#FAF9F7]">
       <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -19,7 +19,7 @@ export default function Testimonials() {
             Real Results
           </p>
           <h2 className="text-2xl md:text-3xl font-bold text-[#37352F] mb-3">
-            Learners Who Reached Canada
+            Learners Who Achieved Their Goals
           </h2>
           <p className="text-sm text-[#7A7A78] max-w-lg mx-auto">
             Not testimonials about features. Stories about outcomes.
@@ -68,9 +68,8 @@ export default function Testimonials() {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-[#37352F]">
-                    {t.flag} {t.name}
+                    {t.name}
                   </p>
-                  <p className="text-[10px] text-[#7A7A78]">{t.location}</p>
                   <p className="text-[10px] text-[#9B9691]">{t.context}</p>
                 </div>
               </div>

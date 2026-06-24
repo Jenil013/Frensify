@@ -7,7 +7,7 @@ export default function PrepJourney() {
   const { ref, isInView } = useScrollReveal();
 
   return (
-    <section ref={ref} className="py-16 md:py-24 bg-[#FAFAF9]">
+    <section ref={ref} className="py-16 md:py-24 bg-[#FAF9F7]">
       <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -22,26 +22,25 @@ export default function PrepJourney() {
             Your Journey To Canada
           </h2>
           <p className="text-sm text-[#7A7A78] max-w-lg mx-auto">
-            A structured path from beginner French to Canadian opportunities — every level mapped to a real milestone.
+            A structured path from beginner French to Canadian opportunities, every level mapped to a real milestone.
           </p>
         </motion.div>
 
         {/* Desktop: horizontal flow */}
-        <div className="hidden md:flex items-start justify-between relative">
+        <div className="hidden md:grid grid-cols-6 gap-3 relative">
           {/* Connecting line */}
-          <div className="absolute top-5 left-[60px] right-[60px] h-[2px] border-t-2 border-dashed border-[#E9E9E7]" />
+          <div className="absolute top-5 left-10 right-10 h-[2px] border-t-2 border-dashed border-[#E9E9E7]" />
 
           {JOURNEY_STEPS.map((step, i) => {
             const isCanada = step.level === "🇨🇦";
-            const isCLB = step.level === "CLB 7";
+            const isImmigration = step.title === "Immigration Score";
             return (
               <motion.div
-                key={step.level}
+                key={step.title}
                 initial={{ opacity: 0, y: 20 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.5, delay: 0.12 + i * 0.1 }}
-                className="flex flex-col items-center text-center relative group"
-                style={{ width: `${100 / JOURNEY_STEPS.length}%` }}
+                className="flex flex-col items-center text-center relative group min-w-0"
               >
                 {/* Level badge */}
                 <div
@@ -49,7 +48,7 @@ export default function PrepJourney() {
                   style={{
                     background: isCanada
                       ? "linear-gradient(135deg, #D4AF37, #B8961F)"
-                      : isCLB
+                      : isImmigration
                       ? "#002D62"
                       : "#37352F",
                     color: "#fff",
@@ -61,32 +60,32 @@ export default function PrepJourney() {
                 </div>
 
                 <div
-                  className={`bg-white border rounded-xl p-4 w-full transition-all duration-300 group-hover:-translate-y-1 ${
+                  className={`bg-white border rounded-xl p-4 w-full min-h-[152px] flex flex-col shadow-premium transition-all duration-300 group-hover:-translate-y-1 ${
                     isCanada
-                      ? "border-[#D4AF37] shadow-[0_4px_20px_rgba(212,175,55,0.15)]"
-                      : isCLB
-                      ? "border-[#002D62]/30 shadow-[0_4px_20px_rgba(0,45,98,0.08)]"
-                      : "border-[#E9E9E7] shadow-premium"
+                      ? "border-[#D4AF37]"
+                      : isImmigration
+                      ? "border-[#002D62]/30"
+                      : "border-[#E9E9E7]"
                   }`}
                 >
                   <h3 className="text-xs font-bold text-[#37352F] mb-1">
                     {step.title}
                   </h3>
-                  <p className="text-[10px] text-[#5F5E5B] leading-relaxed mb-2">
+                  <p className="text-[10px] text-[#5F5E5B] leading-relaxed mb-2 line-clamp-3 flex-1">
                     {step.description}
                   </p>
                   {step.milestone && (
                     <span
-                      className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-full"
+                      className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-full mt-auto self-center whitespace-nowrap"
                       style={{
                         background: isCanada
                           ? "#FDF3E7"
-                          : isCLB
+                          : isImmigration
                           ? "#EEF3FF"
                           : "#F4F4F2",
                         color: isCanada
                           ? "#9A5013"
-                          : isCLB
+                          : isImmigration
                           ? "#2346D8"
                           : "#7A7A78",
                       }}
@@ -106,10 +105,10 @@ export default function PrepJourney() {
 
           {JOURNEY_STEPS.map((step, i) => {
             const isCanada = step.level === "🇨🇦";
-            const isCLB = step.level === "CLB 7";
+            const isImmigration = step.title === "Immigration Score";
             return (
               <motion.div
-                key={step.level}
+                key={step.title}
                 initial={{ opacity: 0, x: -16 }}
                 animate={isInView ? { opacity: 1, x: 0 } : {}}
                 transition={{ duration: 0.4, delay: 0.1 + i * 0.08 }}
@@ -120,7 +119,7 @@ export default function PrepJourney() {
                   style={{
                     background: isCanada
                       ? "linear-gradient(135deg, #D4AF37, #B8961F)"
-                      : isCLB
+                      : isImmigration
                       ? "#002D62"
                       : "#37352F",
                     color: "#fff",
@@ -133,7 +132,7 @@ export default function PrepJourney() {
                   className={`bg-white border rounded-xl p-4 shadow-premium flex-1 ${
                     isCanada
                       ? "border-[#D4AF37]"
-                      : isCLB
+                      : isImmigration
                       ? "border-[#002D62]/30"
                       : "border-[#E9E9E7]"
                   }`}
@@ -148,8 +147,8 @@ export default function PrepJourney() {
                     <span
                       className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-full"
                       style={{
-                        background: isCanada ? "#FDF3E7" : isCLB ? "#EEF3FF" : "#F4F4F2",
-                        color: isCanada ? "#9A5013" : isCLB ? "#2346D8" : "#7A7A78",
+                        background: isCanada ? "#FDF3E7" : isImmigration ? "#EEF3FF" : "#F4F4F2",
+                        color: isCanada ? "#9A5013" : isImmigration ? "#2346D8" : "#7A7A78",
                       }}
                     >
                       {step.milestone}

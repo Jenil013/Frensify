@@ -29,11 +29,11 @@ export default function AIPowered() {
               AI-Powered Preparation
             </p>
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-4 leading-tight">
-              How AI Helps You Reach CLB 7 Faster
+              How AI Helps You Reach B2 Faster
             </h2>
             <p className="text-sm text-white/60 leading-relaxed mb-4">
               Most learners study harder. Frensify learners study smarter. Our AI doesn't just
-              correct your answers — it identifies exactly what's limiting your CLB score
+              correct your answers, it identifies exactly what's limiting your CEFR score
               and builds the fastest path to fix it.
             </p>
             <p className="text-xs text-white/40">
@@ -73,9 +73,9 @@ export default function AIPowered() {
             className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-white/10 pt-10"
           >
             {[
-              { stat: "8 weeks", label: "Average time to +1 CLB level on Pro" },
+              { stat: "8 weeks", label: "Average time to +1 CEFR level on Pro" },
               { stat: "25,000+", label: "Learners preparing for Canadian immigration" },
-              { stat: "CLB 7", label: "The benchmark. We track every step toward it." },
+              { stat: "B2", label: "The benchmark. We track every step toward it." },
             ].map((item, i) => (
               <div key={i} className="text-center">
                 <p className="text-2xl font-bold text-white mb-1">{item.stat}</p>

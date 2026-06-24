@@ -108,14 +108,14 @@ function CircularRing({
 // ─── Small module ring (Listening / Reading / Writing / Speaking) ─────────────
 function ModuleRing({
   label,
-  score,
-  max,
+  level,
+  progress,
   color,
   delay,
 }: {
   label: string;
-  score: number;
-  max: number;
+  level: string;
+  progress: number;
   color: string;
   delay: number;
 }) {
@@ -127,35 +127,24 @@ function ModuleRing({
       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
     >
       <CircularRing
-        score={score}
-        max={max}
+        score={progress * 100}
+        max={100}
         size={64}
         strokeWidth={5}
         color={color}
         delay={delay}
         centerContent={
-          <>
-            <span
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "#1A1A1A",
-                lineHeight: 1,
-              }}
-            >
-              {score}
-            </span>
-            <span
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "8px",
-                color: "#9B9691",
-              }}
-            >
-              /{max}
-            </span>
-          </>
+          <span
+            style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#1A1A1A",
+              lineHeight: 1,
+            }}
+          >
+            {level}
+          </span>
         }
       />
       <span
@@ -191,7 +180,7 @@ export default function HeroSection() {
       style={{
         position: "relative",
         minHeight: "100vh",
-        background: "#FAF8F5",
+        background: "#FAF9F7",
         overflow: "hidden",
         display: "flex",
         alignItems: "center",
@@ -322,7 +311,7 @@ export default function HeroSection() {
           >
             Your Canadian Future{" "}
             <br />
-            Starts in{" "}
+            Starts with{" "}
             <em
               style={{
                 color: "#2346D8",
@@ -366,7 +355,7 @@ export default function HeroSection() {
               maxWidth: "440px",
             }}
           >
-            Reach CLB 7 faster with AI-powered TEF &amp; TCF preparation
+            Reach B2 faster with AI-powered TEF &amp; TCF preparation
             designed for Canadian immigration, university admission, and
             career growth.
           </motion.p>
@@ -386,7 +375,7 @@ export default function HeroSection() {
                   alignItems: "center",
                   gap: "8px",
                   background: "#1A1A1A",
-                  color: "#FAF8F5",
+                  color: "#FAF9F7",
                   borderRadius: "14px",
                   padding: "14px 26px",
                   fontFamily: "'Inter', sans-serif",
@@ -455,7 +444,7 @@ export default function HeroSection() {
                     height: "32px",
                     borderRadius: "50%",
                     background: av.bg,
-                    border: "2.5px solid #FAF8F5",
+                    border: "2.5px solid #FAF9F7",
                     marginLeft: i === 0 ? 0 : "-10px",
                     display: "flex",
                     alignItems: "center",
@@ -485,7 +474,7 @@ export default function HeroSection() {
                   height: "32px",
                   borderRadius: "50%",
                   background: "#EEF3FF",
-                  border: "2.5px solid #FAF8F5",
+                  border: "2.5px solid #FAF9F7",
                   marginLeft: "-10px",
                   display: "flex",
                   alignItems: "center",
@@ -503,7 +492,7 @@ export default function HeroSection() {
                     color: "#2346D8",
                   }}
                 >
-                  25k+
+                  5k+
                 </span>
               </div>
             </div>
@@ -518,7 +507,7 @@ export default function HeroSection() {
                   lineHeight: 1.3,
                 }}
               >
-                Trusted by 25,000+ learners
+                Trusted by 5,000+ learners
               </p>
               <p
                 style={{
@@ -542,14 +531,8 @@ export default function HeroSection() {
           style={{ flex: "1 1 0%", display: "flex", justifyContent: "center" }}
         >
           {/* Floating animation wrapper */}
-          <motion.div
-            animate={{ y: [0, -8, 0] }}
-            transition={{
-              duration: 5,
-              repeat: Infinity,
-              ease: "easeInOut",
-              repeatType: "loop",
-            }}
+          <div
+            className="hero-scorecard-float"
             style={{ width: "100%", maxWidth: "440px", position: "relative" }}
           >
             {/* Glow */}
@@ -568,9 +551,8 @@ export default function HeroSection() {
             />
 
             {/* Card */}
-            <motion.div
-              whileHover={{ y: -4, boxShadow: "0 24px 64px rgba(0,0,0,0.11)" }}
-              transition={{ duration: 0.25 }}
+            <div
+              className="hero-scorecard"
               style={{
                 background: "#FFFFFF",
                 borderRadius: "24px",
@@ -596,14 +578,24 @@ export default function HeroSection() {
                     style={{
                       width: "32px",
                       height: "32px",
-                      borderRadius: "10px",
+                      borderRadius: "50%",
                       background: "linear-gradient(135deg, #2346D8, #1D3BA8)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <span style={{ fontSize: "14px" }}>🇫🇷</span>
+                    <span
+                      style={{
+                        fontFamily: "'Inter', sans-serif",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        color: "#FFFFFF",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      FR
+                    </span>
                   </div>
                   <div>
                     <p
@@ -629,32 +621,12 @@ export default function HeroSection() {
                     </p>
                   </div>
                 </div>
-                <div
-                  style={{
-                    background: "#EEF3FF",
-                    borderRadius: "99px",
-                    padding: "4px 10px",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "'Inter', sans-serif",
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      color: "#2346D8",
-                      letterSpacing: "0.04em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Live
-                  </span>
-                </div>
               </div>
 
               {/* Card body */}
               <div style={{ padding: "28px 24px 24px" }}>
 
-                {/* ── LARGE CENTRAL CLB RING ── */}
+                {/* ── LARGE CENTRAL CEFR RING ── */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.88 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -671,14 +643,14 @@ export default function HeroSection() {
                     max={totalMax}
                     size={148}
                     strokeWidth={10}
-                    color="url(#clbGradient)"
+                    color="url(#cefrGradient)"
                     delay={0.45}
                     centerContent={
                       <>
                         {/* inline gradient def */}
                         <svg width={0} height={0} style={{ position: "absolute" }}>
                           <defs>
-                            <linearGradient id="clbGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <linearGradient id="cefrGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                               <stop offset="0%" stopColor="#2346D8" />
                               <stop offset="100%" stopColor="#D4AF37" />
                             </linearGradient>
@@ -693,7 +665,7 @@ export default function HeroSection() {
                             lineHeight: 1,
                           }}
                         >
-                          CLB 6
+                          B1
                         </span>
                         <span
                           style={{
@@ -711,7 +683,7 @@ export default function HeroSection() {
                     }
                   />
 
-                  {/* CLB progress note */}
+                  {/* CEFR progress note */}
                   <div
                     style={{
                       marginTop: "12px",
@@ -735,7 +707,7 @@ export default function HeroSection() {
                         color: "#6B6762",
                       }}
                     >
-                      <strong style={{ color: "#2D6A53", fontWeight: 600 }}>82.6%</strong> toward CLB 7 target
+                      <strong style={{ color: "#2D6A53", fontWeight: 600 }}>82.6%</strong> toward B2 target
                     </span>
                   </div>
                 </motion.div>
@@ -749,10 +721,10 @@ export default function HeroSection() {
                     marginBottom: "24px",
                   }}
                 >
-                  <ModuleRing label="Listening" score={285} max={360} color="#2D6A53" delay={0.5} />
-                  <ModuleRing label="Reading"   score={310} max={360} color="#2346D8" delay={0.6} />
-                  <ModuleRing label="Writing"   score={295} max={360} color="#9A5013" delay={0.7} />
-                  <ModuleRing label="Speaking"  score={300} max={360} color="#B83E5C" delay={0.8} />
+                  <ModuleRing label="Listening" level="B1" progress={0.79} color="#2D6A53" delay={0.5} />
+                  <ModuleRing label="Reading"   level="B2" progress={0.86} color="#2346D8" delay={0.6} />
+                  <ModuleRing label="Writing"   level="B1" progress={0.82} color="#9A5013" delay={0.7} />
+                  <ModuleRing label="Speaking"  level="B1" progress={0.83} color="#B83E5C" delay={0.8} />
                 </div>
 
                 {/* Divider */}
@@ -761,8 +733,8 @@ export default function HeroSection() {
                 {/* Stats row */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
                   {[
-                    { label: "Current Level", value: "CLB 6", sub: "Intermediate", color: "#2346D8", bg: "#EEF3FF" },
-                    { label: "Target",        value: "CLB 7", sub: "Immigration",  color: "#2D6A53", bg: "#EAF5F1" },
+                    { label: "Current Level", value: "B1", sub: "Intermediate", color: "#2346D8", bg: "#EEF3FF" },
+                    { label: "Target",        value: "B2", sub: "Immigration",  color: "#2D6A53", bg: "#EAF5F1" },
                     { label: "CRS Boost",     value: "+40 pts", sub: "Estimated", color: "#9A5013", bg: "#FDF3E7" },
                   ].map((stat, i) => (
                     <motion.div
@@ -823,7 +795,7 @@ export default function HeroSection() {
                   style={{
                     marginTop: "20px",
                     padding: "14px 16px",
-                    background: "#FAF8F5",
+                    background: "#FAF9F7",
                     borderRadius: "12px",
                     border: "1px solid #ECE8E1",
                     display: "flex",
@@ -854,18 +826,47 @@ export default function HeroSection() {
                     }}
                   >
                     <strong style={{ color: "#2346D8", fontWeight: 600 }}>AI Insight:</strong>{" "}
-                    Improve reading speed by 12% to reach your CLB 7 target.
+                    Improve reading speed by 12% to reach your B2 target.
                   </p>
                 </motion.div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         </motion.div>
       </div>
 
       {/* Responsive styles */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@400;500;600;700&display=swap');
+
+        .hero-scorecard-float {
+          animation: hero-scorecard-float 7s ease-in-out infinite;
+          will-change: transform;
+          transform: translateZ(0);
+        }
+
+        @keyframes hero-scorecard-float {
+          0%, 100% {
+            transform: translate3d(0, 0, 0);
+          }
+          50% {
+            transform: translate3d(0, -12px, 0);
+          }
+        }
+
+        .hero-scorecard {
+          transition: box-shadow 0.35s ease;
+        }
+
+        .hero-scorecard:hover {
+          box-shadow: 0 24px 64px rgba(0, 0, 0, 0.11);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-scorecard-float {
+            animation: none;
+          }
+        }
 
         @media (max-width: 1024px) {
           .hero-inner {

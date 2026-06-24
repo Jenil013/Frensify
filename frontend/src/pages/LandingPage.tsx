@@ -13,7 +13,7 @@ import Footer from "./landing/Footer";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#FAFAF9] text-[#37352F] font-sans selection:bg-[#E3E2E0]/70">
+    <div className="min-h-screen bg-[#FAF9F7] text-[#37352F] font-sans selection:bg-[#E3E2E0]/70">
       <Navbar />
       <main>
         <HeroSection />
