@@ -19,7 +19,7 @@ export default function PrepJourney() {
             Your Roadmap
           </p>
           <h2 className="text-2xl md:text-3xl font-bold text-[#37352F] mb-3">
-            Your Journey To Canada
+            Your Journey To Success
           </h2>
           <p className="text-sm text-[#7A7A78] max-w-lg mx-auto">
             A structured path from beginner French to Canadian opportunities, every level mapped to a real milestone.

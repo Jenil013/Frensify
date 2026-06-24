@@ -92,15 +92,6 @@ export default function PricingPreview() {
                 ))}
               </ul>
 
-              {/* Outcome note */}
-              {tier.result && (
-                <div className="mb-4 px-3 py-2 rounded-lg bg-[#FAF9F7] border border-[#E9E9E7]">
-                  <p className="text-[10px] text-[#5F5E5B] text-center font-medium">
-                    {tier.result}
-                  </p>
-                </div>
-              )}
-
               <Link
                 to="/auth?mode=signup"
                 className={`block w-full text-center py-2.5 rounded-lg text-xs font-semibold transition-all ${

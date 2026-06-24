@@ -8,7 +8,6 @@ export interface FeatureModule {
   labelFr: string;
   labelEn: string;
   description: string;
-  outcome: string;
   icon: LucideIcon;
   color: string;
   bgColor: string;
@@ -22,7 +21,6 @@ export const FEATURE_MODULES: FeatureModule[] = [
     labelEn: "Listening",
     description:
       "Understand real-world French conversations, workplace dialogue, and exam audio at full speed, with zero hesitation.",
-    outcome: "Builds B1-level oral comprehension",
     icon: Headphones,
     color: "#2D6A53",
     bgColor: "#EAF5F1",
@@ -34,7 +32,6 @@ export const FEATURE_MODULES: FeatureModule[] = [
     labelEn: "Reading",
     description:
       "Read government forms, workplace documents, and academic French with the speed and confidence immigration officers expect.",
-    outcome: "Meets IRCC language requirements",
     icon: BookOpen,
     color: "#9A5013",
     bgColor: "#FDF3E7",
@@ -46,7 +43,6 @@ export const FEATURE_MODULES: FeatureModule[] = [
     labelEn: "Speaking",
     description:
       "Communicate naturally in interviews, oral exams, and everyday Canadian life, with AI feedback on every response.",
-    outcome: "Builds fluency for life in Canada",
     icon: Mic,
     color: "#B83E5C",
     bgColor: "#FCECF0",
@@ -58,7 +54,6 @@ export const FEATURE_MODULES: FeatureModule[] = [
     labelEn: "Writing",
     description:
       "Write immigration letters, academic submissions, and professional French that clears every exam rubric.",
-    outcome: "Boosts CRS score through language proof",
     icon: PenTool,
     color: "#1D74B4",
     bgColor: "#E8F3FC",
@@ -137,9 +132,9 @@ export const AI_FEATURES: AIFeature[] = [
   },
   {
     icon: MapPin,
-    title: "Builds Your Personal Roadmap",
+    title: "Surfaces Your Next Best Practice",
     description:
-      "Generates a week-by-week study plan calibrated to your weakest modules, your target exam date, and your CEFR goal.",
+      "Your dashboard highlights the module furthest from your CEFR target and points you to the highest-impact timed session to run next.",
   },
 ];
 
@@ -199,7 +194,6 @@ export interface PricingTier {
   badgeColor?: string;
   highlighted?: boolean;
   features: string[];
-  result?: string;
 }
 
 export const PRICING_TIERS: PricingTier[] = [
@@ -209,12 +203,10 @@ export const PRICING_TIERS: PricingTier[] = [
     period: "forever",
     tagline: "Explore Frensify before you commit.",
     features: [
-      "Placement test & CEFR assessment",
-      "Sample practice exercises",
-      "Limited daily questions",
-      "Self-graded answer keys",
+      "2 sample Listening tests",
+      "2 sample Reading tests",
+      "Basic vocabulary practice",
     ],
-    result: "Understand where you stand",
   },
   {
     name: "Pro",
@@ -225,13 +217,15 @@ export const PRICING_TIERS: PricingTier[] = [
     badgeColor: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]",
     highlighted: true,
     features: [
-      "Everything in Free",
-      "AI-powered writing corrections",
-      "2 full-length mock exams per month",
+      "1 full mock simulation per week",
+      "2 Writing practice drills per week",
+      "2 Speaking practice drills per week",
+      "Unlimited Listening and Reading simulations",
+      "AI-powered Writing and Speaking corrections",
+      "Full AI feedback on mock exams",
       "CEFR progress tracking dashboard",
-      "Personalized weak-module drills",
+      "Next-best practice recommendations",
     ],
-    result: "Average: +1 to 2 CEFR levels in 8 weeks",
   },
   {
     name: "Max",
@@ -242,12 +236,10 @@ export const PRICING_TIERS: PricingTier[] = [
     badgeColor: "bg-[#EEEFFC] text-[#4A55A2] border-[#DDE0FA]",
     features: [
       "Everything in Pro",
-      "Unlimited mock exams",
-      "Unlimited speaking simulations",
-      "AI pronunciation coaching",
-      "Priority AI feedback",
+      "2 full mock simulations per week",
+      "4 Writing practice drills per week",
+      "4 Speaking practice drills per week",
     ],
-    result: "Maximise your CRS score",
   },
 ];
 

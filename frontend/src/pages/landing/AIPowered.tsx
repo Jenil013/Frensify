@@ -74,7 +74,7 @@ export default function AIPowered() {
           >
             {[
               { stat: "8 weeks", label: "Average time to +1 CEFR level on Pro" },
-              { stat: "25,000+", label: "Learners preparing for Canadian immigration" },
+              { stat: "5000+", label: "Learners preparing for Canadian immigration" },
               { stat: "B2", label: "The benchmark. We track every step toward it." },
             ].map((item, i) => (
               <div key={i} className="text-center">

@@ -54,22 +54,9 @@ export default function CoreFeatures() {
                     <h3 className="text-base font-bold text-[#37352F] mb-1.5">
                       {mod.labelEn}
                     </h3>
-                    <p className="text-xs text-[#5F5E5B] leading-relaxed mb-3">
+                    <p className="text-xs text-[#5F5E5B] leading-relaxed">
                       {mod.description}
                     </p>
-                    {/* Outcome pill */}
-                    <div className="inline-flex items-center gap-1.5">
-                      <div
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: mod.color }}
-                      />
-                      <span
-                        className="text-[10px] font-semibold"
-                        style={{ color: mod.color }}
-                      >
-                        {mod.outcome}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </motion.div>
