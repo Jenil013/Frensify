@@ -1,12 +1,12 @@
 import React from "react";
 import Navbar from "./landing/Navbar";
 import HeroSection from "./landing/HeroSection";
-import TrustBar from "./landing/TrustBar";
 import CoreFeatures from "./landing/CoreFeatures";
 import PrepJourney from "./landing/PrepJourney";
 import AIPowered from "./landing/AIPowered";
-import PricingPreview from "./landing/PricingPreview";
+// import WhyFrenchForCanada from "./landing/WhyFrenchForCanada";
 import Testimonials from "./landing/Testimonials";
+import PricingPreview from "./landing/PricingPreview";
 import FAQ from "./landing/FAQ";
 import FinalCTA from "./landing/FinalCTA";
 import Footer from "./landing/Footer";
@@ -17,12 +17,12 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <HeroSection />
-        <TrustBar />
         <CoreFeatures />
         <PrepJourney />
         <AIPowered />
-        <PricingPreview />
+        {/* <WhyFrenchForCanada /> */}
         <Testimonials />
+        <PricingPreview />
         <FAQ />
         <FinalCTA />
       </main>

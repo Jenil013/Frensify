@@ -22,8 +22,8 @@ export default function TrustBar() {
               >
                 <Icon className="w-4 h-4 text-[#0F47AF] shrink-0" />
                 <span className="text-xs font-medium text-[#5F5E5B] whitespace-nowrap">
-                  {point.label}
-                </span>
+                   {point.label}
+                 </span>
               </motion.div>
             );
           })}

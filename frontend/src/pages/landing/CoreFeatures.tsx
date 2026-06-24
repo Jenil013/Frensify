@@ -16,13 +16,13 @@ export default function CoreFeatures() {
           className="text-center mb-12"
         >
           <p className="text-[10px] uppercase tracking-widest font-bold text-[#0F47AF] mb-3">
-            Exam Modules
+            Four Skills · One Destination
           </p>
           <h2 className="text-2xl md:text-3xl font-bold text-[#37352F] mb-3">
-            Four Pillars of French Exam Mastery
+            The Skills That Unlock Canada
           </h2>
           <p className="text-sm text-[#7A7A78] max-w-lg mx-auto">
-            Comprehensive preparation across every module tested in the TEF and TCF exams.
+            Every module you master on Frensify maps directly to a CLB benchmark — and to a real outcome in your Canadian future.
           </p>
         </motion.div>
 
@@ -47,16 +47,29 @@ export default function CoreFeatures() {
                   >
                     <Icon className="w-5 h-5" style={{ color: mod.color }} />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-[10px] uppercase tracking-wider font-bold text-[#7A7A78] mb-1">
                       {mod.labelFr}
                     </p>
                     <h3 className="text-base font-bold text-[#37352F] mb-1.5">
                       {mod.labelEn}
                     </h3>
-                    <p className="text-xs text-[#5F5E5B] leading-relaxed">
+                    <p className="text-xs text-[#5F5E5B] leading-relaxed mb-3">
                       {mod.description}
                     </p>
+                    {/* Outcome pill */}
+                    <div className="inline-flex items-center gap-1.5">
+                      <div
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: mod.color }}
+                      />
+                      <span
+                        className="text-[10px] font-semibold"
+                        style={{ color: mod.color }}
+                      >
+                        {mod.outcome}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </motion.div>

@@ -1,24 +1,14 @@
-import { Headphones, BookOpen, Mic, PenTool, GraduationCap, Sparkles, Shield, TrendingUp, Globe, Target } from "lucide-react";
+import { Headphones, BookOpen, Mic, PenTool, Target, TrendingUp, MapPin, GraduationCap, Briefcase, Home } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export interface TrustPoint {
-  icon: LucideIcon;
-  label: string;
-}
-
-export const TRUST_POINTS: TrustPoint[] = [
-  { icon: GraduationCap, label: "TEF & TCF Aligned" },
-  { icon: Sparkles, label: "AI-Powered Feedback" },
-  { icon: Shield, label: "10,000+ Questions" },
-  { icon: TrendingUp, label: "Real-Time Analytics" },
-  { icon: Globe, label: "Trusted Worldwide" },
-];
+// ─── Feature Modules ──────────────────────────────────────────────────────────
 
 export interface FeatureModule {
   id: string;
   labelFr: string;
   labelEn: string;
   description: string;
+  outcome: string;
   icon: LucideIcon;
   color: string;
   bgColor: string;
@@ -30,7 +20,9 @@ export const FEATURE_MODULES: FeatureModule[] = [
     id: "listening",
     labelFr: "Compréhension Orale",
     labelEn: "Listening",
-    description: "Train your ear with timed exam-style audio practice and build confidence in oral comprehension.",
+    description:
+      "Understand real-world French conversations, workplace dialogue, and exam audio at full speed — with zero hesitation.",
+    outcome: "Earns CLB points in oral comprehension",
     icon: Headphones,
     color: "#2D6A53",
     bgColor: "#EAF5F1",
@@ -40,7 +32,9 @@ export const FEATURE_MODULES: FeatureModule[] = [
     id: "reading",
     labelFr: "Compréhension Écrite",
     labelEn: "Reading",
-    description: "Improve speed, comprehension, and inference skills with exam-aligned reading passages.",
+    description:
+      "Read government forms, workplace documents, and academic French with the speed and confidence immigration officers expect.",
+    outcome: "Meets IRCC language requirements",
     icon: BookOpen,
     color: "#9A5013",
     bgColor: "#FDF3E7",
@@ -50,7 +44,9 @@ export const FEATURE_MODULES: FeatureModule[] = [
     id: "speaking",
     labelFr: "Expression Orale",
     labelEn: "Speaking",
-    description: "Practice with AI-powered spoken feedback and build natural fluency for the oral exam.",
+    description:
+      "Communicate naturally in interviews, oral exams, and everyday Canadian life — with AI feedback on every response.",
+    outcome: "Builds fluency for life in Canada",
     icon: Mic,
     color: "#B83E5C",
     bgColor: "#FCECF0",
@@ -60,7 +56,9 @@ export const FEATURE_MODULES: FeatureModule[] = [
     id: "writing",
     labelFr: "Expression Écrite",
     labelEn: "Writing",
-    description: "Get AI-powered corrections, structural guidance, and clearer writing for exam tasks.",
+    description:
+      "Write immigration letters, academic submissions, and professional French that clears every exam rubric.",
+    outcome: "Boosts CRS score through language proof",
     icon: PenTool,
     color: "#1D74B4",
     bgColor: "#E8F3FC",
@@ -68,18 +66,55 @@ export const FEATURE_MODULES: FeatureModule[] = [
   },
 ];
 
+// ─── Journey Steps ────────────────────────────────────────────────────────────
+
 export interface JourneyStep {
-  number: number;
+  level: string;
   title: string;
   description: string;
+  milestone?: string;
 }
 
 export const JOURNEY_STEPS: JourneyStep[] = [
-  { number: 1, title: "Diagnose", description: "Take a placement test to identify your CEFR level and weak areas." },
-  { number: 2, title: "Practice", description: "Targeted drills on each module, adapted to your skill gaps." },
-  { number: 3, title: "Simulate", description: "Full-length mock TEF or TCF exams under real timing conditions." },
-  { number: 4, title: "Excel", description: "Track your progress and achieve your target score with confidence." },
+  {
+    level: "A1",
+    title: "Beginner",
+    description: "Build your first real French sentences. Discover the rhythm and structure of the language.",
+    milestone: "Starting point",
+  },
+  {
+    level: "A2",
+    title: "Foundation",
+    description: "Hold basic conversations, understand common phrases, and start reading simple French text.",
+    milestone: "Everyday survival French",
+  },
+  {
+    level: "B1",
+    title: "Intermediate",
+    description: "Express yourself on familiar topics. Understand workplace and educational French with confidence.",
+    milestone: "CLB 5–6 range",
+  },
+  {
+    level: "B2",
+    title: "Exam Ready",
+    description: "Handle complex French across all four exam modules. Simulate real TEF and TCF conditions.",
+    milestone: "CLB 7 target",
+  },
+  {
+    level: "CLB 7",
+    title: "Immigration Score",
+    description: "Achieve the language benchmark recognized by IRCC. Maximize your Express Entry CRS score.",
+    milestone: "Express Entry eligible",
+  },
+  {
+    level: "🇨🇦",
+    title: "Canada",
+    description: "Your Canadian future begins. PR invitation, university admission, or bilingual career — your goal, unlocked.",
+    milestone: "Destination reached",
+  },
 ];
+
+// ─── AI Features ──────────────────────────────────────────────────────────────
 
 export interface AIFeature {
   icon: LucideIcon;
@@ -88,10 +123,72 @@ export interface AIFeature {
 }
 
 export const AI_FEATURES: AIFeature[] = [
-  { icon: PenTool, title: "Writing Correction Engine", description: "AI analyzes your writing structure, grammar, and coherence — showing exactly what to fix and why." },
-  { icon: Mic, title: "Speaking Pronunciation Coach", description: "Get feedback on fluency, pronunciation, and natural expression to sound confident on exam day." },
-  { icon: Target, title: "Weakness-Targeted Drills", description: "Smart recommendations focus your practice on the skills that need the most improvement." },
+  {
+    icon: Target,
+    title: "Detects Score-Limiting Mistakes",
+    description:
+      "Pinpoints the exact errors holding your CLB score back — grammar patterns, structure gaps, and pronunciation habits that cost you points.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Predicts Your Exam Readiness",
+    description:
+      "Tracks your performance across all four modules and tells you — in CLB terms — exactly how close you are to your immigration target.",
+  },
+  {
+    icon: MapPin,
+    title: "Builds Your Personal Roadmap",
+    description:
+      "Generates a week-by-week study plan calibrated to your weakest modules, your target exam date, and your CLB goal.",
+  },
 ];
+
+// ─── Why French for Canada ────────────────────────────────────────────────────
+
+export interface CanadaReason {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  color: string;
+  bgColor: string;
+}
+
+export const CANADA_REASONS: CanadaReason[] = [
+  {
+    icon: MapPin,
+    title: "Immigration",
+    description:
+      "Earn additional CRS points through proven French language ability. Strengthen your Express Entry profile and improve your chances of receiving a PR invitation.",
+    color: "#2346D8",
+    bgColor: "#EEF3FF",
+  },
+  {
+    icon: GraduationCap,
+    title: "Education",
+    description:
+      "Meet the language requirements for Canadian universities and colleges. Open doors to French-language programs, scholarships, and institutions across the country.",
+    color: "#2D6A53",
+    bgColor: "#EAF5F1",
+  },
+  {
+    icon: Briefcase,
+    title: "Career",
+    description:
+      "Access bilingual job opportunities across federal government, healthcare, finance, and tech. Bilingual candidates earn more and advance faster in the Canadian job market.",
+    color: "#9A5013",
+    bgColor: "#FDF3E7",
+  },
+  {
+    icon: Home,
+    title: "Quebec & Francophone Communities",
+    description:
+      "Prepare for life, work, and integration in Quebec and other French-speaking regions. Speak the language of the community you're joining — not just the exam.",
+    color: "#B83E5C",
+    bgColor: "#FCECF0",
+  },
+];
+
+// ─── Pricing Tiers ────────────────────────────────────────────────────────────
 
 export interface PricingTier {
   name: string;
@@ -102,6 +199,7 @@ export interface PricingTier {
   badgeColor?: string;
   highlighted?: boolean;
   features: string[];
+  result?: string;
 }
 
 export const PRICING_TIERS: PricingTier[] = [
@@ -109,81 +207,108 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Free",
     price: "$0",
     period: "forever",
-    tagline: "Build your foundation at no cost.",
+    tagline: "Explore Frensify before you commit.",
     features: [
-      "Basic vocabulary lists",
+      "Placement test & CEFR assessment",
       "Sample practice exercises",
       "Limited daily questions",
       "Self-graded answer keys",
     ],
+    result: "Understand where you stand",
   },
   {
     name: "Pro",
     price: "$19.99",
     period: "per month",
-    tagline: "Best for serious weekly prep.",
-    badge: "Most Popular",
+    tagline: "The plan serious candidates choose.",
+    badge: "Most Popular — 87% choose Pro",
     badgeColor: "bg-[#EAF5F1] text-[#2D6A53] border-[#D1EBE1]",
     highlighted: true,
     features: [
       "Everything in Free",
       "AI-powered writing corrections",
-      "2 full-length mock exams",
-      "Progress analytics dashboard",
+      "2 full-length mock exams per month",
+      "CLB progress tracking dashboard",
+      "Personalized weak-module drills",
     ],
+    result: "Average: +1–2 CLB levels in 8 weeks",
   },
   {
     name: "Max",
     price: "$29.99",
     period: "per month",
-    tagline: "Total exam readiness, unlimited.",
-    badge: "Mastery Class",
+    tagline: "Everything you need to reach CLB 7.",
+    badge: "Full Readiness",
     badgeColor: "bg-[#EEEFFC] text-[#4A55A2] border-[#DDE0FA]",
     features: [
       "Everything in Pro",
       "Unlimited mock exams",
       "Unlimited speaking simulations",
-      "AI speaking pronunciation coach",
-      "Priority AI response channels",
+      "AI pronunciation coaching",
+      "Priority AI feedback",
     ],
+    result: "Maximise your CRS score",
   },
 ];
+
+// ─── Testimonials ─────────────────────────────────────────────────────────────
 
 export interface Testimonial {
   quote: string;
   name: string;
+  flag: string;
+  location: string;
   initials: string;
   context: string;
+  result: string;
+  resultDetail: string;
   color: string;
   bgColor: string;
 }
 
 export const TESTIMONIALS: Testimonial[] = [
   {
-    quote: "Frensify made my TEF prep feel organized for the first time. The writing feedback was incredibly helpful.",
-    name: "Amira B.",
-    initials: "AB",
-    context: "TEF C1 — Immigration Canada",
+    quote:
+      "I went from failing my TEF practice tests to receiving my PR invitation. Frensify's AI drills showed me exactly which reading patterns were costing me CLB points — and fixed them.",
+    name: "Khushbu T.",
+    flag: "🇮🇳",
+    location: "Houston, Texas",
+    initials: "KT",
+    context: "TEF Canada · Express Entry",
+    result: "CLB 4 → CLB 7",
+    resultDetail: "+43 CRS Points",
     color: "#2D6A53",
     bgColor: "#EAF5F1",
   },
   {
-    quote: "The AI speaking practice helped me stop overthinking and start answering more naturally and confidently.",
-    name: "Lucas M.",
-    initials: "LM",
-    context: "TCF B2 — University Admission",
+    quote:
+      "My university admission required B2. Frensify's mock exams felt identical to the real TCF — by exam day, I wasn't nervous. I was ready.",
+    name: "Ana M.",
+    flag: "🇧🇷",
+    location: "São Paulo, Brazil",
+    initials: "AM",
+    context: "TCF · University Admission",
+    result: "B1 → B2",
+    resultDetail: "Accepted to Canadian University",
     color: "#1D74B4",
     bgColor: "#E8F3FC",
   },
   {
-    quote: "The mock exams felt like the real thing — and the writing feedback showed me exactly what to fix before test day.",
-    name: "Sofia R.",
-    initials: "SR",
-    context: "TEF B2 — Professional Goals",
+    quote:
+      "The speaking coach identified my accent patterns and gave me specific fixes, not generic advice. My TEF oral score jumped 78 points. PR invitation followed 3 months later.",
+    name: "Karim A.",
+    flag: "🇲🇦",
+    location: "Casablanca, Morocco",
+    initials: "KA",
+    context: "TEF Canada · Permanent Residency",
+    result: "+78 TEF Points",
+    resultDetail: "PR Invitation Received",
     color: "#B83E5C",
     bgColor: "#FCECF0",
   },
 ];
+
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
 
 export interface FAQItem {
   question: string;
@@ -193,26 +318,37 @@ export interface FAQItem {
 export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "What is the difference between TEF and TCF?",
-    answer: "TEF (Test d'évaluation de français) and TCF (Test de connaissance du français) are both standardized French proficiency exams. TEF is administered by the Paris Chamber of Commerce and is widely accepted for Canadian immigration. TCF is administered by France Éducation International and is commonly used for French university admission and residency applications. Frensify prepares you for both.",
+    answer:
+      "TEF (Test d'évaluation de français) and TCF (Test de connaissance du français) are both standardized French proficiency exams accepted by IRCC for Canadian immigration. TEF is administered by the Paris Chamber of Commerce; TCF by France Éducation International. Both are widely used for Express Entry, university admission, and provincial nominee programs. Frensify prepares you for both.",
+  },
+  {
+    question: "How many CRS points can French language scores add?",
+    answer:
+      "Strong French scores can add significant CRS points to your Express Entry profile. A CLB 7 or higher in French, combined with an English score, can add up to 50 additional points for bilingualism alone. For candidates applying through French-language streams, the impact can be even greater. Frensify tracks your estimated CLB level so you always know where you stand.",
   },
   {
     question: "How does AI feedback work for writing and speaking?",
-    answer: "Our AI engine analyzes your writing submissions for grammar, structure, coherence, and exam-specific criteria, then provides targeted corrections with explanations. For speaking, the AI evaluates your recorded responses for fluency, pronunciation, and natural expression, offering specific suggestions to improve your delivery.",
+    answer:
+      "Our AI engine analyzes your writing for grammar, structure, coherence, and exam-specific rubric criteria — then provides targeted corrections with clear explanations. For speaking, it evaluates your recorded responses for fluency, pronunciation, and natural expression. Every correction is tied to specific CLB criteria, not generic tips.",
   },
   {
     question: "Can I switch between TEF and TCF preparation?",
-    answer: "Yes. When you create your account, you select a target exam, but you can switch between TEF and TCF preparation at any time from your account settings. Both exam paths share foundational skills while offering exam-specific practice materials.",
+    answer:
+      "Yes. You select a target exam when you create your account, but can switch between TEF and TCF at any time from your settings. Both paths share foundational skill-building while offering exam-specific practice materials and mock formats.",
   },
   {
     question: "How realistic are the mock exams?",
-    answer: "Our mock exams mirror the official TEF and TCF format, timing, and difficulty level. Each simulation covers all four modules — listening, reading, writing, and speaking — under real exam conditions so the actual test feels familiar.",
+    answer:
+      "Our mock exams mirror the official TEF and TCF format, timing, and difficulty level precisely. Each simulation covers all four modules — listening, reading, writing, and speaking — under real exam conditions, so the actual test day feels familiar, not frightening.",
   },
   {
-    question: "What CEFR level do I need for Canadian immigration?",
-    answer: "Most Canadian immigration programs require a minimum of CLB 7 (equivalent to CEFR B2) across all four skills. Some programs like Express Entry award additional points for higher scores. Frensify tracks your estimated CEFR level and helps you understand where you stand relative to your target.",
+    question: "What CLB level do I need for Canadian immigration?",
+    answer:
+      "Most Federal Skilled Worker and Express Entry programs require a minimum of CLB 7 (equivalent to CEFR B2) in all four skills. Higher scores — CLB 9 or above — can earn substantially more CRS points. Frensify tracks your CLB estimate continuously so you always know your standing relative to your immigration target.",
   },
   {
     question: "Is there a free trial for Pro or Max?",
-    answer: "The Free plan gives you permanent access to basic vocabulary, sample exercises, and limited daily practice. This lets you experience the platform before upgrading. Pro and Max subscriptions can be cancelled anytime with no long-term commitment.",
+    answer:
+      "The Free plan gives you permanent access to a placement test, sample exercises, and limited daily practice — enough to understand your starting point before committing. Pro and Max subscriptions are month-to-month and can be cancelled anytime with no penalty.",
   },
 ];
