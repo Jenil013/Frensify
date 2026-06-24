@@ -35,7 +35,7 @@ export default function FinalCTA() {
           transition={{ duration: 0.5, delay: 0.15 }}
           className="text-sm text-[#5F5E5B] mb-8 max-w-md mx-auto"
         >
-          Your TEF or TCF goal is closer than it feels — start your
+          Your TEF or TCF goal is closer than it feels, start your
           French preparation today with a free account.
         </motion.p>
 
