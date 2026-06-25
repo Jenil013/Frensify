@@ -32,7 +32,7 @@ def test_analytics_summary(client, auth_headers, mock_profile, mock_db):
 def test_recent_tests(client, auth_headers, mock_db, monkeypatch):
     monkeypatch.setattr(
         "routers.analytics.build_recent_tests",
-        lambda db, user_id: [
+        lambda db, user_id, limit=10: [
             {
                 "id": "mock:1",
                 "kind": "full_mock",

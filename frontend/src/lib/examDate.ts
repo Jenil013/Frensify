@@ -30,27 +30,27 @@ export function examCountdownPhrase(
   const countdown = formatExamCountdown(examDate);
   if (!countdown) {
     return {
-      prefix: `Aujourd'hui • Your official ${examType} pathway examination —`,
+      prefix: `Your official ${examType} pathway examination —`,
       highlight: null,
       suffix: "add your exam date in Candidate Settings",
     };
   }
   if (countdown === "today") {
     return {
-      prefix: `Aujourd'hui • Your official ${examType} pathway examination is`,
+      prefix: `Your official ${examType} pathway examination is`,
       highlight: "today",
       suffix: "",
     };
   }
   if (countdown.endsWith(" ago")) {
     return {
-      prefix: `Aujourd'hui • Your official ${examType} pathway examination was`,
+      prefix: `Your official ${examType} pathway examination was`,
       highlight: countdown,
       suffix: "",
     };
   }
   return {
-    prefix: `Aujourd'hui • Your official ${examType} pathway examination is in`,
+    prefix: `Your official ${examType} pathway examination is in`,
     highlight: countdown,
     suffix: "",
   };

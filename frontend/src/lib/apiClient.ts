@@ -25,6 +25,8 @@ export interface ApiProfile {
   streak_days: number;
   last_active_date: string | null;
   exam_date: string | null;
+  profile_picture?: string | null;
+  profile_picture_url?: string | null;
   tier: string;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
@@ -38,6 +40,7 @@ export interface ProfileUpdatePayload {
   target_score?: CefrLevel;
   current_level?: CefrLevel;
   exam_date?: string | null;
+  profile_picture?: string | null;
 }
 
 /** Refresh slightly before expiry so we never send an effectively-expired token. */
@@ -210,9 +213,10 @@ export interface RecentTestItem {
   scorePct: number | null;
 }
 
-export async function fetchRecentTests(): Promise<RecentTestItem[]> {
+export async function fetchRecentTests(limit = 10): Promise<RecentTestItem[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
   const data = await apiFetch<{ items: RecentTestItem[] }>(
-    "/api/v1/analytics/recent-tests"
+    `/api/v1/analytics/recent-tests?${params.toString()}`
   );
   return data.items;
 }
@@ -281,6 +285,38 @@ export async function updateProfile(
     method: "PATCH",
     body: JSON.stringify(patch),
   });
+}
+
+export interface ProfilePictureUploadUrlResponse {
+  upload_url: string;
+  storage_path: string;
+}
+
+export async function fetchProfilePictureUploadUrl(
+  contentType: "image/jpeg" | "image/png" | "image/webp"
+): Promise<ProfilePictureUploadUrlResponse> {
+  return apiFetch<ProfilePictureUploadUrlResponse>(
+    "/api/v1/profile/picture/upload-url",
+    {
+      method: "POST",
+      body: JSON.stringify({ content_type: contentType }),
+    }
+  );
+}
+
+export async function uploadProfilePicture(
+  uploadUrl: string,
+  blob: Blob,
+  contentType: string
+): Promise<void> {
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    body: blob,
+    headers: { "Content-Type": contentType },
+  });
+  if (!response.ok) {
+    throw new Error("Profile photo upload failed.");
+  }
 }
 
 export async function createCheckoutSession(
@@ -704,6 +740,7 @@ export function mapApiProfileToUser(
     streakDays: api.streak_days,
     lastActiveDate: api.last_active_date ?? today,
     examDate: api.exam_date ?? null,
+    profilePictureUrl: api.profile_picture_url ?? null,
     tier: api.tier as UserSubscriptionTier,
     completedActivities: extras?.completedActivities ?? [],
     mockTestScores: extras?.mockTestScores ?? [],
