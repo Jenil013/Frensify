@@ -67,8 +67,9 @@ async def analytics_summary(
 async def recent_tests(
     profile: dict = Depends(get_profile),
     db=Depends(get_db),
+    limit: int = Query(default=10, ge=1, le=500),
 ):
-    return {"items": build_recent_tests(db, profile["id"])}
+    return {"items": build_recent_tests(db, profile["id"], limit=limit)}
 
 
 @router.get("/analytics/module-accuracy")

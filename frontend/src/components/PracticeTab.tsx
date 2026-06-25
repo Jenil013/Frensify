@@ -313,7 +313,7 @@ export default function PracticeTab({
         </div>
 
         <div className="flex items-center gap-1 p-1 bg-[#F1F1EF] border border-[#E9E9E7] rounded-lg">
-          {(["reading", "listening", "speaking", "writing"] as SkillType[]).map((skill) => {
+          {(["listening", "reading", "writing", "speaking"] as SkillType[]).map((skill) => {
             const Icon = {
               reading: BookOpen,
               listening: Headphones,

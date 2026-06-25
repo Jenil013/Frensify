@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Award, CheckCircle2, Circle, X } from "lucide-react";
+import ListeningAudioPlayer from "./tcf/ListeningAudioPlayer";
 import type { ExamPathway, McqItem } from "../types";
 import {
   estimateMcqCefr,
@@ -66,10 +67,12 @@ function QuestionReview({
   question,
   questionIndex,
   selectedIndex,
+  isListening,
 }: {
   question: McqItem;
   questionIndex: number;
   selectedIndex: number | null;
+  isListening: boolean;
 }) {
   const correctIndex = question.correctChoiceIndex;
   const isCorrect = selectedIndex === correctIndex;
@@ -93,13 +96,23 @@ function QuestionReview({
         </p>
       </div>
 
+      {isListening && (
+        <ListeningAudioPlayer
+          audioUrl={question.audioUrl}
+          imageUrl={question.imageUrl}
+          transcript={question.transcript}
+          examMode={false}
+          questionKey={question.id}
+        />
+      )}
+
       {question.passage && (
         <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-3 text-xs text-[#5F5E5B] leading-relaxed max-h-32 overflow-y-auto">
           {question.passage}
         </div>
       )}
 
-      {question.transcript && (
+      {!isListening && question.transcript && (
         <details className="text-xs">
           <summary className="font-bold text-[#7A7A78] cursor-pointer">
             Show transcript
@@ -229,6 +242,7 @@ export default function McqPracticeResultsModal({
               question={q}
               questionIndex={i}
               selectedIndex={payload.answers[i] ?? null}
+              isListening={payload.isListening}
             />
           ))}
         </div>

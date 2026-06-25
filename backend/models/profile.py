@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Literal, Optional
 
 
 class UserProfile(BaseModel):
@@ -11,6 +11,8 @@ class UserProfile(BaseModel):
     streak_days: int
     last_active_date: Optional[str] = None
     exam_date: Optional[str] = None
+    profile_picture: Optional[str] = None
+    profile_picture_url: Optional[str] = None
     tier: str
     stripe_customer_id: Optional[str] = None
     stripe_subscription_id: Optional[str] = None
@@ -25,3 +27,13 @@ class ProfileUpdate(BaseModel):
     current_level: Optional[str] = None
     last_active_date: Optional[str] = None
     exam_date: Optional[str] = None
+    profile_picture: Optional[str] = None
+
+
+class ProfilePictureUploadRequest(BaseModel):
+    content_type: Literal["image/jpeg", "image/png", "image/webp"]
+
+
+class ProfilePictureUploadUrlResponse(BaseModel):
+    upload_url: str
+    storage_path: str

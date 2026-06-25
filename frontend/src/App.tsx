@@ -18,6 +18,7 @@ import {
 import { examCountdownPhrase, formatStreakLabel } from "./lib/examDate";
 import AuthLoadingScreen from "./components/auth/AuthLoadingScreen";
 import AppSidebar from "./components/AppSidebar";
+import UserAvatar from "./components/UserAvatar";
 import { useSidebarState } from "./hooks/useSidebarState";
 
 // Import tabs
@@ -27,15 +28,6 @@ import ExamsTab from "./components/ExamsTab";
 import VocabularyTab from "./components/VocabularyTab";
 import PricingTab from "./components/PricingTab";
 import AccountTab from "./components/AccountTab";
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return (
-    parts[0].charAt(0) + parts[parts.length - 1].charAt(0)
-  ).toUpperCase();
-}
 
 export default function App() {
   const navigate = useNavigate();
@@ -243,11 +235,11 @@ export default function App() {
               </p>
             </div>
 
-            <div className="w-10 h-10 bg-white rounded-full border border-[#E9E9E7] flex items-center justify-center shadow-sm shrink-0">
-              <div className="w-7 h-7 bg-[#EAF5F1] rounded-full flex items-center justify-center text-[#2D6A53] text-xs font-semibold uppercase">
-                {getInitials(profile.name)}
-              </div>
-            </div>
+            <UserAvatar
+              name={profile.name}
+              profilePictureUrl={profile.profilePictureUrl}
+              size="sm"
+            />
 
             <button
               type="button"
