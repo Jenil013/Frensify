@@ -7,7 +7,8 @@ import {
   type ModuleAccuracyEntry,
   type RecentTestItem,
 } from "../lib/apiClient";
-import { formatTakenDate, scorePillClass } from "../utils/recentTests";
+import RecentTestsTable from "./RecentTestsTable";
+import RecentTestsModal from "./RecentTestsModal";
 import { TCF_MODULE_REGISTRY } from "../tcfConstants";
 import {
   TEF_MODULE_REGISTRY,
@@ -20,6 +21,9 @@ import {
   countModulesAtTarget,
   getWeakestModule,
 } from "../lib/learningInsights";
+
+const RECENT_TESTS_PREVIEW_LIMIT = 10;
+const RECENT_TESTS_ALL_LIMIT = 500;
 
 const MODULE_ORDER = DASHBOARD_MODULE_ORDER;
 
@@ -228,6 +232,9 @@ export default function DashboardTab({
   const [animated, setAnimated] = useState(false);
   const [recentTests, setRecentTests] = useState<RecentTestItem[]>([]);
   const [recentTestsLoading, setRecentTestsLoading] = useState(true);
+  const [allRecentTests, setAllRecentTests] = useState<RecentTestItem[]>([]);
+  const [allRecentTestsLoading, setAllRecentTestsLoading] = useState(false);
+  const [recentTestsModalOpen, setRecentTestsModalOpen] = useState(false);
   const [moduleAccuracy, setModuleAccuracy] = useState<
     Record<string, ModuleAccuracyEntry> | null
   >(null);
@@ -241,11 +248,20 @@ export default function DashboardTab({
 
   useEffect(() => {
     setRecentTestsLoading(true);
-    void fetchRecentTests()
+    void fetchRecentTests(RECENT_TESTS_PREVIEW_LIMIT)
       .then(setRecentTests)
       .catch(() => setRecentTests([]))
       .finally(() => setRecentTestsLoading(false));
   }, [profile.targetExam]);
+
+  const openRecentTestsModal = () => {
+    setRecentTestsModalOpen(true);
+    setAllRecentTestsLoading(true);
+    void fetchRecentTests(RECENT_TESTS_ALL_LIMIT)
+      .then(setAllRecentTests)
+      .catch(() => setAllRecentTests([]))
+      .finally(() => setAllRecentTestsLoading(false));
+  };
 
   useEffect(() => {
     setAccuracyLoading(true);
@@ -308,6 +324,12 @@ export default function DashboardTab({
 
   return (
     <div id="dashboard-tab" className="space-y-6 animate-fade-in text-[#37352F]">
+      <RecentTestsModal
+        open={recentTestsModalOpen}
+        onClose={() => setRecentTestsModalOpen(false)}
+        tests={allRecentTests}
+        loading={allRecentTestsLoading}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:items-start">
         <DashboardFocusCard
@@ -380,62 +402,18 @@ export default function DashboardTab({
               Mock simulations and practice sessions
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigate("exams")}
-            className="text-[11px] font-bold text-[#1A73E8] hover:underline flex items-center gap-1"
-          >
-            View all <ArrowUpRight className="w-3 h-3" />
-          </button>
+          {recentTests.length >= RECENT_TESTS_PREVIEW_LIMIT && (
+            <button
+              type="button"
+              onClick={openRecentTestsModal}
+              className="text-[11px] font-bold text-[#1A73E8] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              View all <ArrowUpRight className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
-        <div className="max-h-72 overflow-y-auto overflow-x-auto -mx-1 px-1">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 z-10 bg-white">
-              <tr className="border-b border-[#E9E9E7] text-[#9B9A97] font-semibold shadow-[0_1px_0_#E9E9E7]">
-                <th className="py-2 px-3 font-normal bg-white">Exam Name</th>
-                <th className="py-2 px-3 font-normal bg-white">Date Taken</th>
-                <th className="py-2 px-3 font-normal text-right bg-white">Score</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F1F1EF]">
-              {recentTestsLoading ? (
-                <tr>
-                  <td colSpan={3} className="py-6 px-3 text-center text-[#9B9A97]">
-                    Loading recent activity…
-                  </td>
-                </tr>
-              ) : recentTests.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="py-6 px-3 text-center text-[#9B9A97]">
-                    No tests yet. Complete a practice module or mock simulation to see results here.
-                  </td>
-                </tr>
-              ) : (
-                recentTests.map((row) => (
-                  <tr key={row.id} className="hover:bg-[#FAFAF9] transition-all">
-                    <td className="py-3 px-3 max-w-[220px]">
-                      <p className="font-medium text-[#37352F] truncate">{row.examName}</p>
-                      {row.subtitle && (
-                        <p className="text-[10px] text-[#9B9A97] truncate mt-0.5">{row.subtitle}</p>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-[#7A7A78] whitespace-nowrap">
-                      {formatTakenDate(row.takenAt)}
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <span
-                        className={`inline-block text-[10px] font-bold font-mono px-2 py-0.5 rounded-md border ${scorePillClass(row.scorePct)}`}
-                      >
-                        {row.scoreLabel}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <RecentTestsTable tests={recentTests} loading={recentTestsLoading} />
       </div>
 
     </div>

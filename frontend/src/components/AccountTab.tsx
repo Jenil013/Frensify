@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { UserProfile, ExamPathway } from "../types";
 import {
@@ -9,9 +9,19 @@ import {
 } from "../tefConstants";
 import TefGradingScheme from "./tef/TefGradingScheme";
 import TefScoreEquivalenceTable from "./tef/TefScoreEquivalenceTable";
-import { updateProfile } from "../lib/apiClient";
+import UserAvatar from "./UserAvatar";
+import ProfilePictureCropModal from "./ProfilePictureCropModal";
+import {
+  updateProfile,
+  fetchProfilePictureUploadUrl,
+  uploadProfilePicture,
+} from "../lib/apiClient";
 import { useApiProfile } from "../hooks/useApiProfile";
 import { daysUntilExamDate } from "../lib/examDate";
+import {
+  validateProfilePictureFile,
+  type ProfilePictureContentType,
+} from "../utils/profilePicture";
 
 interface AccountTabProps {
   profile: UserProfile;
@@ -33,13 +43,29 @@ export default function AccountTab({
   const [showToast, setShowToast] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState(
+    profile.profilePictureUrl ?? null
+  );
+  const [pictureUploading, setPictureUploading] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cropImageSrc) {
+        URL.revokeObjectURL(cropImageSrc);
+      }
+    };
+  }, [cropImageSrc]);
 
   useEffect(() => {
     setTargetLevel(parseCefrTarget(profile.targetScore));
     setExamDate(profile.examDate ?? "");
-  }, [profile.targetScore, profile.examDate]);
+    setProfilePictureUrl(profile.profilePictureUrl ?? null);
+  }, [profile.targetScore, profile.examDate, profile.profilePictureUrl]);
 
-  const selectedTargetMeta = TEF_TARGET_OPTIONS.find((o) => o.value === targetLevel);
   const daysRemaining = examDate ? daysUntilExamDate(examDate) : null;
 
   const handleSave = async () => {
@@ -68,8 +94,88 @@ export default function AccountTab({
     }
   };
 
+  const closeCropModal = () => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropImageSrc(null);
+    setCropFile(null);
+  };
+
+  const uploadCroppedPicture = async (
+    blob: Blob,
+    contentType: ProfilePictureContentType
+  ) => {
+    setPictureError(null);
+    setPictureUploading(true);
+    try {
+      const { upload_url, storage_path } = await fetchProfilePictureUploadUrl(
+        contentType
+      );
+      await uploadProfilePicture(upload_url, blob, contentType);
+      const updated = await updateProfile({ profile_picture: storage_path });
+      setCachedProfile(updated);
+      const nextUrl = updated.profile_picture_url ?? null;
+      setProfilePictureUrl(nextUrl);
+      onUpdateProfile({ profilePictureUrl: nextUrl });
+      closeCropModal();
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (err) {
+      setPictureError(
+        err instanceof Error ? err.message : "Could not upload profile photo."
+      );
+    } finally {
+      setPictureUploading(false);
+    }
+  };
+
+  const handlePictureSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setPictureError(null);
+    try {
+      validateProfilePictureFile(file);
+      if (cropImageSrc) {
+        URL.revokeObjectURL(cropImageSrc);
+      }
+      setCropFile(file);
+      setCropImageSrc(URL.createObjectURL(file));
+    } catch (err) {
+      setPictureError(
+        err instanceof Error ? err.message : "Could not open profile photo."
+      );
+    }
+  };
+
+  const handleRemovePicture = async () => {
+    setPictureError(null);
+    setPictureUploading(true);
+    try {
+      const updated = await updateProfile({ profile_picture: null });
+      setCachedProfile(updated);
+      setProfilePictureUrl(null);
+      onUpdateProfile({ profilePictureUrl: null });
+    } catch (err) {
+      setPictureError(
+        err instanceof Error ? err.message : "Could not remove profile photo."
+      );
+    } finally {
+      setPictureUploading(false);
+    }
+  };
+
   return (
     <div id="account-tab" className="space-y-6 animate-fade-in text-[#37352F]">
+      <ProfilePictureCropModal
+        open={cropImageSrc != null && cropFile != null}
+        imageSrc={cropImageSrc}
+        file={cropFile}
+        onClose={closeCropModal}
+        onConfirm={(blob, contentType) => void uploadCroppedPicture(blob, contentType)}
+      />
       <div>
         <h2 className="text-xl font-bold tracking-tight text-[#37352F]">Candidate Profile & Settings</h2>
         <p className="text-xs text-[#7A7A78]">Calibrate your official exam pathway parameters and certification parameters.</p>
@@ -78,6 +184,56 @@ export default function AccountTab({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 bg-white border border-[#E9E9E7] rounded-xl p-5 md:p-6 shadow-premium space-y-5">
           <h3 className="font-bold text-xs uppercase tracking-wider text-[#7A7A78] pb-1 border-b border-[#F1F1EF]">Candidate Specifications</h3>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 pb-1 border-b border-[#F1F1EF]">
+            <UserAvatar
+              name={name}
+              profilePictureUrl={profilePictureUrl}
+              size="lg"
+            />
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A78]">
+                Profile photo
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => void handlePictureSelect(e)}
+                />
+                <button
+                  type="button"
+                  disabled={pictureUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1.5 bg-[#37352F] hover:bg-[#2B2A28] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  {pictureUploading
+                    ? "Uploading…"
+                    : profilePictureUrl
+                      ? "Change photo"
+                      : "Upload photo"}
+                </button>
+                {profilePictureUrl && (
+                  <button
+                    type="button"
+                    disabled={pictureUploading}
+                    onClick={() => void handleRemovePicture()}
+                    className="px-3 py-1.5 border border-[#E9E9E7] text-[#5F5E5B] hover:bg-[#FAFAF9] text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    Remove photo
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-[#7A7A78] leading-relaxed">
+                JPEG, PNG, or WebP · max 2 MB · drag and zoom to frame your photo.
+              </p>
+              {pictureError && (
+                <p className="text-[10px] text-red-600">{pictureError}</p>
+              )}
+            </div>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1.5">
@@ -140,16 +296,6 @@ export default function AccountTab({
                   </option>
                 ))}
               </select>
-              {selectedTargetMeta && (
-                <p className="text-[10px] text-[#7A7A78] leading-relaxed">
-                  {selectedTargetMeta.subtitle}
-                  {selectedTargetMeta.canadaNote && (
-                    <span className="block text-[#1D74B4] mt-0.5">
-                      🇨🇦 {selectedTargetMeta.canadaNote}
-                    </span>
-                  )}
-                </p>
-              )}
             </div>
 
             <div className="space-y-1.5">

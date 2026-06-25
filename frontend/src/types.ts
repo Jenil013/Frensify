@@ -70,6 +70,7 @@ export interface UserProfile {
   streakDays: number;
   lastActiveDate: string; // YYYY-MM-DD
   examDate: string | null; // YYYY-MM-DD official exam date
+  profilePictureUrl?: string | null;
   tier: UserSubscriptionTier;
   completedActivities: string[]; // ids of exercises completed
   mockTestScores: MockTestScore[];
