@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 
 from config import GEMINI_EVAL_MODEL, GEMINI_UTILS_MODEL, settings
-from content.oral_examiner_personas import get_persona
+from content.oral_examiner_personas import get_persona, get_turn_reply_instructions
 from models.ai import (
     AIWritingCorrection,
     AISpeakingSuggestion,
@@ -231,17 +231,20 @@ You will receive:
 - The task prompt and opening scenario.
 - Conversation history so far.
 - The candidate's latest audio response.
+- Section-specific reply mode instructions.
 
 Your job:
 1. Transcribe the candidate's latest audio accurately in French.
-2. Generate ONE short follow-up reply in French as the examiner (1–2 sentences).
+2. Generate ONE short in-character reply in French (1–2 sentences), following the reply mode.
 
 Rules:
 - Reply ONLY in French for examinerReplyFr.
 - Stay in the assigned role for this section.
+- Follow the reply mode: answer the candidate's question when role-play requires it;
+  ask follow-up questions only when the reply mode says to.
 - Do not evaluate or score the candidate.
 - Do not break character.
-- If the candidate's audio is unclear, transcribe what you can and ask a clarifying question.
+- If the candidate's audio is unclear, transcribe what you can and ask a brief clarifying question.
 - Return only valid JSON matching the schema."""
 
 _SPEAKING_CONVERSATION_EXTRA = """
@@ -484,6 +487,7 @@ def generate_oral_turn(
 ) -> tuple[str, str]:
     """Transcribe candidate turn and generate examiner follow-up. Returns (transcript, reply)."""
     persona = get_persona(exam_type, section_id)
+    reply_mode = get_turn_reply_instructions(exam_type, section_id)
     history_text = _format_conversation(history)
     stimulus_block = f"Opening scenario: {stimulus}\n" if stimulus else ""
     text_part = (
@@ -491,9 +495,10 @@ def generate_oral_turn(
         f"Section: {section_id}\n"
         f"Task instructions: {prompt}\n"
         f"{stimulus_block}"
-        f"Examiner role: {persona}\n\n"
+        f"Examiner role: {persona}\n"
+        f"{reply_mode}\n\n"
         f"Conversation so far:\n{history_text}\n\n"
-        "Transcribe the candidate's latest audio above and generate your follow-up.\n"
+        "Transcribe the candidate's latest audio above and generate your next reply.\n"
         f"Return JSON matching this schema:\n{_ORAL_TURN_SCHEMA}"
     )
     contents = [

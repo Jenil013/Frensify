@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Sparkles, Loader2, ChevronRight } from "lucide-react";
 import ModuleSessionShell from "../tcf/ModuleSessionShell";
+import WritingTextAreaField from "../WritingTextAreaField";
 import WritingFeedbackModal from "../WritingFeedbackModal";
 import AiEvaluatingModal from "../AiEvaluatingModal";
 import { evaluateWritingModule } from "../../api";
@@ -223,13 +224,10 @@ export default function TefWritingModuleRunner({
             {activeContent.stimulus}
           </div>
         )}
-        <p className="text-xs text-[#5F5E5B] leading-relaxed">{activeContent.prompt}</p>
-        <textarea
+        <WritingTextAreaField
+          prompt={activeContent.prompt}
           value={activeText}
-          onChange={(e) => setActiveText(e.target.value)}
-          rows={8}
-          placeholder="Rédigez votre réponse en français..."
-          className="w-full text-xs p-4 border border-[#E9E9E7] rounded-xl outline-none focus:border-[#1A73E8] font-mono leading-relaxed"
+          onChange={setActiveText}
         />
         <p className="text-[11px] text-right font-mono text-[#7A7A78]">
           Words:{" "}

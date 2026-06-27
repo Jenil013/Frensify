@@ -41,7 +41,7 @@ export const TCF_MODULE_REGISTRY: Record<TcfModuleId, TcfModuleDefinition> = {
       sections: [
         {
           id: "1",
-          label: "Tâche 1 — Short message (60–120 words)",
+          label: "Tâche 1: Short message (60–120 words)",
           durationMinutes: 15,
           minWords: 60,
           maxWords: 120,
@@ -49,7 +49,7 @@ export const TCF_MODULE_REGISTRY: Record<TcfModuleId, TcfModuleDefinition> = {
         },
         {
           id: "2",
-          label: "Tâche 2 — Report or story (120–150 words)",
+          label: "Tâche 2: Report or story (120–150 words)",
           durationMinutes: 20,
           minWords: 120,
           maxWords: 150,
@@ -57,7 +57,7 @@ export const TCF_MODULE_REGISTRY: Record<TcfModuleId, TcfModuleDefinition> = {
         },
         {
           id: "3",
-          label: "Tâche 3 — Comparative argument (120–180 words)",
+          label: "Tâche 3: Comparative argument (120–180 words)",
           durationMinutes: 25,
           minWords: 120,
           maxWords: 180,
@@ -99,19 +99,19 @@ export const TCF_MODULE_REGISTRY: Record<TcfModuleId, TcfModuleDefinition> = {
       sections: [
         {
           id: "1",
-          label: "Tâche 1 — Structured interview (2 min)",
+          label: "Tâche 1: Structured interview (2 min)",
           durationMinutes: 2,
           taskType: "oral-response",
         },
         {
           id: "2",
-          label: "Tâche 2 — Role-play with preparation (5.5 min)",
+          label: "Tâche 2: Role-play with preparation (5.5 min)",
           durationMinutes: 6,
           taskType: "oral-response",
         },
         {
           id: "3",
-          label: "Tâche 3 — Argumentative response (4.5 min)",
+          label: "Tâche 3: Argumentative response (4.5 min)",
           durationMinutes: 5,
           taskType: "oral-response",
         },

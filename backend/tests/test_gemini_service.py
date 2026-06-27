@@ -164,6 +164,25 @@ def test_generate_oral_turn_returns_transcript_and_reply(mock_generate):
     mock_generate.assert_called_once()
 
 
+@patch("services.gemini_service._generate_json", return_value=_ORAL_TURN_JSON)
+def test_generate_oral_turn_tcf_task2_uses_role_play_reply_mode(mock_generate):
+    generate_oral_turn(
+        b"audio",
+        "audio/webm",
+        exam_type="TCF",
+        section_id="2",
+        prompt="Role-play",
+        stimulus="Annonce : cours de français",
+        history=[
+            ConversationTurn(role="examiner", text="Annonce : cours de français"),
+            ConversationTurn(role="user", text="Quels sont les horaires ?"),
+        ],
+    )
+    text_part = mock_generate.call_args.kwargs["contents"][1]
+    assert "interactive role-play" in text_part
+    assert "interview-style follow-up" in text_part
+
+
 @patch("services.gemini_service._generate_json", return_value=_SPEAKING_JSON)
 def test_evaluate_speaking_conversation_returns_suggestion(mock_generate):
     result = evaluate_speaking_conversation(

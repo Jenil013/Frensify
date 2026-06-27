@@ -351,14 +351,14 @@ export const TEF_MODULE_REGISTRY: Record<TefModuleId, TefModuleDefinition> = {
       sections: [
         {
           id: "A",
-          label: "Section A — Article continuation",
+          label: "Section A: Article continuation",
           durationMinutes: 25,
           minWords: 80,
           taskType: "essay",
         },
         {
           id: "B",
-          label: "Section B — Express and justify a viewpoint",
+          label: "Section B: Express and justify a viewpoint",
           durationMinutes: 35,
           minWords: 200,
           taskType: "essay",
@@ -393,13 +393,13 @@ export const TEF_MODULE_REGISTRY: Record<TefModuleId, TefModuleDefinition> = {
       sections: [
         {
           id: "A",
-          label: "Section A — Information gathering (5 min)",
+          label: "Section A: Information gathering (5 min)",
           durationMinutes: 5,
           taskType: "oral-response",
         },
         {
           id: "B",
-          label: "Section B — Persuasion/convincing (10 min)",
+          label: "Section B: Persuasion/convincing (10 min)",
           durationMinutes: 10,
           taskType: "oral-response",
         },

@@ -3,6 +3,7 @@ import { Sparkles, Loader2, ChevronRight } from "lucide-react";
 import ModuleSessionShell from "./ModuleSessionShell";
 import WritingFeedbackModal from "../WritingFeedbackModal";
 import AiEvaluatingModal from "../AiEvaluatingModal";
+import WritingTextAreaField from "../WritingTextAreaField";
 import { evaluateWritingModule } from "../../api";
 import {
   ExamPathway,
@@ -175,7 +176,7 @@ export default function WritingModuleRunner({
     pendingResult?.sections
       .filter((s) => s.feedback)
       .map((s, idx) => ({
-        label: sectionsMeta[idx]?.label.split("—")[0].trim() ?? `Task ${idx + 1}`,
+        label: sectionsMeta[idx]?.label.split(":")[0].trim() ?? `Task ${idx + 1}`,
         feedback: s.feedback!,
       })) ?? [];
 
@@ -257,20 +258,17 @@ export default function WritingModuleRunner({
                   : "text-[#7B7B79]"
               }`}
             >
-              {sectionsMeta[idx].label.split("—")[0].trim()}
+              {sectionsMeta[idx].label.split(":")[0].trim()}
             </div>
           ))}
         </div>
 
         <p className="text-xs font-bold text-[#37352F]">{meta.label}</p>
         {content.stimulus && <Task3Stimulus text={content.stimulus} />}
-        <p className="text-xs text-[#5F5E5B] leading-relaxed">{content.prompt}</p>
-        <textarea
+        <WritingTextAreaField
+          prompt={content.prompt}
           value={activeText}
-          onChange={(e) => updateText(e.target.value)}
-          rows={8}
-          placeholder="Rédigez votre réponse en français..."
-          className="w-full text-xs p-4 border border-[#E9E9E7] rounded-xl outline-none focus:border-[#1A73E8] font-mono leading-relaxed"
+          onChange={updateText}
         />
         <p className="text-[11px] text-right font-mono text-[#7A7A78]">
           Words:{" "}
