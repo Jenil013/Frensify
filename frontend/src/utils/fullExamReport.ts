@@ -36,7 +36,7 @@ function sectionLabelsFor(
       ? TCF_MODULE_REGISTRY[moduleId as TcfModuleId]
       : TEF_MODULE_REGISTRY[moduleId as TefModuleId];
   return (
-    registry?.meta.sections?.map((s) => s.label.split("—")[0].trim()) ?? []
+    registry?.meta.sections?.map((s) => s.label.split(":")[0].trim()) ?? []
   );
 }
 

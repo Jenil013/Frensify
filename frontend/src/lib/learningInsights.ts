@@ -112,7 +112,7 @@ export function getWeakestModule(
     insight =
       "No module attempts yet. Start with Compréhension orale to establish your baseline.";
   } else if (belowTarget) {
-    insight = `${focus.label} is at ${focus.cefr} — your target is ${target}. ${focusPracticeHint(focus.moduleId)}`;
+    insight = `${focus.label} is at ${focus.cefr}, your target is ${target}. ${focusPracticeHint(focus.moduleId)}`;
   } else {
     insight = `${focus.label} is at ${focus.cefr}, meeting your ${target} target. Keep building consistency with another timed session.`;
   }

@@ -20,9 +20,14 @@ PERSONAS: dict[tuple[str, str], str] = {
         "Keep replies to 1–2 sentences in clear French."
     ),
     ("TCF", "2"): (
-        "You play a role-play partner (friend, staff member, etc.). "
-        "The candidate is obtaining information. Respond helpfully and stay in character. "
-        "Keep replies to 1–2 sentences."
+        "You play the role-play partner in an everyday French scenario "
+        "(hotel reception, cultural center staff, shop assistant, etc.). "
+        "The candidate has read a prompt card and must ask YOU questions to obtain "
+        "information. Answer in character with concrete, plausible details "
+        "(schedules, prices, requirements, policies). "
+        "You are NOT conducting an interview — do not ask the candidate new questions "
+        "unless a brief clarification is strictly necessary. "
+        "Match the appropriate register (vous or tu). Keep replies to 1–2 sentences."
     ),
     ("TCF", "3"): (
         "You are a TCF examiner playing devil's advocate. "
@@ -34,6 +39,32 @@ PERSONAS: dict[tuple[str, str], str] = {
 
 MAX_ORAL_TURNS_PER_SECTION = 15
 
+_TURN_REPLY_INSTRUCTIONS: dict[tuple[str, str], str] = {
+    ("TCF", "2"): (
+        "Reply mode: interactive role-play. The candidate leads — they ask you "
+        "questions to extract information. Respond as their interlocutor answering "
+        "their question in character. Give specific, helpful details. Do not flip "
+        "the interaction by asking interview-style follow-up questions."
+    ),
+    ("TCF", "1"): (
+        "Reply mode: structured interview. Ask one natural follow-up question "
+        "based on what the candidate just said."
+    ),
+    ("TCF", "3"): (
+        "Reply mode: argumentative task. Challenge or probe the candidate's opinion; "
+        "ask for justification or examples."
+    ),
+    ("TEF", "A"): (
+        "Reply mode: information-gathering role-play. The candidate asks you "
+        "questions; answer in character with plausible details. Do not ask them "
+        "interview-style questions."
+    ),
+    ("TEF", "B"): (
+        "Reply mode: persuasion role-play. Push back politely; express doubts or "
+        "ask why they should agree."
+    ),
+}
+
 
 def get_persona(exam_type: str, section_id: str) -> str:
     key = (exam_type.upper(), section_id)
@@ -41,3 +72,11 @@ def get_persona(exam_type: str, section_id: str) -> str:
     if persona is None:
         raise ValueError(f"No oral persona for exam={exam_type} section={section_id}")
     return persona
+
+
+def get_turn_reply_instructions(exam_type: str, section_id: str) -> str:
+    key = (exam_type.upper(), section_id)
+    instructions = _TURN_REPLY_INSTRUCTIONS.get(key)
+    if instructions is None:
+        raise ValueError(f"No oral turn instructions for exam={exam_type} section={section_id}")
+    return instructions

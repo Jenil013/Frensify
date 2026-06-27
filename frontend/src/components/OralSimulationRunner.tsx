@@ -51,7 +51,7 @@ interface SectionRecording {
   secondsRemaining: number;
 }
 
-const TCF_TASK2_PREP_SECONDS = 60;
+const TCF_TASK2_PREP_SECONDS = 120;
 const MAX_TURN_RECORDING_SEC = 120;
 
 function buildEvalPrompt(content: TcfExpressionSection): string {
@@ -145,14 +145,32 @@ export default function OralSimulationRunner({
     }
   }, [currentIndex, meta.durationMinutes, sectionId, examType, resetSectionState]);
 
+  // TCF Task 2: show the scenario during preparation so the candidate can read it
+  useEffect(() => {
+    if (!precheckDone || sectionSubmitted) return;
+    if (examType !== "TCF" || sectionId !== "2") return;
+    if (conversation.length > 0) return;
+
+    const opening = examinerSpokenText(content);
+    setConversation([{ role: "examiner", text: opening }]);
+  }, [
+    precheckDone,
+    sectionSubmitted,
+    examType,
+    sectionId,
+    content,
+    conversation.length,
+  ]);
+
   useEffect(() => {
     if (!precheckDone || prepSecondsLeft != null || sectionSubmitted) return;
     if (examinerSpokeRef.current) return;
-    if (conversation.length > 0) return;
 
     examinerSpokeRef.current = true;
     const opening = examinerSpokenText(content);
-    setConversation([{ role: "examiner", text: opening }]);
+    if (conversation.length === 0) {
+      setConversation([{ role: "examiner", text: opening }]);
+    }
     speak(opening, () => setExaminerReady(true));
   }, [
     precheckDone,
@@ -269,8 +287,9 @@ export default function OralSimulationRunner({
 
   const handleSubmitSection = useCallback(() => {
     if (userTurnCount < 1 || sectionSubmitted) return;
+    cancel();
     completeCurrentSection();
-  }, [userTurnCount, sectionSubmitted, completeCurrentSection]);
+  }, [userTurnCount, sectionSubmitted, completeCurrentSection, cancel]);
 
   const allSectionsComplete = sectionIds.every((id) => completedSections[id]);
   const isLastTask = currentIndex === sectionIds.length - 1;
@@ -420,7 +439,7 @@ export default function OralSimulationRunner({
     );
   }
 
-  const taskLabels = sectionMetas.map((s) => s.label.split("—")[0].trim());
+  const taskLabels = sectionMetas.map((s) => s.label.split(":")[0].trim());
   const canRespond =
     examinerReady &&
     !isSpeaking &&
@@ -449,8 +468,8 @@ export default function OralSimulationRunner({
             {isTcfTask2Prep && (
               <div className="bg-[#FEF9E7] border border-[#F5E6A8] rounded-lg px-4 py-3 text-xs text-[#37352F]">
                 <span className="font-bold">Preparation time: </span>
-                {prepSecondsLeft}s remaining — read the scenario, then the examiner
-                will speak.
+                {prepSecondsLeft}s remaining — read the scenario below; the examiner
+                will speak when preparation ends.
               </div>
             )}
 

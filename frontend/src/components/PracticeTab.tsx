@@ -81,7 +81,7 @@ export default function PracticeTab({
         ? TCF_MODULE_REGISTRY[moduleId as TcfModuleId]
         : TEF_MODULE_REGISTRY[moduleId as TefModuleId];
     const sectionLabels =
-      registry.meta.sections?.map((s) => s.label.split("—")[0].trim()) ?? [];
+      registry.meta.sections?.map((s) => s.label.split(":")[0].trim()) ?? [];
     setSpeakingResults({
       examType,
       moduleLabel: registry.meta.labelFr,
