@@ -36,6 +36,16 @@ TEF_READING_DIFFICULTY_BANDS: list[tuple[str, int]] = [
     ("C2", 6),
 ]
 
+# Official TCF reading bands (39 questions total).
+TCF_READING_DIFFICULTY_BANDS: list[tuple[str, int]] = [
+    ("A1", 13),
+    ("A2", 7),
+    ("B1", 6),
+    ("B2", 4),
+    ("C1", 4),
+    ("C2", 5),
+]
+
 
 def _question_table(module_id: str) -> str:
     table = _MODULE_TABLE.get(module_id)
@@ -96,7 +106,11 @@ def _sample_listening_rows(rows: list[dict], count: int, exam_type: str) -> list
     return combined[:count]
 
 
-def _sample_tef_reading_rows(rows: list[dict], count: int) -> list[dict]:
+def _sample_reading_rows_by_bands(
+    rows: list[dict],
+    count: int,
+    bands: list[tuple[str, int]],
+) -> list[dict]:
     by_difficulty: dict[str, list[dict]] = {}
     for row in rows:
         difficulty = row.get("difficulty")
@@ -105,7 +119,7 @@ def _sample_tef_reading_rows(rows: list[dict], count: int) -> list[dict]:
 
     result: list[dict] = []
     remaining = count
-    for difficulty, band_size in TEF_READING_DIFFICULTY_BANDS:
+    for difficulty, band_size in bands:
         if remaining <= 0:
             break
         take = min(band_size, remaining)
@@ -143,7 +157,9 @@ async def list_questions(
     if module_id == LISTENING_MODULE_ID:
         sampled = _sample_listening_rows(rows, count, exam_type)
     elif module_id == READING_MODULE_ID and exam_type == "TEF":
-        sampled = _sample_tef_reading_rows(rows, count)
+        sampled = _sample_reading_rows_by_bands(rows, count, TEF_READING_DIFFICULTY_BANDS)
+    elif module_id == READING_MODULE_ID and exam_type == "TCF":
+        sampled = _sample_reading_rows_by_bands(rows, count, TCF_READING_DIFFICULTY_BANDS)
     else:
         sampled = random.sample(rows, count)
 

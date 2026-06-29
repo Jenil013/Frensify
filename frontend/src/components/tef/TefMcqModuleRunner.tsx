@@ -105,6 +105,9 @@ export default function TefMcqModuleRunner({
       objective={`${module.meta.objective} — ${total} questions, +1/0 scoring.`}
       secondsRemaining={phase === "active" ? secondsLeft : 0}
       progressLabel={`Question ${currentIndex + 1}/${total}`}
+      difficultyLabel={
+        phase === "active" && !isListening && q.difficulty ? q.difficulty : undefined
+      }
       onAbort={phase === "active" ? onAbort : undefined}
       footer={footer}
     >
@@ -142,14 +145,7 @@ export default function TefMcqModuleRunner({
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            {!isListening && q.difficulty && (
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D6A53] bg-[#E8F3EE] px-2 py-0.5 rounded-md">
-                {q.difficulty}
-              </span>
-            )}
-            <p className="text-sm font-semibold text-[#37352F] leading-snug flex-1">{q.prompt}</p>
-          </div>
+          <p className="text-sm font-semibold text-[#37352F] leading-snug">{q.prompt}</p>
 
           <div className="space-y-2">
             {q.choices.map((choice, i) => (

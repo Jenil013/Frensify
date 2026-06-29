@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from routers.questions import TEF_READING_DIFFICULTY_BANDS
+from routers.questions import TCF_READING_DIFFICULTY_BANDS, TEF_READING_DIFFICULTY_BANDS
 
 
 def _row(idx: int, *, difficulty: str = "B1") -> dict:
@@ -24,6 +24,22 @@ def _tef_reading_pool(*, copies: int = 3) -> list[dict]:
     for difficulty, band_size in TEF_READING_DIFFICULTY_BANDS:
         for _ in range(band_size * copies):
             rows.append(_row(idx, difficulty=difficulty))
+            idx += 1
+    return rows
+
+
+def _tcf_row(idx: int, *, difficulty: str = "B1") -> dict:
+    row = _row(idx, difficulty=difficulty)
+    row["exam_type"] = "TCF"
+    return row
+
+
+def _tcf_reading_pool(*, copies: int = 3) -> list[dict]:
+    rows: list[dict] = []
+    idx = 1
+    for difficulty, band_size in TCF_READING_DIFFICULTY_BANDS:
+        for _ in range(band_size * copies):
+            rows.append(_tcf_row(idx, difficulty=difficulty))
             idx += 1
     return rows
 
@@ -123,6 +139,35 @@ def test_tef_reading_free_tier_starts_with_lower_bands(client, auth_headers, moc
     _mock_rows(mock_db, _tef_reading_pool())
     response = client.get(
         "/api/v1/questions?exam_type=TEF&module_id=comprehension-ecrite&limit=40",
+        headers=auth_headers,
+    )
+    body = response.json()
+    assert len(body) == 15
+    assert [item["difficulty"] for item in body[:13]] == ["A1"] * 13
+    assert [item["difficulty"] for item in body[13:]] == ["A2"] * 2
+
+
+def test_tcf_reading_follows_difficulty_bands(client, auth_headers, mock_db):
+    _mock_rows(mock_db, _tcf_reading_pool())
+    response = client.get(
+        "/api/v1/questions?exam_type=TCF&module_id=comprehension-ecrite&limit=39",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 39
+
+    expected_sequence: list[str] = []
+    for difficulty, band_size in TCF_READING_DIFFICULTY_BANDS:
+        expected_sequence.extend([difficulty] * band_size)
+    assert [item["difficulty"] for item in body] == expected_sequence
+
+
+def test_tcf_reading_free_tier_starts_with_lower_bands(client, auth_headers, mock_db, mock_profile):
+    mock_profile["tier"] = "Free"
+    _mock_rows(mock_db, _tcf_reading_pool())
+    response = client.get(
+        "/api/v1/questions?exam_type=TCF&module_id=comprehension-ecrite&limit=39",
         headers=auth_headers,
     )
     body = response.json()

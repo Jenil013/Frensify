@@ -6,6 +6,7 @@ interface ModuleSessionShellProps {
   objective: string;
   secondsRemaining: number;
   progressLabel?: string;
+  difficultyLabel?: string;
   currentSection?: "A" | "B" | null;
   sectionLabels?: { A: string; B: string };
   onAbort?: () => void;
@@ -19,11 +20,29 @@ function formatTime(secs: number) {
   return `${min}:${sec < 10 ? "0" : ""}${sec}`;
 }
 
+const DIFFICULTY_BADGE_BASE =
+  "inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border";
+
+function getDifficultyBadgeClassName(level: string): string {
+  const normalized = level.trim().toUpperCase();
+  if (normalized === "A1" || normalized === "A2") {
+    return `${DIFFICULTY_BADGE_BASE} text-[#2D6A53] bg-[#E8F3EE] border-[#C5E4D4]`;
+  }
+  if (normalized === "B1" || normalized === "B2") {
+    return `${DIFFICULTY_BADGE_BASE} text-[#806D00] bg-[#FFF1A4] border-[#FFE137]`;
+  }
+  if (normalized === "C1" || normalized === "C2") {
+    return `${DIFFICULTY_BADGE_BASE} text-[#B83E5C] bg-[#FCECF0] border-[#F8D4DE]`;
+  }
+  return `${DIFFICULTY_BADGE_BASE} text-[#5F5E5B] bg-[#F1F1EF] border-[#E9E9E7]`;
+}
+
 export default function ModuleSessionShell({
   title,
   objective,
   secondsRemaining,
   progressLabel,
+  difficultyLabel,
   currentSection,
   sectionLabels,
   onAbort,
@@ -41,8 +60,13 @@ export default function ModuleSessionShell({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {progressLabel && (
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#5F5E5B] bg-[#F1F1EF] px-2 py-1 rounded border border-[#E9E9E7]">
+            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-[#5F5E5B] bg-[#F1F1EF] px-2 py-1 rounded border border-[#E9E9E7]">
               {progressLabel}
+            </span>
+          )}
+          {difficultyLabel && (
+            <span className={getDifficultyBadgeClassName(difficultyLabel)}>
+              {difficultyLabel}
             </span>
           )}
           <div
