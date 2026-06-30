@@ -189,7 +189,7 @@ export default function ExamsTab({
       }
     } catch {
       setUsageLimitBlock({
-        reason: "monthly_mock_exhausted",
+        reason: "weekly_mock_exhausted",
         title: "Could not verify your allowance",
         message:
           "We couldn't check your simulation limit. Please sign in again and retry.",

@@ -130,7 +130,6 @@ export async function apiFetch<T>(
 export interface UsageLimitsResponse {
   tier: string;
   weekStart: string;
-  monthStart: string;
   weeklyUsage: {
     writingEval: number;
     speakingEval: number;
@@ -141,8 +140,8 @@ export interface UsageLimitsResponse {
     speakingEval: number;
     vocabExplain: number;
   };
-  monthlyMockUsage: number;
-  monthlyMockCap: number;
+  weeklyMockUsage: number;
+  weeklyMockCap: number;
   canStart: {
     writingPractice: boolean;
     speakingPractice: boolean;
@@ -153,7 +152,6 @@ export interface UsageLimitsResponse {
 type UsageLimitsApiResponse = {
   tier: string;
   week_start: string;
-  month_start: string;
   weekly_usage: {
     writing_eval: number;
     speaking_eval: number;
@@ -164,8 +162,8 @@ type UsageLimitsApiResponse = {
     speaking_eval: number;
     vocab_explain: number;
   };
-  monthly_mock_usage: number;
-  monthly_mock_cap: number;
+  weekly_mock_usage: number;
+  weekly_mock_cap: number;
   can_start: {
     writing_practice: boolean;
     speaking_practice: boolean;
@@ -177,7 +175,6 @@ function mapUsageLimits(data: UsageLimitsApiResponse): UsageLimitsResponse {
   return {
     tier: data.tier,
     weekStart: data.week_start,
-    monthStart: data.month_start,
     weeklyUsage: {
       writingEval: data.weekly_usage.writing_eval,
       speakingEval: data.weekly_usage.speaking_eval,
@@ -188,8 +185,8 @@ function mapUsageLimits(data: UsageLimitsApiResponse): UsageLimitsResponse {
       speakingEval: data.weekly_caps.speaking_eval,
       vocabExplain: data.weekly_caps.vocab_explain,
     },
-    monthlyMockUsage: data.monthly_mock_usage,
-    monthlyMockCap: data.monthly_mock_cap,
+    weeklyMockUsage: data.weekly_mock_usage,
+    weeklyMockCap: data.weekly_mock_cap,
     canStart: {
       writingPractice: data.can_start.writing_practice,
       speakingPractice: data.can_start.speaking_practice,

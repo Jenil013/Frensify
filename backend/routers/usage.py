@@ -37,11 +37,10 @@ class CanStartOut(BaseModel):
 class UsageLimitsResponse(BaseModel):
     tier: str
     week_start: str
-    month_start: str
     weekly_usage: WeeklyUsageOut
     weekly_caps: WeeklyCapsOut
-    monthly_mock_usage: int
-    monthly_mock_cap: int
+    weekly_mock_usage: int
+    weekly_mock_cap: int
     can_start: CanStartOut
 
 
@@ -63,12 +62,11 @@ def _build_limits(profile: dict, db) -> UsageLimitsResponse:
     speaking_count = usage_row.get("speaking_eval_count", 0)
     vocab_count = usage_row.get("vocab_explain_count", 0)
 
-    month_start = date.today().replace(day=1)
     mock_result = (
         db.table("mock_test_scores")
         .select("id", count="exact")
         .eq("user_id", profile["id"])
-        .gte("taken_at", month_start.isoformat())
+        .gte("taken_at", week_start.isoformat())
         .execute()
     )
     mock_usage = mock_result.count or 0
@@ -76,7 +74,6 @@ def _build_limits(profile: dict, db) -> UsageLimitsResponse:
     return UsageLimitsResponse(
         tier=tier,
         week_start=week_start.isoformat(),
-        month_start=month_start.isoformat(),
         weekly_usage=WeeklyUsageOut(
             writing_eval=writing_count,
             speaking_eval=speaking_count,
@@ -87,8 +84,8 @@ def _build_limits(profile: dict, db) -> UsageLimitsResponse:
             speaking_eval=caps["speaking_eval"],
             vocab_explain=caps["vocab_explain"],
         ),
-        monthly_mock_usage=mock_usage,
-        monthly_mock_cap=mock_cap,
+        weekly_mock_usage=mock_usage,
+        weekly_mock_cap=mock_cap,
         can_start=CanStartOut(
             writing_practice=_under_cap(writing_count, caps["writing_eval"]),
             speaking_practice=_under_cap(speaking_count, caps["speaking_eval"]),

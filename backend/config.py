@@ -60,8 +60,8 @@ TIER_CAPS: dict[str, dict[str, int]] = {
 
 MOCK_CAPS: dict[str, int] = {
     "Free": 0,
-    "Pro":  2,
-    "Max":  4,
+    "Pro":  1,
+    "Max":  2,
 }
 
 DEFAULT_QUESTION_LIMIT = 40
