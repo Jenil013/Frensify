@@ -17,6 +17,7 @@ interface TcfModuleSessionProps {
   onComplete: (result: TcfModuleCompletionResult) => void;
   onAbort: () => void;
   examMode?: boolean;
+  freeSet?: 1 | 2;
 }
 
 export default function TcfModuleSession({
@@ -25,13 +26,14 @@ export default function TcfModuleSession({
   onComplete,
   onAbort,
   examMode = true,
+  freeSet,
 }: TcfModuleSessionProps) {
   const [module, setModule] = useState<TcfModuleDefinition | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    loadTcfModule(moduleId, examMode)
+    loadTcfModule(moduleId, examMode, freeSet)
       .then((def) => {
         if (!cancelled) setModule(def);
       })
@@ -41,7 +43,7 @@ export default function TcfModuleSession({
     return () => {
       cancelled = true;
     };
-  }, [moduleId, examMode]);
+  }, [moduleId, examMode, freeSet]);
 
   if (error) {
     return (

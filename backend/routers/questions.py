@@ -2,53 +2,33 @@ import random
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from config import (
     CAPPED_FREE_MODULE_IDS,
     DEFAULT_QUESTION_LIMIT,
-    FREE_READING_LISTENING_CAP,
+    FREE_SET_LABELS,
+    FREE_SET_NUMBERS,
 )
 from database import get_db
 from dependencies import get_profile
 from models.questions import QuestionItem
+from services.free_sets import count_set_questions, fetch_free_set_questions
+from services.question_rows import LISTENING_MODULE_ID, MODULE_TABLE, READING_MODULE_ID, map_row
+from services.question_sampling import sample_module_rows
 
 router = APIRouter(tags=["questions"])
 
-LISTENING_MODULE_ID = "comprehension-orale"
-READING_MODULE_ID = "comprehension-ecrite"
-
-_MODULE_TABLE: dict[str, str] = {
-    LISTENING_MODULE_ID: "listening_questions",
-    READING_MODULE_ID: "reading_questions",
-}
-LISTENING_IMAGE_FRONT_COUNT: dict[str, int] = {
-    "TCF": 3,
-    "TEF": 4,
-}
-
-# Official TEF Canada reading bands (40 questions total).
-TEF_READING_DIFFICULTY_BANDS: list[tuple[str, int]] = [
-    ("A1", 13),
-    ("A2", 7),
-    ("B1", 6),
-    ("B2", 4),
-    ("C1", 4),
-    ("C2", 6),
-]
-
-# Official TCF reading bands (39 questions total).
-TCF_READING_DIFFICULTY_BANDS: list[tuple[str, int]] = [
-    ("A1", 13),
-    ("A2", 7),
-    ("B1", 6),
-    ("B2", 4),
-    ("C1", 4),
-    ("C2", 5),
-]
+# Re-export for tests and generator script compatibility.
+from services.question_sampling import (  # noqa: E402
+    LISTENING_IMAGE_FRONT_COUNT,
+    TCF_READING_DIFFICULTY_BANDS,
+    TEF_READING_DIFFICULTY_BANDS,
+)
 
 
 def _question_table(module_id: str) -> str:
-    table = _MODULE_TABLE.get(module_id)
+    table = MODULE_TABLE.get(module_id)
     if table is None:
         raise HTTPException(
             status_code=400,
@@ -57,79 +37,34 @@ def _question_table(module_id: str) -> str:
     return table
 
 
-def _map_row(row: dict) -> QuestionItem:
-    return QuestionItem(
-        id=str(row["id"]),
-        prompt=row["prompt"],
-        passage=row.get("passage"),
-        audioUrl=row.get("audio_path"),
-        imageUrl=row.get("image_path"),
-        choices=row.get("choices") or [],
-        correctChoiceIndex=row.get("correct_index") or 0,
-        explanation=row.get("explanation"),
-        difficulty=row.get("difficulty"),
-    )
+class PracticeSetOut(BaseModel):
+    set: int
+    label: str
+    questionCount: int
 
 
-def _effective_count(requested: int, available: int, tier: str, module_id: str) -> int:
-    count = min(requested, available)
-    if tier == "Free" and module_id in CAPPED_FREE_MODULE_IDS:
-        count = min(count, FREE_READING_LISTENING_CAP)
-    return count
+@router.get("/practice-sets", response_model=List[PracticeSetOut])
+async def list_practice_sets(
+    exam_type: str = Query(...),
+    module_id: str = Query(...),
+    profile: dict = Depends(get_profile),
+):
+    if profile["tier"] != "Free":
+        return []
+    if module_id not in CAPPED_FREE_MODULE_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Practice sets are only available for comprehension modules",
+        )
 
-
-def _row_has_image(row: dict) -> bool:
-    path = row.get("image_path")
-    return bool(path and str(path).strip())
-
-
-def _sample_listening_rows(rows: list[dict], count: int, exam_type: str) -> list[dict]:
-    image_rows = [r for r in rows if _row_has_image(r)]
-    other_rows = [r for r in rows if not _row_has_image(r)]
-
-    front_cap = LISTENING_IMAGE_FRONT_COUNT.get(exam_type, 3)
-    front_count = min(front_cap, len(image_rows), count)
-    front = random.sample(image_rows, front_count) if front_count else []
-
-    remaining = count - len(front)
-    rest_pool = [r for r in other_rows if r not in front]
-    rest_count = min(remaining, len(rest_pool))
-    rest = random.sample(rest_pool, rest_count) if rest_count else []
-
-    combined = front + rest
-    if len(combined) < count:
-        used_ids = {r["id"] for r in combined}
-        filler = [r for r in rows if r["id"] not in used_ids]
-        need = count - len(combined)
-        combined.extend(random.sample(filler, min(need, len(filler))))
-
-    return combined[:count]
-
-
-def _sample_reading_rows_by_bands(
-    rows: list[dict],
-    count: int,
-    bands: list[tuple[str, int]],
-) -> list[dict]:
-    by_difficulty: dict[str, list[dict]] = {}
-    for row in rows:
-        difficulty = row.get("difficulty")
-        if difficulty:
-            by_difficulty.setdefault(difficulty, []).append(row)
-
-    result: list[dict] = []
-    remaining = count
-    for difficulty, band_size in bands:
-        if remaining <= 0:
-            break
-        take = min(band_size, remaining)
-        pool = by_difficulty.get(difficulty, [])
-        if not pool:
-            continue
-        result.extend(random.sample(pool, min(take, len(pool))))
-        remaining -= min(take, len(pool))
-
-    return result[:count]
+    return [
+        PracticeSetOut(
+            set=set_number,
+            label=FREE_SET_LABELS[set_number],
+            questionCount=count_set_questions(exam_type, module_id, set_number),
+        )
+        for set_number in FREE_SET_NUMBERS
+    ]
 
 
 @router.get("/questions", response_model=List[QuestionItem])
@@ -137,9 +72,28 @@ async def list_questions(
     exam_type: str = Query(...),
     module_id: str = Query(...),
     limit: Optional[int] = Query(None, ge=1),
+    set: Optional[int] = Query(None, ge=1, le=2),
     profile: dict = Depends(get_profile),
     db=Depends(get_db),
 ):
+    tier = profile["tier"]
+    is_free_comprehension = (
+        tier == "Free" and module_id in CAPPED_FREE_MODULE_IDS
+    )
+
+    if is_free_comprehension:
+        if set is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Free tier requires a practice set (set=1 or set=2)",
+            )
+        if set not in FREE_SET_NUMBERS:
+            raise HTTPException(status_code=403, detail="Invalid practice set number")
+        return fetch_free_set_questions(db, exam_type, module_id, set)
+
+    if set is not None and tier == "Free":
+        raise HTTPException(status_code=403, detail="Invalid practice set for this module")
+
     result = (
         db.table(_question_table(module_id))
         .select("*")
@@ -150,17 +104,9 @@ async def list_questions(
     rows = result.data or []
 
     desired = limit if limit is not None else DEFAULT_QUESTION_LIMIT
-    count = _effective_count(desired, len(rows), profile["tier"], module_id)
+    count = min(desired, len(rows))
     if count <= 0:
         return []
 
-    if module_id == LISTENING_MODULE_ID:
-        sampled = _sample_listening_rows(rows, count, exam_type)
-    elif module_id == READING_MODULE_ID and exam_type == "TEF":
-        sampled = _sample_reading_rows_by_bands(rows, count, TEF_READING_DIFFICULTY_BANDS)
-    elif module_id == READING_MODULE_ID and exam_type == "TCF":
-        sampled = _sample_reading_rows_by_bands(rows, count, TCF_READING_DIFFICULTY_BANDS)
-    else:
-        sampled = random.sample(rows, count)
-
-    return [_map_row(row) for row in sampled]
+    sampled = sample_module_rows(rows, count, exam_type, module_id)
+    return [map_row(row) for row in sampled]
