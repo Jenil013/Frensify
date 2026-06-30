@@ -86,15 +86,18 @@ function placeholderTefListeningQuestions(): McqItem[] {
 
 export async function loadTcfModule(
   moduleId: TcfModuleId,
-  examMode = true
+  examMode = true,
+  freeSet?: 1 | 2
 ): Promise<TcfModuleDefinition> {
   switch (moduleId) {
     case "comprehension-orale": {
       if (isSupabaseConfigured()) {
         try {
-          const questions = await fetchQuestions("TCF", moduleId, {
-            limit: TCF_LISTENING_QUESTION_TARGET,
-          });
+          const questions = freeSet
+            ? await fetchQuestions("TCF", moduleId, { set: freeSet })
+            : await fetchQuestions("TCF", moduleId, {
+                limit: TCF_LISTENING_QUESTION_TARGET,
+              });
           if (questions.length > 0) {
             return attachMcqQuestions(moduleId, questions);
           }
@@ -110,9 +113,11 @@ export async function loadTcfModule(
     case "comprehension-ecrite": {
       if (isSupabaseConfigured()) {
         try {
-          const questions = await fetchQuestions("TCF", moduleId, {
-            limit: TCF_READING_QUESTION_TARGET,
-          });
+          const questions = freeSet
+            ? await fetchQuestions("TCF", moduleId, { set: freeSet })
+            : await fetchQuestions("TCF", moduleId, {
+                limit: TCF_READING_QUESTION_TARGET,
+              });
           if (questions.length > 0) {
             return attachMcqQuestions(moduleId, questions);
           }
@@ -193,15 +198,18 @@ function attachTefMcqQuestions(
 
 export async function loadTefModule(
   moduleId: TefModuleId,
-  examMode = true
+  examMode = true,
+  freeSet?: 1 | 2
 ): Promise<TefModuleDefinition> {
   switch (moduleId) {
     case "comprehension-ecrite": {
       if (isSupabaseConfigured()) {
         try {
-          const questions = await fetchQuestions("TEF", moduleId, {
-            limit: TEF_READING_QUESTION_TARGET,
-          });
+          const questions = freeSet
+            ? await fetchQuestions("TEF", moduleId, { set: freeSet })
+            : await fetchQuestions("TEF", moduleId, {
+                limit: TEF_READING_QUESTION_TARGET,
+              });
           if (questions.length > 0) {
             return attachTefMcqQuestions(moduleId, questions);
           }
@@ -215,13 +223,22 @@ export async function loadTefModule(
       return attachTefMcqQuestions(moduleId, TEF_PLACEHOLDER_READING_QUESTIONS);
     }
     case "comprehension-orale": {
-      const questions = await tryFetchMcqQuestions(
-        "TEF",
-        moduleId,
-        TEF_LISTENING_QUESTION_TARGET
-      );
-      if (questions) {
-        return attachTefMcqQuestions(moduleId, questions);
+      if (isSupabaseConfigured()) {
+        try {
+          const questions = freeSet
+            ? await fetchQuestions("TEF", moduleId, { set: freeSet })
+            : await fetchQuestions("TEF", moduleId, {
+                limit: TEF_LISTENING_QUESTION_TARGET,
+              });
+          if (questions.length > 0) {
+            return attachTefMcqQuestions(moduleId, questions);
+          }
+        } catch (err) {
+          console.warn(
+            `[questionBank] Backend load failed for TEF ${moduleId}, using placeholders.`,
+            err
+          );
+        }
       }
       return attachTefMcqQuestions(moduleId, placeholderTefListeningQuestions());
     }

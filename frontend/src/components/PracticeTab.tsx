@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BookOpen, Headphones, PenTool, Mic } from "lucide-react";
 import {
   UserProfile,
@@ -22,7 +22,7 @@ import SpeakingResultsModal, {
   type SpeakingResultsPayload,
 } from "./SpeakingResultsModal";
 import { isMcqComprehensionModule } from "../utils/mcqScoring";
-import { fetchUsageLimits } from "../lib/apiClient";
+import { fetchUsageLimits, fetchPracticeSets, type PracticeSetMeta } from "../lib/apiClient";
 import UsageLimitModal from "./UsageLimitModal";
 import {
   practiceLimitBlock,
@@ -49,6 +49,9 @@ export default function PracticeTab({
   const [activeSkill, setActiveSkill] = useState<SkillType>("reading");
   const [activeTcfModule, setActiveTcfModule] = useState<TcfModuleId | null>(null);
   const [activeTefModule, setActiveTefModule] = useState<TefModuleId | null>(null);
+  const [activeFreeSet, setActiveFreeSet] = useState<1 | 2 | null>(null);
+  const [practiceSets, setPracticeSets] = useState<PracticeSetMeta[]>([]);
+  const [practiceSetsLoading, setPracticeSetsLoading] = useState(false);
   const [moduleCompleteMsg, setModuleCompleteMsg] = useState<string | null>(null);
   const [mcqResults, setMcqResults] = useState<McqPracticeResultsPayload | null>(null);
   const [speakingResults, setSpeakingResults] =
@@ -122,7 +125,7 @@ export default function PracticeTab({
 
   const handleTcfModuleComplete = (result: TcfModuleCompletionResult) => {
     const completedModule = activeTcfModule;
-    setActiveTcfModule(null);
+    resetSession();
 
     if (result.type === "mcq" && completedModule) {
       saveMcqModuleScore(completedModule, result.result);
@@ -147,7 +150,7 @@ export default function PracticeTab({
 
   const handleTefModuleComplete = (result: TefModuleCompletionResult) => {
     const completedModule = activeTefModule;
-    setActiveTefModule(null);
+    resetSession();
 
     if (result.type === "mcq") {
       const mcq = result.result as McqModuleResult;
@@ -174,6 +177,55 @@ export default function PracticeTab({
         completedModule,
         result.result as OralModuleResult
       );
+    }
+  };
+
+  const isMcqSkill = activeSkill === "listening" || activeSkill === "reading";
+  const isFreeMcq = profile.tier === "Free" && isMcqSkill;
+  const examType = profile.targetExam;
+
+  useEffect(() => {
+    if (!isFreeMcq) {
+      setPracticeSets([]);
+      return;
+    }
+
+    const moduleId =
+      examType === "TCF"
+        ? skillToTcfModule[activeSkill]
+        : skillToTefModule[activeSkill];
+
+    let cancelled = false;
+    setPracticeSetsLoading(true);
+    fetchPracticeSets(examType, moduleId)
+      .then((sets) => {
+        if (!cancelled) setPracticeSets(sets);
+      })
+      .catch(() => {
+        if (!cancelled) setPracticeSets([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPracticeSetsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFreeMcq, examType, activeSkill]);
+
+  const resetSession = () => {
+    setActiveTcfModule(null);
+    setActiveTefModule(null);
+    setActiveFreeSet(null);
+  };
+
+  const startFreeMcqSet = (setNumber: 1 | 2) => {
+    setModuleCompleteMsg(null);
+    setActiveFreeSet(setNumber);
+    if (examType === "TCF") {
+      setActiveTcfModule(skillToTcfModule[activeSkill]);
+    } else {
+      setActiveTefModule(skillToTefModule[activeSkill]);
     }
   };
 
@@ -218,7 +270,8 @@ export default function PracticeTab({
           moduleId={activeTcfModule}
           examType={profile.targetExam}
           examMode={false}
-          onAbort={() => setActiveTcfModule(null)}
+          freeSet={activeFreeSet ?? undefined}
+          onAbort={resetSession}
           onComplete={handleTcfModuleComplete}
         />
       </div>
@@ -231,7 +284,8 @@ export default function PracticeTab({
         <TefModuleSession
           moduleId={activeTefModule}
           examMode={false}
-          onAbort={() => setActiveTefModule(null)}
+          freeSet={activeFreeSet ?? undefined}
+          onAbort={resetSession}
           onComplete={handleTefModuleComplete}
         />
       </div>
@@ -352,6 +406,74 @@ export default function PracticeTab({
         </div>
       )}
 
+      {profile.tier === "Free" && isMcqSkill && (
+        <div className="bg-[#FDF3E7] border border-[#FCE1CA] rounded-xl p-4 text-xs text-[#9A5013] leading-relaxed">
+          Two sample {activeSkill} tests are included on the Free plan. Upgrade for
+          unlimited modules and AI feedback on writing and speaking.
+        </div>
+      )}
+
+      {isFreeMcq ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {(practiceSets.length > 0
+            ? practiceSets
+            : ([
+                { set: 1 as const, label: "Sample test 1", questionCount: 0 },
+                { set: 2 as const, label: "Sample test 2", questionCount: 0 },
+              ] satisfies PracticeSetMeta[])
+          ).map((test) => (
+            <div
+              key={test.set}
+              className={`rounded-2xl border shadow-premium overflow-hidden ${skillFlashcard.accent}`}
+            >
+              <div className="p-5 sm:p-6 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <span
+                    className={`text-[9px] font-bold uppercase tracking-[0.14em] px-2.5 py-1 rounded-full border ${skillFlashcard.badge}`}
+                  >
+                    {examLabel} sample
+                  </span>
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${skillFlashcard.iconWrap}`}
+                  >
+                    <SkillIcon className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-bold tracking-tight text-[#37352F]">
+                    {test.label}
+                  </h3>
+                  <p className="text-sm text-[#5F5E5B] leading-relaxed">
+                    {moduleMeta.labelFr}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <span
+                    className={`flex-1 text-center text-xs font-semibold px-2 py-2 rounded-xl border ${skillFlashcard.pill}`}
+                  >
+                    {test.questionCount > 0
+                      ? `${test.questionCount} questions`
+                      : formatMeta ?? "Timed practice"}
+                  </span>
+                  <span
+                    className={`flex-1 text-center text-xs font-semibold px-2 py-2 rounded-xl border ${skillFlashcard.pill}`}
+                  >
+                    {moduleMeta.durationMinutes} min
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={practiceSetsLoading}
+                onClick={() => startFreeMcqSet(test.set)}
+                className={`w-full py-3 text-sm font-bold tracking-wide transition-colors cursor-pointer disabled:opacity-60 ${skillFlashcard.button}`}
+              >
+                {practiceSetsLoading ? "Loading…" : "Start test"}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
       <div
         className={`rounded-2xl border shadow-premium overflow-hidden ${skillFlashcard.accent}`}
       >
@@ -404,9 +526,10 @@ export default function PracticeTab({
           onClick={startFullModule}
           className={`w-full py-3.5 text-sm font-bold tracking-wide transition-colors cursor-pointer ${skillFlashcard.button}`}
         >
-          Start Test
+          {profile.tier === "Free" ? "Upgrade to practice" : "Start Test"}
         </button>
       </div>
+      )}
     </div>
   );
 }

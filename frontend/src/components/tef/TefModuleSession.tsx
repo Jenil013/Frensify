@@ -15,6 +15,7 @@ interface TefModuleSessionProps {
   onComplete: (result: TefModuleCompletionResult) => void;
   onAbort: () => void;
   examMode?: boolean;
+  freeSet?: 1 | 2;
 }
 
 export default function TefModuleSession({
@@ -22,13 +23,14 @@ export default function TefModuleSession({
   onComplete,
   onAbort,
   examMode = true,
+  freeSet,
 }: TefModuleSessionProps) {
   const [module, setModule] = useState<TefModuleDefinition | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    loadTefModule(moduleId, examMode)
+    loadTefModule(moduleId, examMode, freeSet)
       .then((def) => {
         if (!cancelled) setModule(def);
       })
@@ -38,7 +40,7 @@ export default function TefModuleSession({
     return () => {
       cancelled = true;
     };
-  }, [moduleId, examMode]);
+  }, [moduleId, examMode, freeSet]);
 
   if (error) {
     return (

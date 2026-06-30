@@ -337,7 +337,7 @@ export async function openBillingPortal(): Promise<{ url: string }> {
 export async function fetchQuestions(
   examType: string,
   moduleId: string,
-  options?: { limit?: number }
+  options?: { limit?: number; set?: 1 | 2 }
 ): Promise<McqItem[]> {
   const params = new URLSearchParams({
     exam_type: examType,
@@ -346,7 +346,29 @@ export async function fetchQuestions(
   if (options?.limit != null) {
     params.set("limit", String(options.limit));
   }
+  if (options?.set != null) {
+    params.set("set", String(options.set));
+  }
   return apiFetch<McqItem[]>(`/api/v1/questions?${params.toString()}`);
+}
+
+export interface PracticeSetMeta {
+  set: 1 | 2;
+  label: string;
+  questionCount: number;
+}
+
+export async function fetchPracticeSets(
+  examType: string,
+  moduleId: string
+): Promise<PracticeSetMeta[]> {
+  const params = new URLSearchParams({
+    exam_type: examType,
+    module_id: moduleId,
+  });
+  return apiFetch<PracticeSetMeta[]>(
+    `/api/v1/practice-sets?${params.toString()}`
+  );
 }
 
 export interface WritingCombinationSection {

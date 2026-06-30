@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
 
@@ -64,9 +66,27 @@ MOCK_CAPS: dict[str, int] = {
 
 DEFAULT_QUESTION_LIMIT = 40
 
-FREE_READING_LISTENING_CAP = 15
-
 CAPPED_FREE_MODULE_IDS = {"comprehension-ecrite", "comprehension-orale"}
+
+FREE_SET_DIR = Path(__file__).resolve().parent / "free_sets"
+
+FREE_SET_NUMBERS = (1, 2)
+
+FREE_SET_LABELS: dict[int, str] = {
+    1: "Sample test 1",
+    2: "Sample test 2",
+}
+
+FREE_SET_FILES: dict[tuple[str, str, int], str] = {
+    ("TCF", "comprehension-orale", 1): "tcf_listening_set1.txt",
+    ("TCF", "comprehension-orale", 2): "tcf_listening_set2.txt",
+    ("TCF", "comprehension-ecrite", 1): "tcf_reading_set1.txt",
+    ("TCF", "comprehension-ecrite", 2): "tcf_reading_set2.txt",
+    ("TEF", "comprehension-orale", 1): "tef_listening_set1.txt",
+    ("TEF", "comprehension-orale", 2): "tef_listening_set2.txt",
+    ("TEF", "comprehension-ecrite", 1): "tef_reading_set1.txt",
+    ("TEF", "comprehension-ecrite", 2): "tef_reading_set2.txt",
+}
 
 TIER_TO_PRICE: dict[str, str] = {
     "Pro": settings.stripe_price_id_pro,
