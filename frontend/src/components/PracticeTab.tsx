@@ -46,7 +46,7 @@ export default function PracticeTab({
   onNavigateToPricing,
   onSaveModuleScore,
 }: PracticeTabProps) {
-  const [activeSkill, setActiveSkill] = useState<SkillType>("reading");
+  const [activeSkill, setActiveSkill] = useState<SkillType>("listening");
   const [activeTcfModule, setActiveTcfModule] = useState<TcfModuleId | null>(null);
   const [activeTefModule, setActiveTefModule] = useState<TefModuleId | null>(null);
   const [activeFreeSet, setActiveFreeSet] = useState<1 | 2 | null>(null);
