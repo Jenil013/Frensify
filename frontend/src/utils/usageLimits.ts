@@ -4,7 +4,7 @@ import type { UsageLimitsResponse } from "../lib/apiClient";
 export type UsageLimitReason =
   | "tier_locked"
   | "weekly_exhausted"
-  | "monthly_mock_exhausted";
+  | "weekly_mock_exhausted";
 
 export interface UsageLimitBlock {
   reason: UsageLimitReason;
@@ -56,7 +56,7 @@ export function mockExamLimitBlock(
 ): UsageLimitBlock | null {
   if (limits.canStart.mockExam) return null;
 
-  if (limits.monthlyMockCap === 0) {
+  if (limits.weeklyMockCap === 0) {
     return {
       reason: "tier_locked",
       title: "Full simulations require Pro or Max",
@@ -67,9 +67,9 @@ export function mockExamLimitBlock(
   }
 
   return {
-    reason: "monthly_mock_exhausted",
-    title: "Monthly simulation limit reached",
-    message: `You've completed all ${limits.monthlyMockCap} full exam simulation${limits.monthlyMockCap === 1 ? "" : "s"} this month (${limits.monthlyMockUsage}/${limits.monthlyMockCap}). Your limit resets on the 1st.`,
+    reason: "weekly_mock_exhausted",
+    title: "Weekly simulation limit reached",
+    message: `You've completed all ${limits.weeklyMockCap} full exam simulation${limits.weeklyMockCap === 1 ? "" : "s"} this week (${limits.weeklyMockUsage}/${limits.weeklyMockCap}). Your limit resets Monday.`,
     showUpgrade: limits.tier === "Pro",
   };
 }

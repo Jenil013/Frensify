@@ -84,6 +84,16 @@ export default function UsageLimitModal({
           </div>
         )}
 
+        {block.reason === "weekly_mock_exhausted" && (
+          <div className="mt-4 flex items-start gap-2 text-xs text-[#37352F] bg-[#FAFAF9] border border-[#E9E9E7] rounded-xl p-3">
+            <Sparkles className="w-3.5 h-3.5 text-[#2D6A53] shrink-0 mt-0.5" />
+            <p>
+              You can still run skill practice modules, or return Monday when your
+              full simulation allowance refreshes.
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 justify-end mt-6">
           <button
             type="button"

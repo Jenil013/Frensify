@@ -27,8 +27,8 @@ def test_max_tier_caps():
 
 def test_mock_caps_all_tiers():
     assert MOCK_CAPS["Free"] == 0
-    assert MOCK_CAPS["Pro"] == 2
-    assert MOCK_CAPS["Max"] == 4
+    assert MOCK_CAPS["Pro"] == 1
+    assert MOCK_CAPS["Max"] == 2
 
 
 def test_cors_allow_origins_includes_localhost():

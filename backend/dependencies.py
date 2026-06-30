@@ -50,19 +50,19 @@ def require_ai_cap(endpoint: str, context: str = "practice"):
         tier = profile["tier"]
 
         if context == "mock":
-            month_start = date.today().replace(day=1)
+            week_start = _get_monday(date.today())
             result = (
                 db.table("mock_test_scores")
                 .select("id", count="exact")
                 .eq("user_id", profile["id"])
-                .gte("taken_at", month_start.isoformat())
+                .gte("taken_at", week_start.isoformat())
                 .execute()
             )
             cap = MOCK_CAPS.get(tier, 0)
             if result.count >= cap:
                 raise HTTPException(
                     status_code=403,
-                    detail="Monthly mock test limit reached. Resets on the 1st.",
+                    detail="Weekly mock test limit reached. Resets Monday.",
                 )
         else:
             week_start = _get_monday(date.today())

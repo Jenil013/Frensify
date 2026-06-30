@@ -51,3 +51,13 @@ def test_usage_limits_free_tier(client, auth_headers, mock_db, mock_profile):
     assert body["can_start"]["writing_practice"] is False
     assert body["can_start"]["speaking_practice"] is False
     assert body["can_start"]["mock_exam"] is False
+    assert body["weekly_mock_cap"] == 0
+
+
+def test_usage_limits_mock_exhausted(client, auth_headers, mock_db):
+    _setup_usage_mock(mock_db, mock_count=1)
+    response = client.get("/api/v1/usage/limits", headers=auth_headers)
+    body = response.json()
+    assert body["weekly_mock_cap"] == 1
+    assert body["weekly_mock_usage"] == 1
+    assert body["can_start"]["mock_exam"] is False
