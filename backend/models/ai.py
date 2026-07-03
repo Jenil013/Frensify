@@ -1,17 +1,34 @@
 from pydantic import BaseModel, Field
 from typing import Literal, Optional, List
 
+from ai_limits import (
+    MAX_CONVERSATION_TURN_TEXT,
+    MAX_CONVERSATION_TURNS,
+    MAX_ESSAY_TEXT_LENGTH,
+    MAX_EXERCISE_ID_LENGTH,
+    MAX_MIN_WORDS,
+    MAX_MODULE_ID_LENGTH,
+    MAX_SECTION_ID_LENGTH,
+    MAX_SPEAKING_DURATION_SECONDS,
+    MAX_SPEAKING_PROMPT_LENGTH,
+    MAX_STIMULUS_LENGTH,
+    MAX_STORAGE_PATH_LENGTH,
+    MAX_VOCAB_FIELD_LENGTH,
+    MAX_WORD_COUNT,
+    MAX_WRITING_PROMPT_LENGTH,
+)
+
 
 # --- Writing ---
 
 class WritingEvalRequest(BaseModel):
-    exercise_id: str
-    essay_text: str
-    word_count: int
-    exam_type: str
-    prompt: str
-    task_number: Optional[str] = None
-    min_words: Optional[int] = None
+    exercise_id: str = Field(max_length=MAX_EXERCISE_ID_LENGTH)
+    essay_text: str = Field(max_length=MAX_ESSAY_TEXT_LENGTH)
+    word_count: int = Field(ge=0, le=MAX_WORD_COUNT)
+    exam_type: str = Field(max_length=10)
+    prompt: str = Field(max_length=MAX_WRITING_PROMPT_LENGTH)
+    task_number: Optional[str] = Field(default=None, max_length=128)
+    min_words: Optional[int] = Field(default=None, ge=0, le=MAX_MIN_WORDS)
 
 
 class DimensionScores(BaseModel):
@@ -38,17 +55,17 @@ class AIWritingCorrection(BaseModel):
 
 
 class WritingSectionInput(BaseModel):
-    section_id: str
-    prompt: str
-    essay_text: str
-    word_count: int
-    task_number: Optional[str] = None
-    min_words: Optional[int] = None
+    section_id: str = Field(max_length=MAX_SECTION_ID_LENGTH)
+    prompt: str = Field(max_length=MAX_WRITING_PROMPT_LENGTH)
+    essay_text: str = Field(max_length=MAX_ESSAY_TEXT_LENGTH)
+    word_count: int = Field(ge=0, le=MAX_WORD_COUNT)
+    task_number: Optional[str] = Field(default=None, max_length=128)
+    min_words: Optional[int] = Field(default=None, ge=0, le=MAX_MIN_WORDS)
 
 
 class WritingModuleEvalRequest(BaseModel):
-    module_id: str
-    exam_type: str
+    module_id: str = Field(max_length=MAX_MODULE_ID_LENGTH)
+    exam_type: str = Field(max_length=10)
     sections: List[WritingSectionInput]
 
 
@@ -64,11 +81,11 @@ class WritingModuleEvalResponse(BaseModel):
 # --- Speaking ---
 
 class SpeakingEvalRequest(BaseModel):
-    exercise_id: str
-    storage_path: str
-    duration_seconds: int
-    exam_type: str
-    prompt: str
+    exercise_id: str = Field(max_length=MAX_EXERCISE_ID_LENGTH)
+    storage_path: str = Field(max_length=MAX_STORAGE_PATH_LENGTH)
+    duration_seconds: int = Field(ge=1, le=MAX_SPEAKING_DURATION_SECONDS)
+    exam_type: str = Field(max_length=10)
+    prompt: str = Field(max_length=MAX_SPEAKING_PROMPT_LENGTH)
 
 
 class SuggestedPhrase(BaseModel):
@@ -89,21 +106,21 @@ class AISpeakingSuggestion(BaseModel):
 
 class ConversationTurn(BaseModel):
     role: Literal["examiner", "user"]
-    text: str
+    text: str = Field(max_length=MAX_CONVERSATION_TURN_TEXT)
 
 
 class SpeakingTurnAudio(BaseModel):
-    turn_index: int
-    storage_path: str
-    duration_seconds: int
+    turn_index: int = Field(ge=0)
+    storage_path: str = Field(max_length=MAX_STORAGE_PATH_LENGTH)
+    duration_seconds: int = Field(ge=1, le=MAX_SPEAKING_DURATION_SECONDS)
 
 
 class SpeakingTurnRequest(BaseModel):
-    exam_type: str
-    section_id: str
-    prompt: str
-    stimulus: Optional[str] = None
-    history: List[ConversationTurn] = Field(default_factory=list)
+    exam_type: str = Field(max_length=10)
+    section_id: str = Field(max_length=MAX_SECTION_ID_LENGTH)
+    prompt: str = Field(max_length=MAX_SPEAKING_PROMPT_LENGTH)
+    stimulus: Optional[str] = Field(default=None, max_length=MAX_STIMULUS_LENGTH)
+    history: List[ConversationTurn] = Field(default_factory=list, max_length=MAX_CONVERSATION_TURNS)
 
 
 class SpeakingTurnResponse(BaseModel):
@@ -112,20 +129,20 @@ class SpeakingTurnResponse(BaseModel):
 
 
 class SpeakingSectionInput(BaseModel):
-    section_id: str
-    prompt: str
-    stimulus: Optional[str] = None
-    conversation: List[ConversationTurn]
+    section_id: str = Field(max_length=MAX_SECTION_ID_LENGTH)
+    prompt: str = Field(max_length=MAX_SPEAKING_PROMPT_LENGTH)
+    stimulus: Optional[str] = Field(default=None, max_length=MAX_STIMULUS_LENGTH)
+    conversation: List[ConversationTurn] = Field(max_length=MAX_CONVERSATION_TURNS)
     user_turns: List[SpeakingTurnAudio]
-    duration_seconds: int
-    allocated_seconds: int
-    seconds_remaining: int = 0
+    duration_seconds: int = Field(ge=0, le=MAX_SPEAKING_DURATION_SECONDS)
+    allocated_seconds: int = Field(ge=0, le=MAX_SPEAKING_DURATION_SECONDS)
+    seconds_remaining: int = Field(default=0, ge=0, le=MAX_SPEAKING_DURATION_SECONDS)
 
 
 class SpeakingModuleEvalRequest(BaseModel):
-    module_id: str
-    exam_type: str
-    exercise_id: str
+    module_id: str = Field(max_length=MAX_MODULE_ID_LENGTH)
+    exam_type: str = Field(max_length=10)
+    exercise_id: str = Field(max_length=MAX_EXERCISE_ID_LENGTH)
     sections: List[SpeakingSectionInput]
 
 
@@ -146,10 +163,10 @@ class VocabExample(BaseModel):
 
 
 class VocabExplainRequest(BaseModel):
-    word: str
-    translation: Optional[str] = None
-    category: Optional[str] = None
-    exam_type: Optional[str] = None
+    word: str = Field(max_length=MAX_VOCAB_FIELD_LENGTH)
+    translation: Optional[str] = Field(default=None, max_length=MAX_VOCAB_FIELD_LENGTH)
+    category: Optional[str] = Field(default=None, max_length=MAX_VOCAB_FIELD_LENGTH)
+    exam_type: Optional[str] = Field(default=None, max_length=10)
 
 
 class VocabExplainResponse(BaseModel):
