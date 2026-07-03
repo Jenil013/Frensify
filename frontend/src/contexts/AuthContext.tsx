@@ -17,14 +17,19 @@ interface AuthContextValue {
   passwordRecovery: boolean;
   signInWithPassword: (
     email: string,
-    password: string
+    password: string,
+    captchaToken?: string
   ) => Promise<{ error: AuthError | null }>;
   signUp: (
     email: string,
-    password: string
+    password: string,
+    captchaToken?: string
   ) => Promise<{ error: AuthError | null; needsEmailConfirmation: boolean }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
-  resetPasswordForEmail: (email: string) => Promise<{ error: AuthError | null }>;
+  resetPasswordForEmail: (
+    email: string,
+    captchaToken?: string
+  ) => Promise<{ error: AuthError | null }>;
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
@@ -58,18 +63,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithPassword = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
-  }, []);
+  const signInWithPassword = useCallback(
+    async (email: string, password: string, captchaToken?: string) => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: captchaToken ? { captchaToken } : undefined,
+      });
+      return { error };
+    },
+    []
+  );
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    const needsEmailConfirmation = Boolean(
-      !error && data.user && !data.session
-    );
-    return { error, needsEmailConfirmation };
-  }, []);
+  const signUp = useCallback(
+    async (email: string, password: string, captchaToken?: string) => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: captchaToken ? { captchaToken } : undefined,
+      });
+      const needsEmailConfirmation = Boolean(
+        !error && data.user && !data.session
+      );
+      return { error, needsEmailConfirmation };
+    },
+    []
+  );
 
   const signInWithGoogle = useCallback(async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -81,12 +100,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   }, []);
 
-  const resetPasswordForEmail = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    });
-    return { error };
-  }, []);
+  const resetPasswordForEmail = useCallback(
+    async (email: string, captchaToken?: string) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+        captchaToken,
+      });
+      return { error };
+    },
+    []
+  );
 
   const updatePassword = useCallback(async (password: string) => {
     const { error } = await supabase.auth.updateUser({ password });

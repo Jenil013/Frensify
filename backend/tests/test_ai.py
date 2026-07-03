@@ -115,7 +115,7 @@ def test_speaking_eval_practice(client, auth_headers, mock_db):
             headers=auth_headers,
             json={
                 "exercise_id": "ex-2",
-                "storage_path": "user-uuid-123/recording-2026-05-21.webm",
+                "storage_path": "user-uuid-123/a1b2c3d4-e5f6-7890-abcd-ef1234567890.webm",
                 "duration_seconds": 30,
                 "exam_type": "TCF",
                 "prompt": "Presentez-vous.",
@@ -123,6 +123,22 @@ def test_speaking_eval_practice(client, auth_headers, mock_db):
         )
     assert response.status_code == 200
     assert response.json()["cefrLevel"] == "B1"
+
+
+def test_speaking_eval_rejects_other_users_recording(client, auth_headers, mock_db):
+    _setup_cap_mock(mock_db)
+    response = client.post(
+        "/api/v1/ai/speaking",
+        headers=auth_headers,
+        json={
+            "exercise_id": "ex-2",
+            "storage_path": "victim-uuid-456/b1b2c3d4-e5f6-7890-abcd-ef1234567890.webm",
+            "duration_seconds": 30,
+            "exam_type": "TCF",
+            "prompt": "Presentez-vous.",
+        },
+    )
+    assert response.status_code == 403
 
 
 def test_writing_module_practice(client, auth_headers, mock_db):
@@ -270,6 +286,64 @@ def test_speaking_turn(client, auth_headers):
     body = response.json()
     assert body["user_transcript"] == "Bonjour."
     assert body["examiner_reply"] == "Très bien."
+
+
+def test_speaking_turn_rejects_oversized_audio(client, auth_headers):
+    from ai_limits import MAX_SPEAKING_AUDIO_BYTES
+
+    oversized = b"x" * (MAX_SPEAKING_AUDIO_BYTES + 1)
+    response = client.post(
+        "/api/v1/ai/speaking/turn",
+        headers=auth_headers,
+        data={
+            "metadata": (
+                '{"exam_type":"TCF","section_id":"1","prompt":"Interview",'
+                '"history":[]}'
+            ),
+        },
+        files={"audio": ("turn.webm", oversized, "audio/webm")},
+    )
+    assert response.status_code == 422
+
+
+def test_writing_eval_rejects_oversized_essay(client, auth_headers, mock_db):
+    from ai_limits import MAX_ESSAY_TEXT_LENGTH
+
+    _setup_cap_mock(mock_db)
+    response = client.post(
+        "/api/v1/ai/writing",
+        headers=auth_headers,
+        json={
+            "exercise_id": "ex-1",
+            "essay_text": "x" * (MAX_ESSAY_TEXT_LENGTH + 1),
+            "word_count": 100,
+            "exam_type": "TCF",
+            "prompt": "Test",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_ai_rate_limit_on_endpoint(client, auth_headers, mock_db):
+    from ai_limits import AI_RATE_LIMIT_MAX_REQUESTS
+
+    _setup_cap_mock(mock_db)
+    with patch("routers.ai.evaluate_writing", return_value=_WRITING_FEEDBACK), \
+         patch("routers.ai.write_audit_log"), \
+         patch("routers.ai.increment"):
+        mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{}])
+        payload = {
+            "exercise_id": "ex-1",
+            "essay_text": "Court texte.",
+            "word_count": 2,
+            "exam_type": "TCF",
+            "prompt": "Test",
+        }
+        for _ in range(AI_RATE_LIMIT_MAX_REQUESTS):
+            response = client.post("/api/v1/ai/writing", headers=auth_headers, json=payload)
+            assert response.status_code == 200
+        response = client.post("/api/v1/ai/writing", headers=auth_headers, json=payload)
+    assert response.status_code == 429
 
 
 def test_speaking_turn_max_turns(client, auth_headers):

@@ -4,6 +4,11 @@ import { Lock } from "lucide-react";
 import { AuthShell } from "../components/auth/AuthShell";
 import { useAuth } from "../contexts/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
+import {
+  MIN_PASSWORD_LENGTH,
+  PASSWORD_REQUIREMENTS_HINT,
+  passwordStrengthError,
+} from "../lib/authPassword";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -38,8 +43,9 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    const strengthError = passwordStrengthError(password);
+    if (strengthError) {
+      setError(strengthError);
       return;
     }
     if (password !== confirmPassword) {
@@ -86,7 +92,7 @@ export default function ResetPasswordPage() {
           Choose a new password
         </h1>
         <p className="text-sm text-[#7A7A78] mt-1">
-          Enter a new password for your account
+          {PASSWORD_REQUIREMENTS_HINT}
         </p>
       </div>
 
@@ -100,7 +106,7 @@ export default function ResetPasswordPage() {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -119,7 +125,7 @@ export default function ResetPasswordPage() {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}

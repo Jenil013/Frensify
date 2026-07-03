@@ -1,7 +1,12 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { AuthShell } from "../components/auth/AuthShell";
+import {
+  AuthCaptcha,
+  type AuthCaptchaHandle,
+  isCaptchaConfigured,
+} from "../components/auth/AuthCaptcha";
 import { useAuth } from "../contexts/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
 
@@ -11,6 +16,8 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const captchaRef = useRef<AuthCaptchaHandle>(null);
 
   if (!isSupabaseConfigured) {
     return (
@@ -29,9 +36,18 @@ export default function ForgotPasswordPage() {
     setSubmitting(true);
 
     try {
-      const { error: resetError } = await resetPasswordForEmail(email.trim());
+      if (isCaptchaConfigured && !captchaToken) {
+        setError("Please complete the security check.");
+        return;
+      }
+      const { error: resetError } = await resetPasswordForEmail(
+        email.trim(),
+        captchaToken || undefined
+      );
       if (resetError) {
         setError(resetError.message);
+        captchaRef.current?.reset();
+        setCaptchaToken("");
         return;
       }
       setSent(true);
@@ -93,6 +109,12 @@ export default function ForgotPasswordPage() {
             />
           </div>
         </label>
+
+        <AuthCaptcha
+          ref={captchaRef}
+          onToken={setCaptchaToken}
+          onExpire={() => setCaptchaToken("")}
+        />
 
         {error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">

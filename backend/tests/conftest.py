@@ -4,6 +4,15 @@ from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
 
+@pytest.fixture(autouse=True)
+def _reset_ai_rate_limits():
+    from services.ai_rate_limit import reset_ai_rate_limits
+
+    reset_ai_rate_limits()
+    yield
+    reset_ai_rate_limits()
+
+
 @pytest.fixture
 def mock_profile():
     yesterday = (date.today() - timedelta(days=1)).isoformat()

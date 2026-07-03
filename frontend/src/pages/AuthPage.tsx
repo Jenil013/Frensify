@@ -1,9 +1,19 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
 import { AuthShell } from "../components/auth/AuthShell";
+import {
+  AuthCaptcha,
+  type AuthCaptchaHandle,
+  isCaptchaConfigured,
+} from "../components/auth/AuthCaptcha";
 import { useAuth } from "../contexts/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabaseClient";
+import {
+  MIN_PASSWORD_LENGTH,
+  PASSWORD_REQUIREMENTS_HINT,
+  passwordStrengthError,
+} from "../lib/authPassword";
 
 type AuthMode = "signin" | "signup";
 
@@ -22,6 +32,8 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [verifyEmailSent, setVerifyEmailSent] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const captchaRef = useRef<AuthCaptchaHandle>(null);
 
   if (!isSupabaseConfigured) {
     return (
@@ -47,13 +59,26 @@ export default function AuthPage() {
     setVerifyEmailSent(false);
 
     try {
+      if (isCaptchaConfigured && !captchaToken) {
+        setError("Please complete the security check.");
+        return;
+      }
+
       if (mode === "signup") {
+        const strengthError = passwordStrengthError(password);
+        if (strengthError) {
+          setError(strengthError);
+          return;
+        }
         const { error: signUpError, needsEmailConfirmation } = await signUp(
           email.trim(),
-          password
+          password,
+          captchaToken || undefined
         );
         if (signUpError) {
           setError(signUpError.message);
+          captchaRef.current?.reset();
+          setCaptchaToken("");
           return;
         }
         if (needsEmailConfirmation) {
@@ -68,10 +93,13 @@ export default function AuthPage() {
 
       const { error: signInError } = await signInWithPassword(
         email.trim(),
-        password
+        password,
+        captchaToken || undefined
       );
       if (signInError) {
         setError(signInError.message);
+        captchaRef.current?.reset();
+        setCaptchaToken("");
         return;
       }
       navigate(redirectTo.startsWith("/") ? redirectTo : "/app", {
@@ -190,7 +218,7 @@ export default function AuthPage() {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={mode === "signup" ? MIN_PASSWORD_LENGTH : 1}
               autoComplete={
                 mode === "signup" ? "new-password" : "current-password"
               }
@@ -200,7 +228,16 @@ export default function AuthPage() {
               placeholder="••••••••"
             />
           </div>
+          {mode === "signup" && (
+            <p className="mt-1.5 text-xs text-[#7A7A78]">{PASSWORD_REQUIREMENTS_HINT}</p>
+          )}
         </label>
+
+        <AuthCaptcha
+          ref={captchaRef}
+          onToken={setCaptchaToken}
+          onExpire={() => setCaptchaToken("")}
+        />
 
         {error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">

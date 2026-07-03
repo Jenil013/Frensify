@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from database import get_db
 from dependencies import require_ai_cap, get_profile
+from ai_limits import MAX_SPEAKING_AUDIO_BYTES, MAX_SPEAKING_METADATA_CHARS
 from models.ai import (
     WritingEvalRequest, AIWritingCorrection,
     WritingModuleEvalRequest, WritingModuleEvalResponse,
@@ -23,14 +24,28 @@ from services.gemini_service import (
 )
 from services.usage_service import increment, write_audit_log
 from services.streak_service import record_practice_day
+from services.speaking_recording_service import assert_speaking_recording_owned
+from services.ai_rate_limit import require_ai_rate_limit
 from config import settings
 
-router = APIRouter(prefix="/ai", tags=["ai"])
+router = APIRouter(
+    prefix="/ai",
+    tags=["ai"],
+    dependencies=[Depends(require_ai_rate_limit)],
+)
 
 
 def _monday() -> date:
     today = date.today()
     return today - timedelta(days=today.weekday())
+
+
+def _assert_audio_size(audio_bytes: bytes) -> None:
+    if len(audio_bytes) > MAX_SPEAKING_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Audio file exceeds {MAX_SPEAKING_AUDIO_BYTES // (1024 * 1024)} MiB limit.",
+        )
 
 
 # ─── Writing ────────────────────────────────────────────────────────────────
@@ -171,6 +186,7 @@ def _download_audio(storage_path: str) -> tuple[bytes, str]:
     from supabase import create_client
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     data = client.storage.from_("speaking-recordings").download(storage_path)
+    _assert_audio_size(data)
     ext = storage_path.rsplit(".", 1)[-1].lower() if "." in storage_path else "webm"
     mime_map = {"webm": "audio/webm", "mp3": "audio/mpeg", "wav": "audio/wav", "m4a": "audio/mp4"}
     return data, mime_map.get(ext, "audio/webm")
@@ -183,8 +199,9 @@ def _delete_audio(storage_path: str) -> None:
     client.storage.from_("speaking-recordings").remove([storage_path])
 
 
-def _run_speaking_eval(body: SpeakingEvalRequest) -> AISpeakingSuggestion:
+def _run_speaking_eval(body: SpeakingEvalRequest, profile_id: str) -> AISpeakingSuggestion:
     """Download audio, evaluate with Gemini, delete audio after success."""
+    assert_speaking_recording_owned(profile_id, body.storage_path)
     audio_bytes, mime_type = _download_audio(body.storage_path)
     feedback = evaluate_speaking(
         audio_bytes=audio_bytes,
@@ -214,10 +231,14 @@ def _validate_speaking_module_sections(body: SpeakingModuleEvalRequest) -> None:
 def _run_speaking_conversation_eval(
     section,
     exam_type: str,
+    profile_id: str,
 ) -> AISpeakingSuggestion:
     """Download all user-turn audios, evaluate conversation, delete blobs after success."""
     if not section.user_turns:
         raise HTTPException(status_code=422, detail="Section requires at least one user turn.")
+
+    for turn in section.user_turns:
+        assert_speaking_recording_owned(profile_id, turn.storage_path)
 
     paths = [t.storage_path for t in section.user_turns]
     clips: list[tuple[bytes, str]] = []
@@ -259,7 +280,7 @@ def _run_speaking_module_eval(
                 status_code=422,
                 detail=f"Section {section.section_id} requires at least one user turn.",
             )
-        feedback = _run_speaking_conversation_eval(section, body.exam_type)
+        feedback = _run_speaking_conversation_eval(section, body.exam_type, profile["id"])
         exercise_id = f"{body.exercise_id}-{section.section_id}"
         feedback_payload = feedback.model_dump()
         feedback_payload["conversation"] = [t.model_dump() for t in section.conversation]
@@ -309,7 +330,9 @@ async def speaking_turn(
     metadata: str = Form(...),
     profile: dict = Depends(get_profile),
 ):
-    del profile  # auth gate only; no usage increment
+    del profile  # auth gate only; no weekly usage increment
+    if len(metadata) > MAX_SPEAKING_METADATA_CHARS:
+        raise HTTPException(status_code=422, detail="Metadata payload too large.")
     try:
         body = SpeakingTurnRequest.model_validate(json.loads(metadata))
     except (json.JSONDecodeError, ValueError) as exc:
@@ -325,6 +348,7 @@ async def speaking_turn(
     audio_bytes = await audio.read()
     if not audio_bytes:
         raise HTTPException(status_code=422, detail="Audio file is empty.")
+    _assert_audio_size(audio_bytes)
 
     mime_type = audio.content_type or "audio/webm"
     try:
@@ -352,7 +376,7 @@ async def speaking_practice(
     profile: dict = Depends(require_ai_cap("speaking_eval", "practice")),
     db=Depends(get_db),
 ):
-    feedback = _run_speaking_eval(body)
+    feedback = _run_speaking_eval(body, profile["id"])
     db.table("speaking_sessions").insert({
         "user_id": profile["id"],
         "exercise_id": body.exercise_id,
@@ -375,7 +399,7 @@ async def speaking_mock(
     profile: dict = Depends(require_ai_cap("speaking_eval", "mock")),
     db=Depends(get_db),
 ):
-    feedback = _run_speaking_eval(body)
+    feedback = _run_speaking_eval(body, profile["id"])
     db.table("speaking_sessions").insert({
         "user_id": profile["id"],
         "exercise_id": body.exercise_id,
