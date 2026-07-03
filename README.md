@@ -1,4 +1,4 @@
-# Frensify (https://frensify.jenilnavadia.workers.dev/)
+# Frensify (https://frensify.ca)
 
 **Master your TEF & TCF exam with confidence.**
 
