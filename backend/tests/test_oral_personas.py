@@ -20,9 +20,12 @@ def test_get_persona_tcf_tasks():
 def test_get_turn_reply_instructions_tcf_task2_answers_not_interviews():
     instructions = get_turn_reply_instructions("TCF", "2")
     lowered = instructions.lower()
-    assert "role-play" in lowered
-    assert "ask" in lowered
-    assert "interview" in lowered
+    assert "candidate-led" in lowered or "candidate leads" in lowered
+    assert "only answer" in lowered
+    assert "no questions" in lowered
+    persona = get_persona("TCF", "2").lower()
+    assert "never ask" in persona
+    assert "8" in persona and "12" in persona
 
 
 def test_get_persona_unknown_raises():

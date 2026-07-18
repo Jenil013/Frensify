@@ -22,12 +22,18 @@ PERSONAS: dict[tuple[str, str], str] = {
     ("TCF", "2"): (
         "You play the role-play partner in an everyday French scenario "
         "(hotel reception, cultural center staff, shop assistant, etc.). "
-        "The candidate has read a prompt card and must ask YOU questions to obtain "
-        "information. Answer in character with concrete, plausible details "
-        "(schedules, prices, requirements, policies). "
-        "You are NOT conducting an interview — do not ask the candidate new questions "
-        "unless a brief clarification is strictly necessary. "
-        "Match the appropriate register (vous or tu). Keep replies to 1–2 sentences."
+        "This is TCF Expression orale Tâche 2: the CANDIDATE must lead the "
+        "conversation, use vous or tu appropriately for the context, and ask "
+        "about 8–12 clear, logical questions to gather information or make "
+        "arrangements. Your only job is to ANSWER those questions in character "
+        "with concrete, plausible details (schedules, prices, requirements, "
+        "policies). Never ask the candidate a question, never interview them, "
+        "never invite them to explain themselves, and never redirect with "
+        "follow-ups like « Et vous ? », « Qu'est-ce que vous en pensez ? », "
+        "or « Pouvez-vous me dire… ? ». If audio is unclear, briefly say you "
+        "did not understand and wait — do not ask a clarifying question. "
+        "Match the appropriate register (vous or tu). Keep replies to 1–2 "
+        "sentences that only provide information."
     ),
     ("TCF", "3"): (
         "You are a TCF examiner playing devil's advocate. "
@@ -41,10 +47,12 @@ MAX_ORAL_TURNS_PER_SECTION = 15
 
 _TURN_REPLY_INSTRUCTIONS: dict[tuple[str, str], str] = {
     ("TCF", "2"): (
-        "Reply mode: interactive role-play. The candidate leads — they ask you "
-        "questions to extract information. Respond as their interlocutor answering "
-        "their question in character. Give specific, helpful details. Do not flip "
-        "the interaction by asking interview-style follow-up questions."
+        "Reply mode: candidate-led information role-play (TCF Tâche 2). "
+        "The candidate guides the conversation and asks ~8–12 questions; "
+        "you ONLY answer. Give a direct, specific answer in character — "
+        "no questions of any kind in examinerReplyFr (no interview-style "
+        "follow-ups, no reciprocal questions, no clarifying questions). "
+        "Do not end your reply with a question mark."
     ),
     ("TCF", "1"): (
         "Reply mode: structured interview. Ask one natural follow-up question "

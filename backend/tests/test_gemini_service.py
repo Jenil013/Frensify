@@ -179,8 +179,12 @@ def test_generate_oral_turn_tcf_task2_uses_role_play_reply_mode(mock_generate):
         ],
     )
     text_part = mock_generate.call_args.kwargs["contents"][1]
-    assert "interactive role-play" in text_part
-    assert "interview-style follow-up" in text_part
+    assert "candidate-led information role-play" in text_part
+    assert "ONLY answer" in text_part
+    assert "no questions of any kind" in text_part
+    system = mock_generate.call_args.kwargs["system_instruction"]
+    assert "candidate leads" in system
+    assert "never ask the candidate a question" in system
 
 
 @patch("services.gemini_service._generate_json", return_value=_SPEAKING_JSON)
