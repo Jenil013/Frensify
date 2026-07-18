@@ -221,8 +221,9 @@ _SPEAKING_SCHEMA = """{
 }"""
 
 _ORAL_TURN_SCHEMA = """{
-  "userTranscript": "string (French transcription of the candidate audio)",
-  "examinerReplyFr": "string (1-2 sentences in French, exam register)"
+  "speechDetected": "boolean (true only if clear candidate French speech is present)",
+  "userTranscript": "string (French transcription of the candidate audio; empty if no speech)",
+  "examinerReplyFr": "string (1-2 sentences in French when speechDetected; empty if no speech)"
 }"""
 
 _ORAL_TURN_SYSTEM = """You are a TEF/TCF oral examiner in a live speaking simulation.
@@ -234,22 +235,34 @@ You will receive:
 - Section-specific reply mode instructions.
 
 Your job:
-1. Transcribe the candidate's latest audio accurately in French.
-2. Generate ONE short in-character reply in French (1–2 sentences), following the reply mode.
+1. Decide whether the audio contains clear candidate French speech (not silence, noise, or
+   examiner TTS bleed).
+2. If speech is present: transcribe it accurately in French, then generate ONE short
+   in-character reply in French (1–2 sentences), following the reply mode.
+3. If there is NO clear candidate speech: set speechDetected=false, userTranscript="",
+   examinerReplyFr="" — do not invent dialogue.
 
 Rules:
-- Reply ONLY in French for examinerReplyFr.
+- NEVER invent, guess, or complete what the candidate "might have said".
+- NEVER fabricate a transcript from the task prompt, stimulus, or conversation history.
+- If the audio is silent, nearly silent, only background noise, or unintelligible,
+  speechDetected MUST be false.
+- Reply ONLY in French for examinerReplyFr when speechDetected is true.
 - Stay in the assigned role for this section.
 - Follow the section reply mode strictly — it overrides any default interviewer habit.
 - When the reply mode says the candidate leads (role-play / information-gathering):
   answer only; never ask the candidate a question; never end examinerReplyFr with ?.
-- Ask follow-up or clarifying questions ONLY when the reply mode explicitly allows it
-  (e.g. structured interview or argumentative probe).
+- Ask follow-up or clarifying questions ONLY when speechDetected is true AND the reply
+  mode explicitly allows it (e.g. structured interview or argumentative probe).
 - Do not evaluate or score the candidate.
 - Do not break character.
-- If the candidate's audio is unclear and the reply mode forbids questions, briefly
-  say you did not understand and wait; otherwise ask one brief clarifying question.
+- If speech is present but unclear and the reply mode forbids questions, briefly say you
+  did not understand and wait; otherwise ask one brief clarifying question.
 - Return only valid JSON matching the schema."""
+
+
+class NoSpeechDetectedError(ValueError):
+    """Raised when oral-turn audio contains no clear candidate speech."""
 
 _SPEAKING_CONVERSATION_EXTRA = """
 You will receive:
@@ -516,10 +529,18 @@ def generate_oral_turn(
         system_instruction=_ORAL_TURN_SYSTEM,
     )
     payload = _parse_json_payload(result)
+    speech_detected = payload.get("speechDetected")
+    if speech_detected is None:
+        # Backward-compatible: infer from transcript presence.
+        speech_detected = bool(str(payload.get("userTranscript", "")).strip())
     transcript = str(payload.get("userTranscript", "")).strip()
     reply = str(payload.get("examinerReplyFr", "")).strip()
-    if not transcript or not reply:
-        raise ValueError("Gemini oral turn response missing transcript or examiner reply.")
+    if not speech_detected or not transcript:
+        raise NoSpeechDetectedError(
+            "No clear speech detected in the recording. Please speak, then try again."
+        )
+    if not reply:
+        raise ValueError("Gemini oral turn response missing examiner reply.")
     return transcript, reply
 
 

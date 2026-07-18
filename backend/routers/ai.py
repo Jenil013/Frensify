@@ -21,6 +21,7 @@ from services.gemini_service import (
     evaluate_writing, evaluate_speaking, evaluate_speaking_conversation,
     generate_oral_turn,
     explain_vocab,
+    NoSpeechDetectedError,
 )
 from services.usage_service import increment, write_audit_log
 from services.streak_service import record_practice_day
@@ -361,6 +362,8 @@ async def speaking_turn(
             stimulus=body.stimulus,
             history=body.history,
         )
+    except NoSpeechDetectedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

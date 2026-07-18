@@ -53,6 +53,21 @@ interface SectionRecording {
 
 const TCF_TASK2_PREP_SECONDS = 120;
 const MAX_TURN_RECORDING_SEC = 120;
+/** Reject accidental taps / silence before calling Gemini. */
+const MIN_TURN_RECORDING_SEC = 2;
+/** Peak meter level (0–100) below this is treated as no speech. */
+const MIN_PEAK_AUDIO_LEVEL = 8;
+const NO_AUDIO_DETECTED_MESSAGE =
+  "No Audio has been detected, Please record your reply again.";
+
+function isNoSpeechError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("no clear speech") ||
+    lower.includes("no speech") ||
+    lower.includes("no audio")
+  );
+}
 
 function buildEvalPrompt(content: TcfExpressionSection): string {
   if (content.stimulus) {
@@ -87,6 +102,7 @@ export default function OralSimulationRunner({
   const [examinerReady, setExaminerReady] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conversationError, setConversationError] = useState<string | null>(null);
   const [processingTurn, setProcessingTurn] = useState(false);
   const [timerExpired, setTimerExpired] = useState(false);
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
@@ -130,6 +146,7 @@ export default function OralSimulationRunner({
     setExaminerReady(false);
     setProcessingTurn(false);
     setTimerExpired(false);
+    setConversationError(null);
     examinerSpokeRef.current = false;
     resetRecorder();
   }, [resetRecorder]);
@@ -211,6 +228,7 @@ export default function OralSimulationRunner({
   const handleRespond = useCallback(async () => {
     if (timerExpired || sectionSubmitted) return;
     setError(null);
+    setConversationError(null);
     await recorder.startRecording();
   }, [recorder, sectionSubmitted, timerExpired]);
 
@@ -219,8 +237,22 @@ export default function OralSimulationRunner({
     const result = await recorder.stopRecording();
     if (!result) return;
 
+    if (result.durationSeconds < MIN_TURN_RECORDING_SEC) {
+      setConversationError(null);
+      setError("Speak for at least 2 seconds, then stop recording.");
+      setExaminerReady(true);
+      return;
+    }
+    if (result.peakAudioLevel < MIN_PEAK_AUDIO_LEVEL) {
+      setError(null);
+      setConversationError(NO_AUDIO_DETECTED_MESSAGE);
+      setExaminerReady(true);
+      return;
+    }
+
     setProcessingTurn(true);
     setError(null);
+    setConversationError(null);
 
     try {
       const history = conversation;
@@ -244,11 +276,17 @@ export default function OralSimulationRunner({
 
       speak(response.examiner_reply, () => setExaminerReady(true));
     } catch (err: unknown) {
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Could not process your response. Please try again."
-      );
+          : "Could not process your response. Please try again.";
+      if (isNoSpeechError(message)) {
+        setError(null);
+        setConversationError(NO_AUDIO_DETECTED_MESSAGE);
+      } else {
+        setConversationError(null);
+        setError(message);
+      }
       setExaminerReady(true);
     } finally {
       setProcessingTurn(false);
@@ -496,6 +534,7 @@ export default function OralSimulationRunner({
                 !processingTurn
               }
               voiceUnavailable={!hasFrenchVoice}
+              conversationError={conversationError}
             />
 
             {sectionSubmitted && (

@@ -1,5 +1,8 @@
 import json
 from unittest.mock import patch, MagicMock
+
+import pytest
+
 from services.gemini_service import (
     explain_vocab,
     evaluate_writing,
@@ -143,8 +146,15 @@ def test_evaluate_speaking_returns_suggestion(mock_generate):
 
 
 _ORAL_TURN_JSON = json.dumps({
+    "speechDetected": True,
     "userTranscript": "Je m'appelle Paul.",
     "examinerReplyFr": "Enchanté. D'où venez-vous ?",
+})
+
+_ORAL_TURN_SILENCE_JSON = json.dumps({
+    "speechDetected": False,
+    "userTranscript": "",
+    "examinerReplyFr": "",
 })
 
 
@@ -161,6 +171,26 @@ def test_generate_oral_turn_returns_transcript_and_reply(mock_generate):
     )
     assert transcript == "Je m'appelle Paul."
     assert reply.startswith("Enchanté")
+    mock_generate.assert_called_once()
+    system = mock_generate.call_args.kwargs["system_instruction"]
+    assert "NEVER invent" in system
+    assert "speechDetected" in system
+
+
+@patch("services.gemini_service._generate_json", return_value=_ORAL_TURN_SILENCE_JSON)
+def test_generate_oral_turn_rejects_silence(mock_generate):
+    from services.gemini_service import NoSpeechDetectedError
+
+    with pytest.raises(NoSpeechDetectedError):
+        generate_oral_turn(
+            b"silence",
+            "audio/webm",
+            exam_type="TCF",
+            section_id="1",
+            prompt="Interview",
+            stimulus="Présentez-vous",
+            history=[ConversationTurn(role="examiner", text="Présentez-vous")],
+        )
     mock_generate.assert_called_once()
 
 

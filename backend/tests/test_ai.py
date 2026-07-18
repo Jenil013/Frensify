@@ -288,6 +288,30 @@ def test_speaking_turn(client, auth_headers):
     assert body["examiner_reply"] == "Très bien."
 
 
+def test_speaking_turn_rejects_no_speech(client, auth_headers):
+    from services.gemini_service import NoSpeechDetectedError
+
+    with patch(
+        "routers.ai.generate_oral_turn",
+        side_effect=NoSpeechDetectedError(
+            "No clear speech detected in the recording. Please speak, then try again."
+        ),
+    ):
+        response = client.post(
+            "/api/v1/ai/speaking/turn",
+            headers=auth_headers,
+            data={
+                "metadata": (
+                    '{"exam_type":"TCF","section_id":"1","prompt":"Interview",'
+                    '"stimulus":"Présentez-vous","history":[]}'
+                ),
+            },
+            files={"audio": ("turn.webm", b"fake-audio", "audio/webm")},
+        )
+    assert response.status_code == 422
+    assert "speech" in response.json()["detail"].lower()
+
+
 def test_speaking_turn_rejects_oversized_audio(client, auth_headers):
     from ai_limits import MAX_SPEAKING_AUDIO_BYTES
 
