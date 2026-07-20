@@ -88,7 +88,7 @@ function DailyReviewComplete({
           Daily target reached
         </p>
         <h4 className="text-xl font-bold text-[#37352F] tracking-tight">
-          Well done — you&apos;re done for today
+          Well done - you&apos;re done for today
         </h4>
         <p className="text-xs text-[#7A7A78] leading-relaxed max-w-sm mx-auto">
           You reviewed <strong className="text-[#37352F]">{cardsReviewed} cards</strong>.
@@ -131,7 +131,7 @@ function DailyReviewComplete({
           Next best step
         </p>
         <p className="text-xs text-[#5F5E5B] leading-relaxed">
-          Keep this tab open — look up one connector you hesitated on, or browse a deck
+          Keep this tab open - look up one connector you hesitated on, or browse a deck
           at <strong className="text-[#37352F]">{targetScore}</strong> level. Tomorrow&apos;s
           5-card round will surface words that need more recall.
         </p>
@@ -459,7 +459,7 @@ export default function VocabularyTab({
             Vocabulary for {examLabel} · target {profile.targetScore}
           </h2>
           <p className="text-xs text-[#7A7A78]">
-            Exam-oriented connectors, collocations, and oral phrases — with daily active recall.
+            Exam-oriented connectors, collocations, and oral phrases, with daily active recall.
           </p>
           {stats && (
             <p className="text-[11px] text-[#2D6A53] mt-1 font-mono">
@@ -535,7 +535,7 @@ export default function VocabularyTab({
         >
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-bold text-[#37352F]">
-              {sessionComplete ? "Daily Review — complete" : "Daily Review — 5 cards"}
+              {sessionComplete ? "Daily Review - complete" : "Daily Review - 5 cards"}
             </h3>
             <span className="text-[10px] font-mono text-[#7A7A78]">
               {sessionComplete

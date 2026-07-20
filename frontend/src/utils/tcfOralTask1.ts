@@ -7,27 +7,27 @@ const TASK1_FOLLOWUPS: { id: string; fr: string; en: string }[] = [
   {
     id: "work",
     fr: "Que faites-vous dans la vie ? Parlez de votre travail actuel, de vos études ou de vos activités quotidiennes.",
-    en: "Work & studies — describe your job, studies, or daily tasks.",
+    en: "Work & studies - describe your job, studies, or daily tasks.",
   },
   {
     id: "routine",
     fr: "Décrivez-moi une journée type : à quelle heure vous vous levez, vous travaillez, vous mangez, etc.",
-    en: "Daily routine — walk through a typical day.",
+    en: "Daily routine - walk through a typical day.",
   },
   {
     id: "hobbies",
     fr: "Qu'aimez-vous faire pendant votre temps libre ? Quel est votre livre ou votre film préféré ?",
-    en: "Hobbies & interests — free time and favorites.",
+    en: "Hobbies & interests - free time and favorites.",
   },
   {
     id: "travel",
     fr: "Où êtes-vous parti(e) lors de vos dernières vacances ? Parlez-moi d'un voyage récent.",
-    en: "Travel — describe a recent trip or vacation.",
+    en: "Travel - describe a recent trip or vacation.",
   },
   {
     id: "future",
     fr: "Où vous imaginez-vous dans trente ans ? Pourquoi souhaitez-vous immigrer au Canada ?",
-    en: "Future / Canada — long-term plans and immigration motivation.",
+    en: "Future / Canada - long-term plans and immigration motivation.",
   },
 ];
 

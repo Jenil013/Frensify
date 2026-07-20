@@ -143,7 +143,7 @@ export default function SpeakingResultsModal({
           const order = ["A1", "A2", "B1", "B2", "C1", "C2"];
           return order.indexOf(l) < order.indexOf(min) ? l : min;
         }, levels[0])
-      : "—";
+      : "-";
 
   const weak = weakestSection(payload.sections);
   const weakLabel =
@@ -177,7 +177,7 @@ export default function SpeakingResultsModal({
                 id="speaking-results-title"
                 className="text-base font-bold text-[#37352F] tracking-tight"
               >
-                {payload.moduleLabel} — Results
+                {payload.moduleLabel} - Results
               </h2>
               <p className="text-xs text-[#7A7A78] mt-0.5">
                 {payload.examType} practice evaluation · CEFR is an estimate
@@ -213,7 +213,7 @@ export default function SpeakingResultsModal({
             <p>
               <span className="font-bold">Next action: </span>
               Retry <span className="font-bold">{weakLabel}</span> with timed
-              practice — focus on fluency and clearer structure before your next
+              practice - focus on fluency and clearer structure before your next
               mock.
             </p>
           </div>

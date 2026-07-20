@@ -30,7 +30,7 @@ export function examCountdownPhrase(
   const countdown = formatExamCountdown(examDate);
   if (!countdown) {
     return {
-      prefix: `Your official ${examType} pathway examination —`,
+      prefix: `Your official ${examType} pathway examination -`,
       highlight: null,
       suffix: "add your exam date in Candidate Settings",
     };

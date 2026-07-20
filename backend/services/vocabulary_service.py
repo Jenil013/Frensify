@@ -12,8 +12,8 @@ WEAK_CATEGORY_MAP: dict[str, list[str]] = {
     "A1": ["Argument connectors", "Cause / consequence"],
     "A2": ["Argument connectors", "Cause / consequence"],
     "B1": ["Argument connectors", "Formal register"],
-    "B2": ["Formal register", "Oral — convince / argue"],
-    "C1": ["Formal register", "Oral — convince / argue"],
+    "B2": ["Formal register", "Oral - convince / argue"],
+    "C1": ["Formal register", "Oral - convince / argue"],
     "C2": ["Formal register"],
 }
 
@@ -220,17 +220,17 @@ def compute_vocab_suggestions(
 
     if source == "writing":
         reason = (
-            f"Recent writing feedback shows vocabulary around {weakest} — "
+            f"Recent writing feedback shows vocabulary around {weakest} - "
             "connector and register drills will help raise your Expression écrite score."
         )
     elif source == "speaking":
         reason = (
-            f"Recent speaking practice suggests lexical range around {weakest} — "
+            f"Recent speaking practice suggests lexical range around {weakest} - "
             "review oral argument phrases before your next simulation."
         )
     else:
         reason = (
-            f"Vocabulary has appeared below your {target_score} target in recent practice — "
+            f"Vocabulary has appeared below your {target_score} target in recent practice - "
             "a short connector deck is your best next step."
         )
 

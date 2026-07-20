@@ -205,7 +205,7 @@ function DashboardPathCard({
             />
           </div>
           <p className="text-[10px] text-[#9B9A97] mt-1.5">
-            Estimate from your stated current and target levels — not a guarantee.
+            Estimate from your stated current and target levels, not a guarantee.
           </p>
         </div>
 

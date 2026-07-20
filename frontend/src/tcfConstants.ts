@@ -128,7 +128,7 @@ export const TCF_MODULE_REGISTRY: Record<TcfModuleId, TcfModuleDefinition> = {
         prompt:
           "You want to enroll in a French language course at a local cultural center. Call the center to get information about schedules, prices, and requirements. (5.5 minutes including preparation)",
         stimulus:
-          "Annonce : Centre culturel francophone — Cours de français tous niveaux, du lundi au vendredi. Inscriptions ouvertes. Contactez-nous pour plus d'informations.",
+          "Annonce : Centre culturel francophone - Cours de français tous niveaux, du lundi au vendredi. Inscriptions ouvertes. Contactez-nous pour plus d'informations.",
       },
       "3": {
         prompt:

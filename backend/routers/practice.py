@@ -140,7 +140,7 @@ def _build_tef_oral_from_pool(rows: list[dict]) -> OralCombinationResponse:
         id=f"{section_a_row['id']}+{section_b_row['id']}",
         combinationIndex=section_a_row.get("combination_index") or 0,
         title=(
-            f"TEF Expression orale — {section_a_row.get('title', 'Section A')} + "
+            f"TEF Expression orale - {section_a_row.get('title', 'Section A')} + "
             f"{section_b_row.get('title', 'Section B')}"
         ),
         sections={
@@ -169,7 +169,7 @@ def _build_tcf_oral_from_pool(rows: list[dict]) -> OralCombinationResponse:
         id=f"task1-{task1_topic_id}+{task2_row['id']}+{task3_row['id']}",
         combinationIndex=task2_row.get("combination_index") or 0,
         title=(
-            f"TCF Expression orale — Tâche 1 ({task1_topic_id}) + "
+            f"TCF Expression orale - Tâche 1 ({task1_topic_id}) + "
             f"{task2_row.get('title', 'Tâche 2')} + {task3_row.get('title', 'Tâche 3')}"
         ),
         sections={

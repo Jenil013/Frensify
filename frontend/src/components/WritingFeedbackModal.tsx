@@ -143,7 +143,7 @@ export default function WritingFeedbackModal({
                 {title}
               </h2>
               <p className="text-xs text-[#7A7A78] mt-0.5">
-                AI examiner feedback — use this to refine your next draft.
+                AI examiner feedback - use this to refine your next draft.
               </p>
             </div>
           </div>

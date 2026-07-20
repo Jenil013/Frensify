@@ -317,7 +317,7 @@ export default function AccountTab({
               )}
               {daysRemaining !== null && daysRemaining < 0 && (
                 <p className="text-[10px] text-[#7A7A78]">
-                  This date is in the past — update it if you have a new sitting scheduled.
+                  This date is in the past - update it if you have a new sitting scheduled.
                 </p>
               )}
             </div>
@@ -333,7 +333,7 @@ export default function AccountTab({
             <div className="bg-[#EAF5F1] border border-[#D1EBE1] text-xs p-3.5 rounded-lg text-[#2D6A53] flex gap-2 items-center animate-fade-in font-mono">
               <CheckCircle2 className="w-4 h-4" />
               <p>
-                Target set to {getTefTargetLabel(targetLevel)} — synced for analytics & NCLC tracking.
+                Target set to {getTefTargetLabel(targetLevel)} - synced for analytics & NCLC tracking.
               </p>
             </div>
           )}

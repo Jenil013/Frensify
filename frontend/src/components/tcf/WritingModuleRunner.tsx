@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Sparkles, Loader2, ChevronRight } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Sparkles, Loader2 } from "lucide-react";
 import ModuleSessionShell from "./ModuleSessionShell";
 import WritingFeedbackModal from "../WritingFeedbackModal";
 import AiEvaluatingModal from "../AiEvaluatingModal";
@@ -27,6 +27,13 @@ function wordCount(text: string): number {
 }
 
 const TASK_IDS = ["1", "2", "3"] as const;
+const MODULE_DURATION_SECONDS = 60 * 60;
+
+const TASK_PACING_NOTES = [
+  "Task 1 (Short Message - ~10 mins)",
+  "Task 2 (Formal Note/Letter - ~15 mins)",
+  "Task 3 (Argumentative Essay - ~35 mins)",
+] as const;
 
 const DOC2_SPLIT_RE = /(?=Document\s+2\s*:)/i;
 const DOC_LABEL_RE = /^Document\s+([12])\s*:\s*/i;
@@ -73,12 +80,11 @@ export default function WritingModuleRunner({
 
   const [currentTask, setCurrentTask] = useState(0);
   const [texts, setTexts] = useState<string[]>(["", "", ""]);
-  const [secondsLeft, setSecondsLeft] = useState(
-    sectionsMeta[0].durationMinutes * 60
-  );
+  const [secondsLeft, setSecondsLeft] = useState(MODULE_DURATION_SECONDS);
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingResult, setPendingResult] = useState<WritingModuleResult | null>(null);
+  const submittedRef = useRef(false);
 
   const taskId = TASK_IDS[currentTask];
   const meta = sectionsMeta[currentTask];
@@ -86,24 +92,7 @@ export default function WritingModuleRunner({
   const activeText = texts[currentTask];
   const minWords = meta.minWords ?? 0;
   const words = wordCount(activeText);
-
-  useEffect(() => {
-    setSecondsLeft(sectionsMeta[currentTask].durationMinutes * 60);
-  }, [currentTask, sectionsMeta]);
-
-  useEffect(() => {
-    if (secondsLeft <= 0) return;
-    const t = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => clearInterval(t);
-  }, [secondsLeft]);
-
-  const updateText = (value: string) => {
-    setTexts((prev) => {
-      const next = [...prev];
-      next[currentTask] = value;
-      return next;
-    });
-  };
+  const underMinWords = words < minWords;
 
   const buildEvalPayload = useCallback(
     () =>
@@ -130,6 +119,8 @@ export default function WritingModuleRunner({
   );
 
   const submitModule = useCallback(async () => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     setError(null);
     const sections = buildEvalPayload();
 
@@ -155,6 +146,7 @@ export default function WritingModuleRunner({
       );
       setPendingResult({ sections: sectionResults });
     } catch (err: unknown) {
+      submittedRef.current = false;
       setError(
         err instanceof Error
           ? err.message
@@ -164,6 +156,26 @@ export default function WritingModuleRunner({
       setEvaluating(false);
     }
   }, [buildEvalPayload, buildDraftResult, examType, examMode, onComplete]);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const t = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [secondsLeft]);
+
+  useEffect(() => {
+    if (secondsLeft === 0) {
+      void submitModule();
+    }
+  }, [secondsLeft, submitModule]);
+
+  const updateText = (value: string) => {
+    setTexts((prev) => {
+      const next = [...prev];
+      next[currentTask] = value;
+      return next;
+    });
+  };
 
   const dismissFeedback = useCallback(() => {
     if (pendingResult) {
@@ -176,41 +188,30 @@ export default function WritingModuleRunner({
     pendingResult?.sections
       .filter((s) => s.feedback)
       .map((s, idx) => ({
-        label: sectionsMeta[idx]?.label.split(":")[0].trim() ?? `Task ${idx + 1}`,
+        label: TASK_PACING_NOTES[idx]?.split(" (")[0] ?? `Task ${idx + 1}`,
         feedback: s.feedback!,
       })) ?? [];
 
-  const advanceOrSubmit = useCallback(async () => {
-    if (words < minWords) return;
-    if (currentTask < 2) {
-      setCurrentTask((t) => t + 1);
-      return;
-    }
-    await submitModule();
-  }, [words, minWords, currentTask, submitModule]);
-
-  const isLastTask = currentTask === 2;
-
   const footer = (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end gap-2">
+      {underMinWords && (
+        <p className="text-[11px] text-[#9A5013]">
+          Below the {minWords}-word minimum - submitting early may lower your
+          score.
+        </p>
+      )}
       <button
         type="button"
-        disabled={(!examMode && evaluating) || words < minWords}
-        onClick={advanceOrSubmit}
-        className={`px-4 py-2 text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer ${
-          isLastTask ? "bg-[#2D6A53]" : "bg-[#37352F]"
-        }`}
+        disabled={!examMode && evaluating}
+        onClick={() => void submitModule()}
+        className="px-4 py-2 bg-[#2D6A53] text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer"
       >
         {!examMode && evaluating ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : isLastTask ? (
+        ) : (
           <>
             <Sparkles className="w-3.5 h-3.5" />{" "}
             {examMode ? "Submit & continue" : "Submit module"}
-          </>
-        ) : (
-          <>
-            Complete Task {currentTask + 1} <ChevronRight className="w-4 h-4" />
           </>
         )}
       </button>
@@ -225,63 +226,65 @@ export default function WritingModuleRunner({
         <WritingFeedbackModal
           open={pendingResult !== null && feedbackSections.length > 0}
           onClose={dismissFeedback}
-          title="Expression écrite — your results"
+          title="Expression écrite - your results"
           sections={feedbackSections}
           continueLabel="Back to practice"
         />
       )}
 
       <ModuleSessionShell
-      title={module.meta.labelFr}
-      objective={module.meta.objective}
-      secondsRemaining={secondsLeft}
-      progressLabel={`Task ${currentTask + 1}/3`}
-      onAbort={onAbort}
-      footer={footer}
-    >
-      <div className="space-y-3">
-        {error && (
-          <p className="text-xs text-[#B83E5C] bg-[#FDF2F4] border border-[#F5D0D6] rounded-lg px-3 py-2">
-            {error}
-          </p>
-        )}
-
-        <div className="flex gap-1 p-1 bg-[#F1F1EF] border border-[#E9E9E7] rounded-lg">
-          {TASK_IDS.map((id, idx) => (
-            <div
-              key={id}
-              className={`flex-1 px-3 py-1.5 rounded-md text-xs text-center ${
-                idx === currentTask
-                  ? "bg-white font-bold border border-[#E9E9E7] shadow-sm text-[#37352F]"
-                  : idx < currentTask
-                  ? "text-[#2D6A53] font-medium"
-                  : "text-[#7B7B79]"
-              }`}
-            >
-              {sectionsMeta[idx].label.split(":")[0].trim()}
-            </div>
-          ))}
-        </div>
-
-        <p className="text-xs font-bold text-[#37352F]">{meta.label}</p>
-        {content.stimulus && <Task3Stimulus text={content.stimulus} />}
-        <WritingTextAreaField
-          prompt={content.prompt}
-          value={activeText}
-          onChange={updateText}
-        />
-        <p className="text-[11px] text-right font-mono text-[#7A7A78]">
-          Words:{" "}
-          <strong className={words >= minWords ? "text-[#10B981]" : ""}>
-            {words}
-          </strong>{" "}
-          / {minWords} min
-          {meta.maxWords && (
-            <span className="ml-2">· {meta.maxWords} max</span>
+        title={module.meta.labelFr}
+        objective={module.meta.objective}
+        secondsRemaining={secondsLeft}
+        progressLabel={`Task ${currentTask + 1}/3`}
+        onAbort={onAbort}
+        footer={footer}
+      >
+        <div className="space-y-3">
+          {error && (
+            <p className="text-xs text-[#B83E5C] bg-[#FDF2F4] border border-[#F5D0D6] rounded-lg px-3 py-2">
+              {error}
+            </p>
           )}
-        </p>
-      </div>
-    </ModuleSessionShell>
+
+          <div className="flex gap-1 p-1 bg-[#F1F1EF] border border-[#E9E9E7] rounded-lg">
+            {TASK_IDS.map((id, idx) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setCurrentTask(idx)}
+                className={`flex-1 px-3 py-1.5 rounded-md text-xs text-center cursor-pointer transition-colors ${
+                  idx === currentTask
+                    ? "bg-white font-bold border border-[#E9E9E7] shadow-sm text-[#37352F]"
+                    : "text-[#7B7B79] hover:text-[#37352F]"
+                }`}
+              >
+                Task {idx + 1}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs font-bold text-[#37352F]">
+            {TASK_PACING_NOTES[currentTask]}
+          </p>
+          {content.stimulus && <Task3Stimulus text={content.stimulus} />}
+          <WritingTextAreaField
+            prompt={content.prompt}
+            value={activeText}
+            onChange={updateText}
+          />
+          <p className="text-[11px] text-right font-mono text-[#7A7A78]">
+            Words:{" "}
+            <strong className={words >= minWords ? "text-[#10B981]" : ""}>
+              {words}
+            </strong>{" "}
+            / {minWords} min
+            {meta.maxWords && (
+              <span className="ml-2">· {meta.maxWords} max</span>
+            )}
+          </p>
+        </div>
+      </ModuleSessionShell>
     </>
   );
 }

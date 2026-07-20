@@ -248,7 +248,7 @@ def _aggregate_section_rows(
                 ),
                 subtitle=_practice_subtitle(session["exam_type"]),
                 taken_at=latest[time_field],
-                score_label=overall_cefr or "—",
+                score_label=overall_cefr or "-",
                 score_pct=_cefr_pct(overall_cefr),
             )
         )
