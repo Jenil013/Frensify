@@ -9,6 +9,7 @@ interface ModuleSessionShellProps {
   difficultyLabel?: string;
   currentSection?: "A" | "B" | null;
   sectionLabels?: { A: string; B: string };
+  onSectionChange?: (section: "A" | "B") => void;
   onAbort?: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -45,6 +46,7 @@ export default function ModuleSessionShell({
   difficultyLabel,
   currentSection,
   sectionLabels,
+  onSectionChange,
   onAbort,
   children,
   footer,
@@ -94,18 +96,31 @@ export default function ModuleSessionShell({
 
       {sectionLabels && currentSection && (
         <div className="flex gap-1 p-1 bg-[#F1F1EF] border border-[#E9E9E7] rounded-lg">
-          {(["A", "B"] as const).map((sec) => (
-            <div
-              key={sec}
-              className={`flex-1 px-3 py-1.5 rounded-md text-xs text-center ${
-                currentSection === sec
-                  ? "bg-white font-bold border border-[#E9E9E7] shadow-sm text-[#37352F]"
-                  : "text-[#7B7B79]"
-              }`}
-            >
-              {sectionLabels[sec]}
-            </div>
-          ))}
+          {(["A", "B"] as const).map((sec) => {
+            const isActive = currentSection === sec;
+            const className = `flex-1 px-3 py-1.5 rounded-md text-xs text-center ${
+              isActive
+                ? "bg-white font-bold border border-[#E9E9E7] shadow-sm text-[#37352F]"
+                : "text-[#7B7B79] hover:text-[#37352F]"
+            }`;
+            if (onSectionChange) {
+              return (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => onSectionChange(sec)}
+                  className={`${className} cursor-pointer transition-colors`}
+                >
+                  {sectionLabels[sec]}
+                </button>
+              );
+            }
+            return (
+              <div key={sec} className={className}>
+                {sectionLabels[sec]}
+              </div>
+            );
+          })}
         </div>
       )}
 

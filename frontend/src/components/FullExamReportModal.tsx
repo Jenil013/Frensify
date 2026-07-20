@@ -140,7 +140,7 @@ function McqScoreCard({ mod }: { mod: FullExamReportModule }) {
           {mod.rawScore}/{mod.maxScore}
         </span>
         <span className="text-[11px] font-bold uppercase tracking-wide bg-[#EAF5F1] text-[#2D6A53] border border-[#D1EBE1] px-3 py-1.5 rounded-full">
-          CEFR {mod.cefrEstimate ?? "—"}
+          CEFR {mod.cefrEstimate ?? "-"}
         </span>
       </div>
       <p className="text-xs text-[#7A7A78]">
@@ -161,20 +161,20 @@ function OverviewGrid({ report }: { report: FullExamReport }) {
         const Icon = icons[skill];
         if (!mod) return null;
 
-        let scoreDisplay = "—";
+        let scoreDisplay = "-";
         let subtext = "Not completed";
 
         if (mod.type === "mcq" && mod.rawScore != null) {
           scoreDisplay = `${mod.rawScore}/${mod.maxScore}`;
-          subtext = `CEFR ${mod.cefrEstimate ?? "—"} · ${mod.scorePct}%`;
+          subtext = `CEFR ${mod.cefrEstimate ?? "-"} · ${mod.scorePct}%`;
         } else if (mod.type === "writing" && mod.writingSections) {
           const levels = mod.writingSections
             .map((s) => s.feedback?.cefrScore)
             .filter(Boolean);
-          scoreDisplay = levels.length > 0 ? levels.join(" · ") : "—";
+          scoreDisplay = levels.length > 0 ? levels.join(" · ") : "-";
           subtext = `${mod.writingSections.length} task${mod.writingSections.length > 1 ? "s" : ""} evaluated`;
         } else if (mod.type === "oral") {
-          scoreDisplay = mod.cefrEstimate ?? "—";
+          scoreDisplay = mod.cefrEstimate ?? "-";
           subtext = `${mod.oralSections?.length ?? 0} oral task${(mod.oralSections?.length ?? 0) > 1 ? "s" : ""}`;
         }
 
@@ -362,7 +362,7 @@ export default function FullExamReportModal({
 
         <div className="px-6 py-4 border-t border-[#E9E9E7] shrink-0 flex flex-wrap items-center justify-between gap-3 bg-[#FAFAF9]">
           <p className="text-[10px] text-[#7A7A78] max-w-xs leading-relaxed">
-            CEFR levels are study estimates — not official exam scores.
+            CEFR levels are study estimates, not official exam scores.
           </p>
           <div className="flex gap-2">
             <button

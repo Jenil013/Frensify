@@ -157,7 +157,9 @@ def _expression_attempts_from_rows(
     attempts: list[dict[str, Any]] = []
     for row in aggregated:
         cefr = _normalize_cefr(
-            row["scoreLabel"] if row["scoreLabel"] != "—" else None
+            row["scoreLabel"]
+            if row["scoreLabel"] not in ("-", "—")
+            else None
         )
         item = _attempt(
             module_id=module_id,

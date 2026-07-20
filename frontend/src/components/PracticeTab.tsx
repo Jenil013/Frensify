@@ -140,9 +140,9 @@ export default function PracticeTab({
       );
     } else if (result.type === "writing") {
       const tasks = result.result.sections.map(
-        (s, i) => `T${i + 1}: ${s.feedback?.cefrScore ?? "—"}`
+        (s, i) => `T${i + 1}: ${s.feedback?.cefrScore ?? "-"}`
       );
-      setModuleCompleteMsg(`Writing module complete — ${tasks.join(", ")}`);
+      setModuleCompleteMsg(`Writing module complete - ${tasks.join(", ")}`);
     } else {
       openSpeakingResultsIfApplicable("TCF", completedModule, result.result);
     }
@@ -168,9 +168,9 @@ export default function PracticeTab({
       );
     } else if (result.type === "writing") {
       const writing = result.result as WritingModuleResult;
-      const a = writing.sections[0]?.feedback?.cefrScore ?? "—";
-      const b = writing.sections[1]?.feedback?.cefrScore ?? "—";
-      setModuleCompleteMsg(`TEF writing complete — Section A: ${a}, B: ${b}`);
+      const a = writing.sections[0]?.feedback?.cefrScore ?? "-";
+      const b = writing.sections[1]?.feedback?.cefrScore ?? "-";
+      setModuleCompleteMsg(`TEF writing complete - Section A: ${a}, B: ${b}`);
     } else {
       openSpeakingResultsIfApplicable(
         "TEF",

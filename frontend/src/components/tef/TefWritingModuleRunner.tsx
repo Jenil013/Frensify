@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Sparkles, Loader2, ChevronRight } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Sparkles, Loader2 } from "lucide-react";
 import ModuleSessionShell from "../tcf/ModuleSessionShell";
 import WritingTextAreaField from "../WritingTextAreaField";
 import WritingFeedbackModal from "../WritingFeedbackModal";
@@ -24,6 +24,13 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+const MODULE_DURATION_SECONDS = 60 * 60;
+
+const SECTION_PACING_NOTES = {
+  A: "Section A (Journalistic Report - ~25 mins)",
+  B: "Section B (Argumentative Letter - ~35 mins)",
+} as const;
+
 export default function TefWritingModuleRunner({
   module,
   examMode = true,
@@ -39,10 +46,11 @@ export default function TefWritingModuleRunner({
   const [currentSection, setCurrentSection] = useState<"A" | "B">("A");
   const [textA, setTextA] = useState("");
   const [textB, setTextB] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(metaA.durationMinutes * 60);
+  const [secondsLeft, setSecondsLeft] = useState(MODULE_DURATION_SECONDS);
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingResult, setPendingResult] = useState<WritingModuleResult | null>(null);
+  const submittedRef = useRef(false);
 
   const activeMeta = currentSection === "A" ? metaA : metaB;
   const activeText = currentSection === "A" ? textA : textB;
@@ -50,16 +58,7 @@ export default function TefWritingModuleRunner({
   const activeContent = currentSection === "A" ? sectionA : sectionB;
   const minWords = activeMeta.minWords ?? 0;
   const words = wordCount(activeText);
-
-  useEffect(() => {
-    setSecondsLeft(activeMeta.durationMinutes * 60);
-  }, [currentSection, activeMeta.durationMinutes]);
-
-  useEffect(() => {
-    if (secondsLeft <= 0) return;
-    const t = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => clearInterval(t);
-  }, [secondsLeft]);
+  const underMinWords = words < minWords;
 
   const buildEvalPayload = useCallback(
     () => [
@@ -94,16 +93,17 @@ export default function TefWritingModuleRunner({
   );
 
   const finishModule = useCallback(async () => {
-    if (words < minWords) return;
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     setError(null);
-    const sections = buildEvalPayload();
+    const payload = buildEvalPayload();
 
     if (examMode) {
       const draft = buildDraftResult();
       const pendingEval = evaluateWritingModule(
         "expression-ecrite",
         "TEF",
-        sections,
+        payload,
         "mock"
       ).then((evaluated) => ({ sections: evaluated }));
       onComplete(draft, { pendingEval });
@@ -115,11 +115,12 @@ export default function TefWritingModuleRunner({
       const sectionResults = await evaluateWritingModule(
         "expression-ecrite",
         "TEF",
-        sections,
+        payload,
         "practice"
       );
       setPendingResult({ sections: sectionResults });
     } catch (err: unknown) {
+      submittedRef.current = false;
       setError(
         err instanceof Error
           ? err.message
@@ -128,14 +129,19 @@ export default function TefWritingModuleRunner({
     } finally {
       setEvaluating(false);
     }
-  }, [
-    words,
-    minWords,
-    buildEvalPayload,
-    buildDraftResult,
-    examMode,
-    onComplete,
-  ]);
+  }, [buildEvalPayload, buildDraftResult, examMode, onComplete]);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const t = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [secondsLeft]);
+
+  useEffect(() => {
+    if (secondsLeft === 0) {
+      void finishModule();
+    }
+  }, [secondsLeft, finishModule]);
 
   const dismissFeedback = useCallback(() => {
     if (pendingResult) {
@@ -153,35 +159,28 @@ export default function TefWritingModuleRunner({
       })) ?? [];
 
   const footer = (
-    <div className="flex justify-end">
-      {currentSection === "A" ? (
-        <button
-          type="button"
-          disabled={(!examMode && evaluating) || words < minWords}
-          onClick={() => setCurrentSection("B")}
-          className="px-4 py-2 bg-[#37352F] text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-        >
-          <>
-            Complete Section A <ChevronRight className="w-4 h-4" />
-          </>
-        </button>
-      ) : (
-        <button
-          type="button"
-          disabled={(!examMode && evaluating) || words < minWords}
-          onClick={finishModule}
-          className="px-4 py-2 bg-[#2D6A53] text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-        >
-          {!examMode && evaluating ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <>
-              <Sparkles className="w-3.5 h-3.5" />{" "}
-              {examMode ? "Submit & continue" : "Submit module"}
-            </>
-          )}
-        </button>
+    <div className="flex flex-col items-end gap-2">
+      {underMinWords && (
+        <p className="text-[11px] text-[#9A5013]">
+          Below the {minWords}-word minimum - submitting early may lower your
+          score.
+        </p>
       )}
+      <button
+        type="button"
+        disabled={!examMode && evaluating}
+        onClick={() => void finishModule()}
+        className="px-4 py-2 bg-[#2D6A53] text-white text-xs font-bold rounded-lg flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+      >
+        {!examMode && evaluating ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <>
+            <Sparkles className="w-3.5 h-3.5" />{" "}
+            {examMode ? "Submit & continue" : "Submit module"}
+          </>
+        )}
+      </button>
     </div>
   );
 
@@ -193,51 +192,54 @@ export default function TefWritingModuleRunner({
         <WritingFeedbackModal
           open={pendingResult !== null && feedbackSections.length > 0}
           onClose={dismissFeedback}
-          title="TEF expression écrite — your results"
+          title="TEF expression écrite - your results"
           sections={feedbackSections}
           continueLabel="Back to practice"
         />
       )}
 
       <ModuleSessionShell
-      title={`TEF · ${module.meta.labelFr}`}
-      objective={module.meta.objective}
-      secondsRemaining={secondsLeft}
-      currentSection={currentSection}
-      sectionLabels={{
-        A: `A · ${metaA.durationMinutes} min`,
-        B: `B · ${metaB.durationMinutes} min`,
-      }}
-      onAbort={onAbort}
-      footer={footer}
-    >
-      <div className="space-y-3">
-        {error && (
-          <p className="text-xs text-[#B83E5C] bg-[#FDF2F4] border border-[#F5D0D6] rounded-lg px-3 py-2">
-            {error}
-          </p>
-        )}
+        title={`TEF · ${module.meta.labelFr}`}
+        objective={module.meta.objective}
+        secondsRemaining={secondsLeft}
+        currentSection={currentSection}
+        sectionLabels={{
+          A: "Section A",
+          B: "Section B",
+        }}
+        onSectionChange={setCurrentSection}
+        onAbort={onAbort}
+        footer={footer}
+      >
+        <div className="space-y-3">
+          {error && (
+            <p className="text-xs text-[#B83E5C] bg-[#FDF2F4] border border-[#F5D0D6] rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
 
-        <p className="text-xs font-bold text-[#37352F]">{activeMeta.label}</p>
-        {activeContent.stimulus && (
-          <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-sm font-semibold text-[#37352F] leading-relaxed">
-            {activeContent.stimulus}
-          </div>
-        )}
-        <WritingTextAreaField
-          prompt={activeContent.prompt}
-          value={activeText}
-          onChange={setActiveText}
-        />
-        <p className="text-[11px] text-right font-mono text-[#7A7A78]">
-          Words:{" "}
-          <strong className={words >= minWords ? "text-[#10B981]" : ""}>
-            {words}
-          </strong>{" "}
-          / {minWords} min
-        </p>
-      </div>
-    </ModuleSessionShell>
+          <p className="text-xs font-bold text-[#37352F]">
+            {SECTION_PACING_NOTES[currentSection]}
+          </p>
+          {activeContent.stimulus && (
+            <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-sm font-semibold text-[#37352F] leading-relaxed">
+              {activeContent.stimulus}
+            </div>
+          )}
+          <WritingTextAreaField
+            prompt={activeContent.prompt}
+            value={activeText}
+            onChange={setActiveText}
+          />
+          <p className="text-[11px] text-right font-mono text-[#7A7A78]">
+            Words:{" "}
+            <strong className={words >= minWords ? "text-[#10B981]" : ""}>
+              {words}
+            </strong>{" "}
+            / {minWords} min
+          </p>
+        </div>
+      </ModuleSessionShell>
     </>
   );
 }

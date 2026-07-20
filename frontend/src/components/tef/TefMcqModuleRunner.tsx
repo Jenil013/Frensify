@@ -102,7 +102,7 @@ export default function TefMcqModuleRunner({
   return (
     <ModuleSessionShell
       title={`TEF · ${module.meta.labelFr}`}
-      objective={`${module.meta.objective} — ${total} questions, +1/0 scoring.`}
+      objective={`${module.meta.objective} - ${total} questions, +1/0 scoring.`}
       secondsRemaining={phase === "active" ? secondsLeft : 0}
       progressLabel={`Question ${currentIndex + 1}/${total}`}
       difficultyLabel={

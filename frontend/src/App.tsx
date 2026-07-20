@@ -69,7 +69,7 @@ export default function App() {
     if (checkout === "success") {
       void refresh().then(() => {
         setCheckoutNotice(
-          "Payment received — your plan will update shortly once confirmed."
+          "Payment received - your plan will update shortly once confirmed."
         );
         setActiveTab("pricing");
       });

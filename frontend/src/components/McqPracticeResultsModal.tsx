@@ -200,7 +200,7 @@ export default function McqPracticeResultsModal({
                 id="mcq-practice-results-title"
                 className="text-base font-bold text-[#37352F] tracking-tight"
               >
-                {payload.moduleLabel} — Results
+                {payload.moduleLabel} - Results
               </h2>
               <p className="text-xs text-[#7A7A78] mt-0.5">
                 {payload.examType} practice · +1/0 scoring · CEFR is an estimate

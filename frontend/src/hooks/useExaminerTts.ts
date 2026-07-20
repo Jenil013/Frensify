@@ -40,7 +40,14 @@ export function useExaminerTts() {
         return;
       }
 
-      cancel();
+      // Cancel any in-flight utterance without treating interrupt as a successful end.
+      if (utteranceRef.current) {
+        utteranceRef.current.onend = null;
+        utteranceRef.current.onerror = null;
+        utteranceRef.current = null;
+      }
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
 
       const utterance = new SpeechSynthesisUtterance(text.trim());
       const voice = pickFrenchVoice();
@@ -60,16 +67,20 @@ export function useExaminerTts() {
         utteranceRef.current = null;
         onEnd?.();
       };
-      utterance.onerror = () => {
+      utterance.onerror = (event) => {
         setIsSpeaking(false);
         utteranceRef.current = null;
+        // Interrupted means we cancelled to start a new utterance — do not fire onEnd.
+        if (event.error === "interrupted" || event.error === "canceled") {
+          return;
+        }
         onEnd?.();
       };
 
       utteranceRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     },
-    [cancel]
+    []
   );
 
   return {

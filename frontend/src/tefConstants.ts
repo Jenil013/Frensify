@@ -218,36 +218,36 @@ export const TEF_TARGET_OPTIONS: {
 }[] = [
   {
     value: "A1",
-    label: "A1 — Breakthrough",
+    label: "A1 - Breakthrough",
     subtitle: "Débutant · Basic survival French",
   },
   {
     value: "A2",
-    label: "A2 — Waystage",
+    label: "A2 - Waystage",
     subtitle: "Élémentaire · NCLC 4 baseline",
     canadaNote: "Below most immigration thresholds",
   },
   {
     value: "B1",
-    label: "B1 — Threshold",
+    label: "B1 - Threshold",
     subtitle: "Intermédiaire · NCLC 5–6",
     canadaNote: "Citizenship & some programs",
   },
   {
     value: "B2",
-    label: "B2 — Vantage",
+    label: "B2 - Vantage",
     subtitle: "Indépendant · NCLC 7+ (Express Entry)",
     canadaNote: "CRS French bonus · ~433–461+ per skill",
   },
   {
     value: "C1",
-    label: "C1 — Effective Operational",
+    label: "C1 - Effective Operational",
     subtitle: "Avancé · NCLC 9–10",
     canadaNote: "Maximum CRS French language points",
   },
   {
     value: "C2",
-    label: "C2 — Mastery",
+    label: "C2 - Mastery",
     subtitle: "Maîtrise · NCLC 12",
     canadaNote: "Near-native professional proficiency",
   },
@@ -410,7 +410,7 @@ export const TEF_MODULE_REGISTRY: Record<TefModuleId, TefModuleDefinition> = {
         prompt:
           "You read an advertisement for evening pottery classes. Call the organizer to obtain key information (prices, schedule, materials, experience required, etc.).",
         stimulus:
-          "Annonce : Cours de poterie et sculpture — mardi et jeudi 19h–21h. Matériel fourni. Débutants bienvenus.",
+          "Annonce : Cours de poterie et sculpture - mardi et jeudi 19h–21h. Matériel fourni. Débutants bienvenus.",
       },
       B: {
         prompt:
@@ -426,7 +426,7 @@ const TEF_READING_TEMPLATES: Omit<McqItem, "id">[] = [
   {
     prompt: "Quel est le message principal de cette affiche ?",
     passage:
-      "SOLDES D'ÉTÉ — Jusqu'à -50% sur toute la collection printemps-été. Offre valable du 25 juin au 19 juillet. Conditions en magasin.",
+      "SOLDES D'ÉTÉ - Jusqu'à -50% sur toute la collection printemps-été. Offre valable du 25 juin au 19 juillet. Conditions en magasin.",
     choices: [
       "A) Le magasin ferme définitivement.",
       "B) Une réduction est proposée sur les articles de saison.",

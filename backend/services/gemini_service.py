@@ -85,7 +85,7 @@ préserver l'équilibre de leurs employés."
 === OUTPUT (return ONLY valid JSON, keys in EXACTLY this order) ===
 1. "analysis": Reason through all four dimensions first, citing specific
    evidence from the candidate's text. Write this BEFORE deciding any score.
-2. "overallFeedback": 2–4 sentences of learner-facing feedback — main strengths
+2. "overallFeedback": 2–4 sentences of learner-facing feedback - main strengths
    and the most important things to improve. Encouraging but honest.
 3. "cefrScore": the single most defensible level (A1–C2). If borderline, use
    the LOWER level.
@@ -93,7 +93,7 @@ préserver l'équilibre de leurs employés."
    the level, e.g. "B2".
 5. "dimensionScores": object with "vocabulary", "grammar", "coherence",
    "taskCompleteness". Each value is a string formatted as
-   "LEVEL — one-sentence justification".
+   "LEVEL - one-sentence justification".
 6. "detailedCorrections": the most impactful errors only (max ~6), each as
    { "original", "corrected", "explanation" }. Explanations in plain terms.
 7. "improvedVersion": a rewrite of the candidate's text that keeps their ideas
@@ -172,10 +172,10 @@ _WRITING_SCHEMA = """{
   "cefrScore": "string (e.g. B2)",
   "scoreRange": "string (e.g. B1-B2)",
   "dimensionScores": {
-    "vocabulary": "string (LEVEL — justification)",
-    "grammar": "string (LEVEL — justification)",
-    "coherence": "string (LEVEL — justification)",
-    "taskCompleteness": "string (LEVEL — justification)"
+    "vocabulary": "string (LEVEL - justification)",
+    "grammar": "string (LEVEL - justification)",
+    "coherence": "string (LEVEL - justification)",
+    "taskCompleteness": "string (LEVEL - justification)"
   },
   "detailedCorrections": [
     { "original": "string", "corrected": "string", "explanation": "string" }
@@ -332,7 +332,7 @@ def _generate_json(
 _VOCAB_SYSTEM = """You are a TEF/TCF French exam vocabulary specialist.
 Explain one French word or phrase for an exam candidate preparing for TEF Canada or TCF.
 
-Be concise, examiner-like, and exam-oriented — not chatty.
+Be concise, examiner-like, and exam-oriented - not chatty.
 Estimate CEFR difficulty honestly (A1–C2).
 Explain when the expression helps on TEF vs TCF tasks (writing argumentation, oral interaction).
 Provide natural example sentences at the learner's level.

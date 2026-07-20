@@ -96,7 +96,7 @@ export default function SpeakingConversationPanel({
                 </div>
                 {voiceUnavailable && index === 0 && (
                   <p className="text-[10px] text-[#7A7A78] mt-1">
-                    French voice unavailable — read the cue above.
+                    French voice unavailable - read the cue above.
                   </p>
                 )}
               </div>
@@ -145,7 +145,7 @@ export default function SpeakingConversationPanel({
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#B83E5C] hover:bg-[#A33652] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
             >
               <Mic className="w-4 h-4" />
-              Listening… {recordingSeconds}s — tap to stop
+              Listening… {recordingSeconds}s - tap to stop
             </button>
             <div className="h-2 bg-[#F1F1EF] rounded-full overflow-hidden">
               <div

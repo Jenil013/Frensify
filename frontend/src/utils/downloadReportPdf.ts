@@ -158,7 +158,7 @@ export function downloadReportPdf(report: FullExamReport): void {
     if (mod.type === "mcq" && mod.rawScore != null && mod.maxScore != null) {
       y = addWrappedText(
         doc,
-        `Score: ${mod.rawScore}/${mod.maxScore} (${mod.scorePct}%) · CEFR estimate ${mod.cefrEstimate ?? "—"}`,
+        `Score: ${mod.rawScore}/${mod.maxScore} (${mod.scorePct}%) · CEFR estimate ${mod.cefrEstimate ?? "-"}`,
         MARGIN,
         y,
         CONTENT_WIDTH,
@@ -203,7 +203,7 @@ export function downloadReportPdf(report: FullExamReport): void {
   doc.setTextColor(122, 122, 120);
   addWrappedText(
     doc,
-    "CEFR levels and AI feedback are estimates for study purposes — not official TEF/TCF scores.",
+    "CEFR levels and AI feedback are estimates for study purposes, not official TEF/TCF scores.",
     MARGIN,
     y,
     CONTENT_WIDTH,

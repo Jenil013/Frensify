@@ -52,6 +52,8 @@ interface SectionRecording {
 }
 
 const TCF_TASK2_PREP_SECONDS = 120;
+const TCF_TASK2_PREP_START_FR =
+  "Votre temps de préparation de deux minutes commence maintenant.";
 const MAX_TURN_RECORDING_SEC = 120;
 /** Reject accidental taps / silence before calling Gemini. */
 const MIN_TURN_RECORDING_SEC = 2;
@@ -100,6 +102,8 @@ export default function OralSimulationRunner({
   );
   const [prepSecondsLeft, setPrepSecondsLeft] = useState<number | null>(null);
   const [examinerReady, setExaminerReady] = useState(false);
+  /** TCF Task 2 only: Respond stays locked until the prep countdown finishes. */
+  const [task2PrepDone, setTask2PrepDone] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conversationError, setConversationError] = useState<string | null>(null);
@@ -114,14 +118,15 @@ export default function OralSimulationRunner({
   >({});
 
   const examinerSpokeRef = useRef(false);
+  const prepWasActiveRef = useRef(false);
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
   const { speak, cancel, isSpeaking, hasFrenchVoice } = useExaminerTts();
 
   const sectionId = sectionIds[currentIndex];
   const meta = sectionMetas[currentIndex];
   const content = sectionContent[sectionId];
-  const isTcfTask2Prep =
-    examType === "TCF" && sectionId === "2" && prepSecondsLeft != null;
+  const isTcfTask2 = examType === "TCF" && sectionId === "2";
+  const isTcfTask2Prep = isTcfTask2 && prepSecondsLeft != null;
 
   const recorder = useSpeakingRecorder({
     maxSeconds: MAX_TURN_RECORDING_SEC,
@@ -144,62 +149,88 @@ export default function OralSimulationRunner({
     setConversation([]);
     setUserTurnAudios([]);
     setExaminerReady(false);
+    setTask2PrepDone(false);
     setProcessingTurn(false);
     setTimerExpired(false);
     setConversationError(null);
     examinerSpokeRef.current = false;
+    prepWasActiveRef.current = false;
     resetRecorder();
   }, [resetRecorder]);
 
   useEffect(() => {
     setSecondsLeft(meta.durationMinutes * 60);
     resetSectionState();
-
-    if (examType === "TCF" && sectionId === "2") {
-      setPrepSecondsLeft(TCF_TASK2_PREP_SECONDS);
-    } else {
-      setPrepSecondsLeft(null);
-    }
+    // Task 2 prep starts only after the examiner finishes reciting (see speak onEnd).
+    setPrepSecondsLeft(null);
   }, [currentIndex, meta.durationMinutes, sectionId, examType, resetSectionState]);
 
-  // TCF Task 2: show the scenario during preparation so the candidate can read it
+  // Always show the examiner cue in the conversation pane (needed during Task 2 prep).
   useEffect(() => {
     if (!precheckDone || sectionSubmitted) return;
-    if (examType !== "TCF" || sectionId !== "2") return;
     if (conversation.length > 0) return;
 
     const opening = examinerSpokenText(content);
+    if (!opening.trim()) return;
     setConversation([{ role: "examiner", text: opening }]);
   }, [
     precheckDone,
     sectionSubmitted,
-    examType,
-    sectionId,
     content,
     conversation.length,
+    currentIndex,
   ]);
 
+  // Recite the opening cue. For TCF Task 2, announce prep in French, then start the timer.
   useEffect(() => {
-    if (!precheckDone || prepSecondsLeft != null || sectionSubmitted) return;
+    if (!precheckDone || sectionSubmitted) return;
     if (examinerSpokeRef.current) return;
+    if (prepSecondsLeft != null) return;
+
+    const opening = examinerSpokenText(content);
+    const startPrepAfterAnnouncement = () => {
+      setConversation((prev) => {
+        const alreadyAnnounced = prev.some(
+          (t) => t.role === "examiner" && t.text === TCF_TASK2_PREP_START_FR
+        );
+        if (alreadyAnnounced) return prev;
+        return [...prev, { role: "examiner", text: TCF_TASK2_PREP_START_FR }];
+      });
+      speak(TCF_TASK2_PREP_START_FR, () => {
+        setPrepSecondsLeft(TCF_TASK2_PREP_SECONDS);
+      });
+    };
+
+    if (!opening.trim()) {
+      examinerSpokeRef.current = true;
+      if (isTcfTask2) {
+        startPrepAfterAnnouncement();
+      } else {
+        setExaminerReady(true);
+      }
+      return;
+    }
 
     examinerSpokeRef.current = true;
-    const opening = examinerSpokenText(content);
-    if (conversation.length === 0) {
-      setConversation([{ role: "examiner", text: opening }]);
-    }
-    speak(opening, () => setExaminerReady(true));
+    speak(opening, () => {
+      if (isTcfTask2) {
+        startPrepAfterAnnouncement();
+      } else {
+        setExaminerReady(true);
+      }
+    });
   }, [
     precheckDone,
     prepSecondsLeft,
     content,
     speak,
-    conversation.length,
     sectionSubmitted,
+    isTcfTask2,
   ]);
 
   useEffect(() => {
     if (prepSecondsLeft == null || prepSecondsLeft <= 0) return;
+    prepWasActiveRef.current = true;
     const t = setInterval(() => {
       setPrepSecondsLeft((s) => {
         if (s == null || s <= 1) return null;
@@ -209,17 +240,25 @@ export default function OralSimulationRunner({
     return () => clearInterval(t);
   }, [prepSecondsLeft]);
 
+  // After Task 2 prep finishes, unlock Respond (opening was already recited).
+  useEffect(() => {
+    if (!isTcfTask2 || !precheckDone || sectionSubmitted) return;
+    if (prepSecondsLeft != null || !prepWasActiveRef.current) return;
+    prepWasActiveRef.current = false;
+    setTask2PrepDone(true);
+    setExaminerReady(true);
+  }, [prepSecondsLeft, isTcfTask2, precheckDone, sectionSubmitted]);
+
   useEffect(() => {
     if (secondsLeft <= 0) {
       setTimerExpired(true);
-      if (recorder.isRecording) {
-        void stopRecordingRef.current();
-      }
+      // If the candidate is mid-reply, let them finish and tap stop;
+      // that stop path submits the section without an examiner follow-up.
       return;
     }
     const t = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearInterval(t);
-  }, [secondsLeft, recorder.isRecording]);
+  }, [secondsLeft]);
 
   useEffect(() => {
     return () => cancel();
@@ -227,15 +266,100 @@ export default function OralSimulationRunner({
 
   const handleRespond = useCallback(async () => {
     if (timerExpired || sectionSubmitted) return;
+    // TCF Task 2: block Respond until prep countdown has fully finished.
+    if (isTcfTask2 && (!task2PrepDone || prepSecondsLeft != null)) return;
     setError(null);
     setConversationError(null);
     await recorder.startRecording();
-  }, [recorder, sectionSubmitted, timerExpired]);
+  }, [
+    recorder,
+    sectionSubmitted,
+    timerExpired,
+    isTcfTask2,
+    task2PrepDone,
+    prepSecondsLeft,
+  ]);
+
+  const completeCurrentSection = useCallback(
+    (overrides?: {
+      conversation?: ConversationTurn[];
+      userTurns?: { blob: Blob; durationSeconds: number }[];
+      secondsRemaining?: number;
+    }) => {
+      const finalConversation = overrides?.conversation ?? conversation;
+      const finalUserTurns = overrides?.userTurns ?? userTurnAudios;
+      const finalSecondsRemaining = overrides?.secondsRemaining ?? secondsLeft;
+      const totalDuration = finalUserTurns.reduce(
+        (sum, t) => sum + t.durationSeconds,
+        0
+      );
+      setCompletedSections((prev) => ({
+        ...prev,
+        [sectionId]: {
+          conversation: [...finalConversation],
+          userTurns: [...finalUserTurns],
+          prompt: buildEvalPrompt(content),
+          stimulus: content.stimulus,
+          durationSeconds: totalDuration,
+          allocatedSeconds: meta.durationMinutes * 60,
+          secondsRemaining: finalSecondsRemaining,
+        },
+      }));
+    },
+    [
+      userTurnAudios,
+      conversation,
+      sectionId,
+      content,
+      meta.durationMinutes,
+      secondsLeft,
+    ]
+  );
 
   const handleStopRecording = useCallback(async () => {
     if (sectionSubmitted) return;
     const result = await recorder.stopRecording();
     if (!result) return;
+
+    // Time already up while speaking: keep this reply, skip examiner follow-up,
+    // and submit the section as soon as they tap stop.
+    if (timerExpired) {
+      const keepClip = result.durationSeconds >= 1;
+      const nextAudios = keepClip
+        ? [
+            ...userTurnAudios,
+            { blob: result.blob, durationSeconds: result.durationSeconds },
+          ]
+        : userTurnAudios;
+      const nextConversation = keepClip
+        ? [
+            ...conversation,
+            {
+              role: "user" as const,
+              text: "[Réponse enregistrée - temps écoulé]",
+            },
+          ]
+        : conversation;
+
+      if (nextAudios.length === 0 && nextConversation.filter((t) => t.role === "user").length === 0) {
+        setConversationError(null);
+        setError("Time is up, no reply was captured for this section.");
+        setExaminerReady(true);
+        return;
+      }
+
+      setUserTurnAudios(nextAudios);
+      setConversation(nextConversation);
+      setError(null);
+      setConversationError(null);
+      cancel();
+      completeCurrentSection({
+        conversation: nextConversation,
+        userTurns: nextAudios,
+        secondsRemaining: 0,
+      });
+      return;
+    }
 
     if (result.durationSeconds < MIN_TURN_RECORDING_SEC) {
       setConversationError(null);
@@ -291,7 +415,19 @@ export default function OralSimulationRunner({
     } finally {
       setProcessingTurn(false);
     }
-  }, [recorder, conversation, examType, sectionId, content, speak, sectionSubmitted]);
+  }, [
+    recorder,
+    conversation,
+    examType,
+    sectionId,
+    content,
+    speak,
+    sectionSubmitted,
+    timerExpired,
+    userTurnAudios,
+    cancel,
+    completeCurrentSection,
+  ]);
 
   stopRecordingRef.current = handleStopRecording;
 
@@ -303,25 +439,6 @@ export default function OralSimulationRunner({
     },
     [conversation, speak]
   );
-
-  const completeCurrentSection = useCallback(() => {
-    const totalDuration = userTurnAudios.reduce(
-      (sum, t) => sum + t.durationSeconds,
-      0
-    );
-    setCompletedSections((prev) => ({
-      ...prev,
-      [sectionId]: {
-        conversation: [...conversation],
-        userTurns: [...userTurnAudios],
-        prompt: buildEvalPrompt(content),
-        stimulus: content.stimulus,
-        durationSeconds: totalDuration,
-        allocatedSeconds: meta.durationMinutes * 60,
-        secondsRemaining: secondsLeft,
-      },
-    }));
-  }, [userTurnAudios, conversation, sectionId, content, meta.durationMinutes, secondsLeft]);
 
   const handleSubmitSection = useCallback(() => {
     if (userTurnCount < 1 || sectionSubmitted) return;
@@ -434,9 +551,14 @@ export default function OralSimulationRunner({
           {error}
         </p>
       )}
-      {timerExpired && !sectionSubmitted && userTurnCount > 0 && (
+      {timerExpired && !sectionSubmitted && recorder.isRecording && (
         <p className="text-xs text-[#5F5E5B] w-full">
-          Time is up — submit this section to continue.
+          Time is up - tap stop when you finish speaking to submit this section.
+        </p>
+      )}
+      {timerExpired && !sectionSubmitted && !recorder.isRecording && userTurnCount > 0 && (
+        <p className="text-xs text-[#5F5E5B] w-full">
+          Time is up - submit this section to continue.
         </p>
       )}
       <button
@@ -480,6 +602,8 @@ export default function OralSimulationRunner({
   const taskLabels = sectionMetas.map((s) => s.label.split(":")[0].trim());
   const canRespond =
     examinerReady &&
+    (!isTcfTask2 || task2PrepDone) &&
+    !isTcfTask2Prep &&
     !isSpeaking &&
     !recorder.isRecording &&
     !processingTurn &&
@@ -506,8 +630,8 @@ export default function OralSimulationRunner({
             {isTcfTask2Prep && (
               <div className="bg-[#FEF9E7] border border-[#F5E6A8] rounded-lg px-4 py-3 text-xs text-[#37352F]">
                 <span className="font-bold">Preparation time: </span>
-                {prepSecondsLeft}s remaining — read the scenario below; the examiner
-                will speak when preparation ends.
+                {prepSecondsLeft}s remaining - review the scenario and prepare your
+                answers. Respond when preparation ends.
               </div>
             )}
 
@@ -539,7 +663,7 @@ export default function OralSimulationRunner({
 
             {sectionSubmitted && (
               <p className="text-xs text-[#2D6A53] font-medium text-center">
-                Section submitted — use Next task below to continue.
+                Section submitted - use Next task below to continue.
               </p>
             )}
           </div>
