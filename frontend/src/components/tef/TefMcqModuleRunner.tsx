@@ -140,7 +140,7 @@ export default function TefMcqModuleRunner({
           )}
 
           {!isListening && q.passage && (
-            <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-sm text-[#37352F] leading-relaxed max-h-48 overflow-y-auto">
+            <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-4 text-sm text-[#37352F] leading-relaxed max-h-48 overflow-y-auto whitespace-pre-line">
               {q.passage}
             </div>
           )}
