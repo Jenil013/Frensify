@@ -107,7 +107,7 @@ function QuestionReview({
       )}
 
       {question.passage && (
-        <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-3 text-xs text-[#5F5E5B] leading-relaxed max-h-32 overflow-y-auto">
+        <div className="bg-[#FAFAF9] border border-[#E9E9E7] rounded-lg p-3 text-xs text-[#5F5E5B] leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line">
           {question.passage}
         </div>
       )}
