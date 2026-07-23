@@ -225,17 +225,31 @@ def test_practice_sets_empty_for_pro(client, auth_headers, mock_profile):
 
 
 def test_committed_free_set_files_exist():
-    for name in (
-        "tcf_listening_set1.txt",
-        "tcf_listening_set2.txt",
-        "tcf_reading_set1.txt",
-        "tcf_reading_set2.txt",
-        "tef_listening_set1.txt",
-        "tef_listening_set2.txt",
-        "tef_reading_set1.txt",
-        "tef_reading_set2.txt",
-    ):
+    expected_counts = {
+        "tcf_listening_set1.txt": 39,
+        "tcf_listening_set2.txt": 39,
+        "tcf_reading_set1.txt": 39,
+        "tcf_reading_set2.txt": 39,
+        "tef_listening_set1.txt": 40,
+        "tef_listening_set2.txt": 40,
+        "tef_reading_set1.txt": 40,
+        "tef_reading_set2.txt": 40,
+    }
+    for name, expected in expected_counts.items():
         path = FREE_SET_DIR / name
         assert path.is_file(), f"missing {name}"
         ids = [line.strip() for line in path.read_text().splitlines() if line.strip()]
-        assert len(ids) >= 39
+        assert len(ids) == expected, f"{name}: expected {expected} ids, got {len(ids)}"
+        assert len(ids) == len(set(ids)), f"{name}: duplicate ids"
+
+    listening_1 = {
+        line.strip()
+        for line in (FREE_SET_DIR / "tcf_listening_set1.txt").read_text().splitlines()
+        if line.strip()
+    }
+    listening_2 = {
+        line.strip()
+        for line in (FREE_SET_DIR / "tcf_listening_set2.txt").read_text().splitlines()
+        if line.strip()
+    }
+    assert listening_1.isdisjoint(listening_2)

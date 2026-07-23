@@ -1,4 +1,5 @@
 import { McqItem, TcfModuleDefinition, TcfModuleId } from "./types";
+import { TCF_LISTENING_DIFFICULTY_BANDS } from "./utils/listeningQuestions";
 
 /** Official TCF module metadata (content loaded via questionBank service). */
 export const TCF_MODULE_REGISTRY: Record<TcfModuleId, TcfModuleDefinition> = {
@@ -211,6 +212,27 @@ function expandMcqBank(
   });
 }
 
+function expandTcfListeningBank(
+  templates: Omit<McqItem, "id">[],
+  prefix: string
+): McqItem[] {
+  const questions: McqItem[] = [];
+  let questionNumber = 1;
+  for (const band of TCF_LISTENING_DIFFICULTY_BANDS) {
+    for (let i = 0; i < band.count; i += 1) {
+      const t = templates[(questionNumber - 1) % templates.length];
+      questions.push({
+        ...t,
+        id: `${prefix}-q${questionNumber}`,
+        difficulty: band.difficulty,
+        prompt: `[${band.difficulty}] ${t.prompt}`,
+      });
+      questionNumber += 1;
+    }
+  }
+  return questions;
+}
+
 /** Placeholder banks until Supabase content is wired. */
 export const PLACEHOLDER_READING_QUESTIONS = expandMcqBank(
   READING_TEMPLATES,
@@ -218,10 +240,9 @@ export const PLACEHOLDER_READING_QUESTIONS = expandMcqBank(
   39
 );
 
-export const PLACEHOLDER_LISTENING_QUESTIONS = expandMcqBank(
+export const PLACEHOLDER_LISTENING_QUESTIONS = expandTcfListeningBank(
   LISTENING_TEMPLATES,
-  "listening",
-  39
+  "listening"
 );
 
 export const TCF_MODULE_ORDER: TcfModuleId[] = [
