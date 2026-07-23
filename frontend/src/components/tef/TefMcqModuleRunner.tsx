@@ -106,7 +106,7 @@ export default function TefMcqModuleRunner({
       secondsRemaining={phase === "active" ? secondsLeft : 0}
       progressLabel={`Question ${currentIndex + 1}/${total}`}
       difficultyLabel={
-        phase === "active" && !isListening && q.difficulty ? q.difficulty : undefined
+        phase === "active" && q.difficulty ? q.difficulty : undefined
       }
       onAbort={phase === "active" ? onAbort : undefined}
       footer={footer}

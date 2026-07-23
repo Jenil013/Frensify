@@ -10,6 +10,18 @@ LISTENING_IMAGE_FRONT_COUNT: dict[str, int] = {
     "TEF": 4,
 }
 
+# Official TCF compréhension orale ramp (39 items): image items open the exam,
+# then CEFR bands by question index (1-based): 1–4 A1, 5–10 A2, 11–19 B1,
+# 20–29 B2, 30–35 C1, 36–39 C2.
+TCF_LISTENING_DIFFICULTY_BANDS: list[tuple[str, int]] = [
+    ("A1", 4),
+    ("A2", 6),
+    ("B1", 9),
+    ("B2", 10),
+    ("C1", 6),
+    ("C2", 4),
+]
+
 TEF_READING_DIFFICULTY_BANDS: list[tuple[str, int]] = [
     ("A1", 13),
     ("A2", 7),
@@ -41,7 +53,62 @@ def row_has_image(row: dict) -> bool:
     return bool(path and str(path).strip())
 
 
+def _sample_from_pool(pool: list[dict], take: int) -> list[dict]:
+    if take <= 0 or not pool:
+        return []
+    return random.sample(pool, min(take, len(pool)))
+
+
+def sample_tcf_listening_rows(rows: list[dict], count: int) -> list[dict]:
+    """Sample TCF listening: CEFR bands in order, with image items in Q1–Q3."""
+    front_cap = LISTENING_IMAGE_FRONT_COUNT["TCF"]
+    by_difficulty: dict[str, list[dict]] = {}
+    for row in rows:
+        difficulty = row.get("difficulty")
+        if difficulty:
+            by_difficulty.setdefault(difficulty, []).append(row)
+
+    result: list[dict] = []
+    used_ids: set = set()
+    remaining = count
+
+    for band_index, (difficulty, band_size) in enumerate(TCF_LISTENING_DIFFICULTY_BANDS):
+        if remaining <= 0:
+            break
+        take = min(band_size, remaining)
+        pool = [r for r in by_difficulty.get(difficulty, []) if r["id"] not in used_ids]
+        if not pool:
+            continue
+
+        if band_index == 0:
+            # A1 opens the module: prefer illustrated items for the first slots.
+            image_pool = [r for r in pool if row_has_image(r)]
+            other_pool = [r for r in pool if not row_has_image(r)]
+            image_take = min(front_cap, take, len(image_pool))
+            picked = _sample_from_pool(image_pool, image_take)
+            picked.extend(_sample_from_pool(other_pool, take - len(picked)))
+            # If still short (e.g. only images left), top up from leftover images.
+            if len(picked) < take:
+                leftover = [r for r in image_pool if r not in picked]
+                picked.extend(_sample_from_pool(leftover, take - len(picked)))
+        else:
+            picked = _sample_from_pool(pool, take)
+
+        result.extend(picked)
+        used_ids.update(r["id"] for r in picked)
+        remaining = count - len(result)
+
+    if len(result) < count:
+        filler = [r for r in rows if r["id"] not in used_ids]
+        result.extend(_sample_from_pool(filler, count - len(result)))
+
+    return result[:count]
+
+
 def sample_listening_rows(rows: list[dict], count: int, exam_type: str) -> list[dict]:
+    if exam_type == "TCF":
+        return sample_tcf_listening_rows(rows, count)
+
     image_rows = [r for r in rows if row_has_image(r)]
     other_rows = [r for r in rows if not row_has_image(r)]
 

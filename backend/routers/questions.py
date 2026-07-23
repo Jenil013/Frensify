@@ -22,6 +22,7 @@ router = APIRouter(tags=["questions"])
 # Re-export for tests and generator script compatibility.
 from services.question_sampling import (  # noqa: E402
     LISTENING_IMAGE_FRONT_COUNT,
+    TCF_LISTENING_DIFFICULTY_BANDS,
     TCF_READING_DIFFICULTY_BANDS,
     TEF_READING_DIFFICULTY_BANDS,
 )

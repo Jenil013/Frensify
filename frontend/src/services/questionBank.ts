@@ -15,7 +15,10 @@ import {
   fetchWritingCombination,
 } from "../lib/apiClient";
 import { buildRandomTcfTask1Section } from "../utils/tcfOralTask1";
-import { orderListeningExamQuestions } from "../utils/listeningQuestions";
+import {
+  LISTENING_IMAGE_FRONT_COUNT,
+  orderListeningExamQuestions,
+} from "../utils/listeningQuestions";
 
 const TEF_READING_QUESTION_TARGET = 40;
 const TCF_READING_QUESTION_TARGET = 39;
@@ -65,22 +68,37 @@ function attachMcqQuestions(
 }
 
 function withPlaceholderListeningImages(questions: McqItem[]): McqItem[] {
-  return questions.map((q, index) =>
-    index < 3 ? { ...q, imageUrl: PLACEHOLDER_LISTENING_IMAGE } : q
-  );
+  const hasDifficulty = questions.some((q) => q.difficulty);
+  if (!hasDifficulty) {
+    return questions.map((q, index) =>
+      index < LISTENING_IMAGE_FRONT_COUNT
+        ? { ...q, imageUrl: PLACEHOLDER_LISTENING_IMAGE }
+        : q
+    );
+  }
+
+  let imageSlots = 0;
+  return questions.map((q) => {
+    if (imageSlots >= LISTENING_IMAGE_FRONT_COUNT) return q;
+    if (q.difficulty !== "A1") return q;
+    imageSlots += 1;
+    return { ...q, imageUrl: PLACEHOLDER_LISTENING_IMAGE };
+  });
 }
 
 function placeholderListeningQuestions(): McqItem[] {
   return orderListeningExamQuestions(
     withPlaceholderListeningImages(PLACEHOLDER_LISTENING_QUESTIONS),
-    TCF_LISTENING_QUESTION_TARGET
+    TCF_LISTENING_QUESTION_TARGET,
+    { examType: "TCF" }
   );
 }
 
 function placeholderTefListeningQuestions(): McqItem[] {
   return orderListeningExamQuestions(
     withPlaceholderListeningImages(TEF_PLACEHOLDER_LISTENING_QUESTIONS),
-    TEF_LISTENING_QUESTION_TARGET
+    TEF_LISTENING_QUESTION_TARGET,
+    { examType: "TEF" }
   );
 }
 
